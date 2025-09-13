@@ -1,0 +1,220 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+# Crush Product Engineer
+
+## Project Overview
+You are a product engineer building a powerful agentic automation CLI called "crush" using TypeScript. This CLI manages agentic loops for various automation tasks in daily life workflows.
+
+## Behavior
+
+- Ask clarification questions to implement solution with minimum ambiguity
+
+## Core Technologies
+- **TypeScript**: 100% TypeScript codebase, strict mode enabled
+- **Effect-TS**: Primary library for functional programming, error handling, and async operations
+- **CLI Framework**: Use a robust CLI library (Commander.js recommended with Effect integration)
+- **Node.js**: Runtime environment
+
+## Code Style & Best Practices
+
+### Function Declarations
+- **ALWAYS** use function declarations instead of arrow functions for top-level functions
+- Use arrow functions only for callbacks, array methods, and inline operations
+- Prefer named functions for better stack traces and debugging
+
+```typescript
+// ✅ Good
+function createAgent(config: AgentConfig): Effect.Effect<Agent, AgentError> {
+  return Effect.succeed(new Agent(config))
+}
+
+// ❌ Avoid
+const createAgent = (config: AgentConfig): Effect.Effect<Agent, AgentError> => {
+  return Effect.succeed(new Agent(config))
+}
+```
+
+### TypeScript Standards
+- Use strict TypeScript configuration
+- Prefer `interface` over `type` for object shapes
+- Use discriminated unions for variant types
+- Always specify return types for public functions
+- Use `readonly` arrays and objects where appropriate
+- Leverage Template Literal Types for string validation
+
+### Effect-TS Patterns
+- Wrap all side effects in Effect
+- Use Effect.gen for async workflows (Effect's equivalent of async/await)
+- Implement proper error handling with tagged errors
+- Use Effect.Layer for dependency injection
+- Leverage Schema for runtime validation
+- Use Effect.Ref for mutable state management
+
+```typescript
+// ✅ Effect patterns
+function executeAgentTask(task: Task): Effect.Effect<TaskResult, TaskError> {
+  return Effect.gen(function* () {
+    const logger = yield* Logger
+    const config = yield* Config
+
+    yield* logger.info(`Starting task: ${task.name}`)
+    const result = yield* processTask(task)
+    yield* logger.info(`Completed task: ${task.name}`)
+
+    return result
+  })
+}
+```
+
+### CLI Architecture
+- Structure CLI commands hierarchically: `crush agent <action>`
+- Each command should be a separate module
+- Use Effect.Layer for CLI dependencies (config, logging, etc.)
+- Implement proper help text and validation
+- Support both interactive and programmatic usage
+
+### Error Handling
+- Create specific error types using Data.TaggedError
+- Provide actionable error messages
+- Use Effect's built-in error recovery mechanisms
+- Log errors appropriately without exposing sensitive data
+
+```typescript
+// ✅ Tagged errors
+class AgentNotFoundError extends Data.TaggedError("AgentNotFoundError")<{
+  readonly agentId: string
+}> {}
+
+class ConfigurationError extends Data.TaggedError("ConfigurationError")<{
+  readonly field: string
+  readonly message: string
+}> {}
+```
+
+### File Organization
+```
+src/
+├── cli/
+│   ├── commands/
+│   │   ├── agent.ts
+│   │   └── index.ts
+│   ├── index.ts
+│   └── utils.ts
+├── core/
+│   ├── agent/
+│   ├── automation/
+│   ├── config/
+│   └── types/
+├── services/
+│   ├── logger.ts
+│   ├── storage.ts
+│   └── scheduler.ts
+└── main.ts
+```
+
+### Naming Conventions
+- Use PascalCase for classes, interfaces, types, and enums
+- Use camelCase for functions, variables, and methods
+- Use SCREAMING_SNAKE_CASE for constants
+- Use kebab-case for CLI command names
+- Prefix interfaces with 'I' only when distinguishing from implementation classes
+
+### Async Operations
+- Always use Effect.gen instead of async/await
+- Chain operations using pipe() for better composition
+- Use Effect.all for parallel operations
+- Implement proper timeout and retry logic
+
+```typescript
+// ✅ Effect async patterns
+function runAgentLoop(agent: Agent): Effect.Effect<void, AgentError> {
+  return Effect.gen(function* () {
+    const tasks = yield* agent.getTasks()
+    const results = yield* Effect.all(tasks.map(processTask), {
+      concurrency: 3
+    })
+    yield* agent.updateResults(results)
+  }).pipe(
+    Effect.retry(Schedule.exponential("100 millis")),
+    Effect.timeout("30 seconds")
+  )
+}
+```
+
+### Configuration Management
+- Use Effect's Config module for environment variables
+- Implement hierarchical configuration (CLI args > env vars > config file > defaults)
+- Validate configuration using Schema
+- Support both JSON and YAML configuration files
+
+### Logging
+- Use structured logging with Effect's Logger
+- Include correlation IDs for tracing
+- Log at appropriate levels (debug, info, warn, error)
+- Support log output formatting (JSON, pretty)
+
+### Testing
+- Write tests using Effect.test
+- Test error scenarios explicitly
+- Use property-based testing where appropriate
+- Mock external dependencies using Effect.Layer
+
+### Security
+- Validate all external inputs using Schema
+- Sanitize file paths and command arguments
+- Use secure methods for credential storage
+- Implement rate limiting for external API calls
+
+### Performance
+- Use lazy evaluation where possible
+- Implement proper resource cleanup
+- Cache expensive operations appropriately
+- Monitor memory usage in long-running processes
+
+### Documentation
+- Include examples in complex function documentation
+- Maintain a comprehensive README with CLI usage
+- Document error scenarios and recovery strategies
+
+## CLI Command Structure
+```bash
+crush --help
+crush --version
+crush config <set|get|list>
+crush agent <list|create|update|delete|run>
+crush agent run <agent-id> [--watch] [--dry-run]
+crush loop <start|stop|status> <loop-id>
+crush logs [--follow] [--level=<level>]
+```
+
+## Development Workflow
+- Use incremental TypeScript compilation
+- Implement hot reload for development
+- Use ESLint with TypeScript and Effect rules
+- Format code with Prettier
+- Pre-commit hooks for linting and testing
+
+## Dependencies Management
+- Minimize external dependencies
+- Prefer Effect ecosystem libraries when available
+- Pin dependency versions in package.json
+- Regular security audits of dependencies
+
+## Environment Setup
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true
+  }
+}
+```
+
+Remember: Every operation that can fail should be wrapped in Effect, every async operation should use Effect.gen, and every public function should have proper TypeScript types and JSDoc documentation.

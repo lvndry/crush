@@ -1,0 +1,54 @@
+{
+    "name": "crush",
+    "version": "0.1.0",
+    "description": "A powerful agentic automation CLI for managing agentic loops in daily life workflows",
+    "main": "dist/main.js",
+    "type": "module",
+    "bin": {
+        "crush": "./dist/main.js"
+    },
+    "scripts": {
+        "build": "bun run tsc",
+        "dev": "bun --watch src/main.ts",
+        "start": "bun dist/main.js",
+        "cli": "bun src/main.ts",
+        "lint": "bunx eslint src/**/*.ts",
+        "lint:fix": "bunx eslint src/**/*.ts --fix",
+        "format": "bunx prettier --write src/**/*.ts",
+        "test": "bun test",
+        "test:watch": "bun test --watch",
+        "clean": "rm -rf dist",
+        "prebuild": "bun run clean",
+        "prepublishOnly": "bun run build"
+    },
+    "keywords": [
+        "cli",
+        "automation",
+        "agentic",
+        "typescript",
+        "effect-ts"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "@effect/platform": "^0.90.9",
+        "@effect/platform-node": "^0.96.1",
+        "@effect/schema": "^0.75.5",
+        "commander": "^14.0.1",
+        "effect": "^3.17.13",
+        "yaml": "^2.8.1"
+    },
+    "devDependencies": {
+        "@types/node": "^24.3.3",
+        "@typescript-eslint/eslint-plugin": "^8.43.0",
+        "@typescript-eslint/parser": "^8.43.0",
+        "eslint": "^9.35.0",
+        "eslint-config-prettier": "^10.1.8",
+        "eslint-plugin-prettier": "^5.5.4",
+        "prettier": "^3.6.2",
+        "typescript": "^5.9.2"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}
