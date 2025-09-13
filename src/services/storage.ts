@@ -13,13 +13,19 @@ export interface StorageService {
   readonly listAgents: () => Effect.Effect<readonly Agent[], StorageError>;
   readonly deleteAgent: (id: string) => Effect.Effect<void, StorageError | StorageNotFoundError>;
   readonly saveAutomation: (automation: Automation) => Effect.Effect<void, StorageError>;
-  readonly getAutomation: (id: string) => Effect.Effect<Automation, StorageError | StorageNotFoundError>;
+  readonly getAutomation: (
+    id: string
+  ) => Effect.Effect<Automation, StorageError | StorageNotFoundError>;
   readonly listAutomations: () => Effect.Effect<readonly Automation[], StorageError>;
-  readonly deleteAutomation: (id: string) => Effect.Effect<void, StorageError | StorageNotFoundError>;
+  readonly deleteAutomation: (
+    id: string
+  ) => Effect.Effect<void, StorageError | StorageNotFoundError>;
   readonly saveTaskResult: (result: TaskResult) => Effect.Effect<void, StorageError>;
   readonly getTaskResults: (taskId: string) => Effect.Effect<readonly TaskResult[], StorageError>;
   readonly saveAgentResult: (result: AgentResult) => Effect.Effect<void, StorageError>;
-  readonly getAgentResults: (agentId: string) => Effect.Effect<readonly AgentResult[], StorageError>;
+  readonly getAgentResults: (
+    agentId: string
+  ) => Effect.Effect<readonly AgentResult[], StorageError>;
 }
 
 // In-memory storage implementation for development
@@ -36,16 +42,13 @@ export class InMemoryStorageService implements StorageService {
   }
 
   getAgent(id: string): Effect.Effect<Agent, StorageError | StorageNotFoundError> {
-    return Effect.flatMap(
-      Ref.get(this.agents),
-      agents => {
-        const agent = agents.get(id);
-        if (!agent) {
-          return Effect.fail(new StorageNotFoundError({ path: `agent:${id}` }));
-        }
-        return Effect.succeed(agent);
+    return Effect.flatMap(Ref.get(this.agents), agents => {
+      const agent = agents.get(id);
+      if (!agent) {
+        return Effect.fail(new StorageNotFoundError({ path: `agent:${id}` }));
       }
-    );
+      return Effect.succeed(agent);
+    });
   }
 
   listAgents(): Effect.Effect<readonly Agent[], StorageError> {
@@ -53,19 +56,16 @@ export class InMemoryStorageService implements StorageService {
   }
 
   deleteAgent(id: string): Effect.Effect<void, StorageError | StorageNotFoundError> {
-    return Effect.flatMap(
-      Ref.get(this.agents),
-      agents => {
-        if (!agents.has(id)) {
-          return Effect.fail(new StorageNotFoundError({ path: `agent:${id}` }));
-        }
-        return Ref.update(this.agents, map => {
-          const newMap = new Map(map);
-          newMap.delete(id);
-          return newMap;
-        });
+    return Effect.flatMap(Ref.get(this.agents), agents => {
+      if (!agents.has(id)) {
+        return Effect.fail(new StorageNotFoundError({ path: `agent:${id}` }));
       }
-    );
+      return Ref.update(this.agents, map => {
+        const newMap = new Map(map);
+        newMap.delete(id);
+        return newMap;
+      });
+    });
   }
 
   saveAutomation(automation: Automation): Effect.Effect<void, StorageError> {
@@ -73,16 +73,13 @@ export class InMemoryStorageService implements StorageService {
   }
 
   getAutomation(id: string): Effect.Effect<Automation, StorageError | StorageNotFoundError> {
-    return Effect.flatMap(
-      Ref.get(this.automations),
-      automations => {
-        const automation = automations.get(id);
-        if (!automation) {
-          return Effect.fail(new StorageNotFoundError({ path: `automation:${id}` }));
-        }
-        return Effect.succeed(automation);
+    return Effect.flatMap(Ref.get(this.automations), automations => {
+      const automation = automations.get(id);
+      if (!automation) {
+        return Effect.fail(new StorageNotFoundError({ path: `automation:${id}` }));
       }
-    );
+      return Effect.succeed(automation);
+    });
   }
 
   listAutomations(): Effect.Effect<readonly Automation[], StorageError> {
@@ -90,19 +87,16 @@ export class InMemoryStorageService implements StorageService {
   }
 
   deleteAutomation(id: string): Effect.Effect<void, StorageError | StorageNotFoundError> {
-    return Effect.flatMap(
-      Ref.get(this.automations),
-      automations => {
-        if (!automations.has(id)) {
-          return Effect.fail(new StorageNotFoundError({ path: `automation:${id}` }));
-        }
-        return Ref.update(this.automations, map => {
-          const newMap = new Map(map);
-          newMap.delete(id);
-          return newMap;
-        });
+    return Effect.flatMap(Ref.get(this.automations), automations => {
+      if (!automations.has(id)) {
+        return Effect.fail(new StorageNotFoundError({ path: `automation:${id}` }));
       }
-    );
+      return Ref.update(this.automations, map => {
+        const newMap = new Map(map);
+        newMap.delete(id);
+        return newMap;
+      });
+    });
   }
 
   saveTaskResult(result: TaskResult): Effect.Effect<void, StorageError> {
@@ -132,11 +126,11 @@ export class InMemoryStorageService implements StorageService {
   }
 }
 
-export const StorageService = Context.GenericTag<StorageService>("StorageService");
+export const StorageServiceTag = Context.GenericTag<StorageService>("StorageService");
 
 export function createInMemoryStorageLayer(): Layer.Layer<StorageService> {
   return Layer.effect(
-    StorageService,
+    StorageServiceTag,
     Effect.gen(function* () {
       const agents = yield* Ref.make(new Map<string, Agent>());
       const automations = yield* Ref.make(new Map<string, Automation>());
@@ -151,42 +145,52 @@ export function createInMemoryStorageLayer(): Layer.Layer<StorageService> {
 // Helper functions for common storage operations
 export function saveAgent(agent: Agent): Effect.Effect<void, StorageError, StorageService> {
   return Effect.gen(function* () {
-    const storage = yield* StorageService;
+    const storage = yield* StorageServiceTag;
     yield* storage.saveAgent(agent);
   });
 }
 
-export function getAgent(id: string): Effect.Effect<Agent, StorageError | StorageNotFoundError, StorageService> {
+export function getAgent(
+  id: string
+): Effect.Effect<Agent, StorageError | StorageNotFoundError, StorageService> {
   return Effect.gen(function* () {
-    const storage = yield* StorageService;
+    const storage = yield* StorageServiceTag;
     return yield* storage.getAgent(id);
   });
 }
 
 export function listAgents(): Effect.Effect<readonly Agent[], StorageError, StorageService> {
   return Effect.gen(function* () {
-    const storage = yield* StorageService;
+    const storage = yield* StorageServiceTag;
     return yield* storage.listAgents();
   });
 }
 
-export function saveAutomation(automation: Automation): Effect.Effect<void, StorageError, StorageService> {
+export function saveAutomation(
+  automation: Automation
+): Effect.Effect<void, StorageError, StorageService> {
   return Effect.gen(function* () {
-    const storage = yield* StorageService;
+    const storage = yield* StorageServiceTag;
     yield* storage.saveAutomation(automation);
   });
 }
 
-export function getAutomation(id: string): Effect.Effect<Automation, StorageError | StorageNotFoundError, StorageService> {
+export function getAutomation(
+  id: string
+): Effect.Effect<Automation, StorageError | StorageNotFoundError, StorageService> {
   return Effect.gen(function* () {
-    const storage = yield* StorageService;
+    const storage = yield* StorageServiceTag;
     return yield* storage.getAutomation(id);
   });
 }
 
-export function listAutomations(): Effect.Effect<readonly Automation[], StorageError, StorageService> {
+export function listAutomations(): Effect.Effect<
+  readonly Automation[],
+  StorageError,
+  StorageService
+> {
   return Effect.gen(function* () {
-    const storage = yield* StorageService;
+    const storage = yield* StorageServiceTag;
     return yield* storage.listAutomations();
   });
 }
@@ -231,65 +235,87 @@ export class FileStorageService implements StorageService {
   }
 
   private ensureDirectoryExists(path: string): Effect.Effect<void, StorageError> {
-    return Effect.gen(function* (this: FileStorageService) {
-      yield* this.fs.makeDirectory(path, { recursive: true }).pipe(
-        Effect.mapError(error => new StorageError({
-          operation: "mkdir",
-          path,
-          reason: `Failed to create directory: ${error}`
-        })),
-        Effect.catchAll(() => Effect.void) // Ignore if directory already exists
-      );
-    }.bind(this));
+    return Effect.gen(
+      function* (this: FileStorageService) {
+        yield* this.fs.makeDirectory(path, { recursive: true }).pipe(
+          Effect.mapError(
+            error =>
+              new StorageError({
+                operation: "mkdir",
+                path,
+                reason: `Failed to create directory: ${String(error)}`,
+              })
+          ),
+          Effect.catchAll(() => Effect.void) // Ignore if directory already exists
+        );
+      }.bind(this)
+    );
   }
 
   private readJsonFile<T>(path: string): Effect.Effect<T, StorageError | StorageNotFoundError> {
-    return Effect.gen(function* (this: FileStorageService) {
-      const content = yield* this.fs.readFileString(path).pipe(
-        Effect.mapError(error => new StorageError({
-          operation: "read",
-          path,
-          reason: `Failed to read file: ${error}`
-        }))
-      );
-      return JSON.parse(content) as T;
-    }.bind(this));
+    return Effect.gen(
+      function* (this: FileStorageService) {
+        const content = yield* this.fs.readFileString(path).pipe(
+          Effect.mapError(
+            error =>
+              new StorageError({
+                operation: "read",
+                path,
+                reason: `Failed to read file: ${String(error.message)}`,
+              })
+          )
+        );
+        return JSON.parse(content) as T;
+      }.bind(this)
+    );
   }
 
   private writeJsonFile<T>(path: string, data: T): Effect.Effect<void, StorageError> {
-    return Effect.gen(function* (this: FileStorageService) {
-      const content = JSON.stringify(data, null, 2);
-      yield* this.fs.writeFileString(path, content).pipe(
-        Effect.mapError(error => new StorageError({
-          operation: "write",
-          path,
-          reason: `Failed to write file: ${error}`
-        }))
-      );
-    }.bind(this));
+    return Effect.gen(
+      function* (this: FileStorageService) {
+        const content = JSON.stringify(data, null, 2);
+        yield* this.fs.writeFileString(path, content).pipe(
+          Effect.mapError(
+            error =>
+              new StorageError({
+                operation: "write",
+                path,
+                reason: `Failed to write file: ${String(error)}`,
+              })
+          )
+        );
+      }.bind(this)
+    );
   }
 
   private listJsonFiles(dir: string): Effect.Effect<readonly string[], StorageError> {
-    return Effect.gen(function* (this: FileStorageService) {
-      yield* this.ensureDirectoryExists(dir);
-      const files = yield* this.fs.readDirectory(dir).pipe(
-        Effect.mapError(error => new StorageError({
-          operation: "list",
-          path: dir,
-          reason: `Failed to list directory: ${error}`
-        }))
-      );
-      return files.filter((file: string) => file.endsWith('.json'));
-    }.bind(this));
+    return Effect.gen(
+      function* (this: FileStorageService) {
+        yield* this.ensureDirectoryExists(dir);
+        const files = yield* this.fs.readDirectory(dir).pipe(
+          Effect.mapError(
+            error =>
+              new StorageError({
+                operation: "list",
+                path: dir,
+                reason: `Failed to list directory: ${String(error)}`,
+              })
+          )
+        );
+        return files.filter((file: string) => file.endsWith(".json"));
+      }.bind(this)
+    );
   }
 
   saveAgent(agent: Agent): Effect.Effect<void, StorageError> {
-    return Effect.gen(function* (this: FileStorageService) {
-      const dir = this.getAgentsDir();
-      yield* this.ensureDirectoryExists(dir);
-      const path = this.getAgentPath(agent.id);
-      yield* this.writeJsonFile(path, agent);
-    }.bind(this));
+    return Effect.gen(
+      function* (this: FileStorageService) {
+        const dir = this.getAgentsDir();
+        yield* this.ensureDirectoryExists(dir);
+        const path = this.getAgentPath(agent.id);
+        yield* this.writeJsonFile(path, agent);
+      }.bind(this)
+    );
   }
 
   getAgent(id: string): Effect.Effect<Agent, StorageError | StorageNotFoundError> {
@@ -298,50 +324,56 @@ export class FileStorageService implements StorageService {
   }
 
   listAgents(): Effect.Effect<readonly Agent[], StorageError> {
-    return Effect.gen(function* (this: FileStorageService) {
-      const dir = this.getAgentsDir();
-      const files = yield* this.listJsonFiles(dir);
+    return Effect.gen(
+      function* (this: FileStorageService) {
+        const dir = this.getAgentsDir();
+        const files = yield* this.listJsonFiles(dir);
 
-      const agents: Agent[] = [];
-      for (const file of files) {
-        const path = `${dir}/${file}`;
-        const agent = yield* this.readJsonFile<Agent>(path).pipe(
-          Effect.catchAll(() => Effect.void) // Skip corrupted files
-        );
-        if (agent) {
-          agents.push(agent);
+        const agents: Agent[] = [];
+        for (const file of files) {
+          const path = `${dir}/${file}`;
+          const agent = yield* this.readJsonFile<Agent>(path).pipe(
+            Effect.catchAll(() => Effect.void) // Skip corrupted files
+          );
+          if (agent) {
+            agents.push(agent);
+          }
         }
-      }
 
-      return agents;
-    }.bind(this));
+        return agents;
+      }.bind(this)
+    );
   }
 
   deleteAgent(id: string): Effect.Effect<void, StorageError | StorageNotFoundError> {
-    return Effect.gen(function* (this: FileStorageService) {
-      const path = this.getAgentPath(id);
-      yield* this.fs.remove(path).pipe(
-        Effect.mapError(error => {
-          if (error instanceof Error && error.message.includes('ENOENT')) {
-            return new StorageNotFoundError({ path });
-          }
-          return new StorageError({
-            operation: "delete",
-            path,
-            reason: `Failed to delete file: ${error}`
-          });
-        })
-      );
-    }.bind(this));
+    return Effect.gen(
+      function* (this: FileStorageService) {
+        const path = this.getAgentPath(id);
+        yield* this.fs.remove(path).pipe(
+          Effect.mapError(error => {
+            if (error instanceof Error && error.message.includes("ENOENT")) {
+              return new StorageNotFoundError({ path });
+            }
+            return new StorageError({
+              operation: "delete",
+              path,
+              reason: `Failed to delete file: ${String(error)}`,
+            });
+          })
+        );
+      }.bind(this)
+    );
   }
 
   saveAutomation(automation: Automation): Effect.Effect<void, StorageError> {
-    return Effect.gen(function* (this: FileStorageService) {
-      const dir = this.getAutomationsDir();
-      yield* this.ensureDirectoryExists(dir);
-      const path = this.getAutomationPath(automation.id);
-      yield* this.writeJsonFile(path, automation);
-    }.bind(this));
+    return Effect.gen(
+      function* (this: FileStorageService) {
+        const dir = this.getAutomationsDir();
+        yield* this.ensureDirectoryExists(dir);
+        const path = this.getAutomationPath(automation.id);
+        yield* this.writeJsonFile(path, automation);
+      }.bind(this)
+    );
   }
 
   getAutomation(id: string): Effect.Effect<Automation, StorageError | StorageNotFoundError> {
@@ -350,91 +382,97 @@ export class FileStorageService implements StorageService {
   }
 
   listAutomations(): Effect.Effect<readonly Automation[], StorageError> {
-    return Effect.gen(function* (this: FileStorageService) {
-      const dir = this.getAutomationsDir();
-      const files = yield* this.listJsonFiles(dir);
+    return Effect.gen(
+      function* (this: FileStorageService) {
+        const dir = this.getAutomationsDir();
+        const files = yield* this.listJsonFiles(dir);
 
-      const automations: Automation[] = [];
-      for (const file of files) {
-        const path = `${dir}/${file}`;
-        const automation = yield* this.readJsonFile<Automation>(path).pipe(
-          Effect.catchAll(() => Effect.void) // Skip corrupted files
-        );
-        if (automation) {
-          automations.push(automation);
+        const automations: Automation[] = [];
+        for (const file of files) {
+          const path = `${dir}/${file}`;
+          const automation = yield* this.readJsonFile<Automation>(path).pipe(
+            Effect.catchAll(() => Effect.void) // Skip corrupted files
+          );
+          if (automation) {
+            automations.push(automation);
+          }
         }
-      }
 
-      return automations;
-    }.bind(this));
+        return automations;
+      }.bind(this)
+    );
   }
 
   deleteAutomation(id: string): Effect.Effect<void, StorageError | StorageNotFoundError> {
-    return Effect.gen(function* (this: FileStorageService) {
-      const path = this.getAutomationPath(id);
-      yield* this.fs.remove(path).pipe(
-        Effect.mapError(error => {
-          if (error instanceof Error && error.message.includes('ENOENT')) {
-            return new StorageNotFoundError({ path });
-          }
-          return new StorageError({
-            operation: "delete",
-            path,
-            reason: `Failed to delete file: ${error}`
-          });
-        })
-      );
-    }.bind(this));
+    return Effect.gen(
+      function* (this: FileStorageService) {
+        const path = this.getAutomationPath(id);
+        yield* this.fs.remove(path).pipe(
+          Effect.mapError(error => {
+            if (error instanceof Error && error.message.includes("ENOENT")) {
+              return new StorageNotFoundError({ path });
+            }
+            return new StorageError({
+              operation: "delete",
+              path,
+              reason: `Failed to delete file: ${String(error)}`,
+            });
+          })
+        );
+      }.bind(this)
+    );
   }
 
   saveTaskResult(result: TaskResult): Effect.Effect<void, StorageError> {
-    return Effect.gen(function* (this: FileStorageService) {
-      const dir = this.getTaskResultsDir();
-      yield* this.ensureDirectoryExists(dir);
-      const path = this.getTaskResultsPath(result.taskId);
+    return Effect.gen(
+      function* (this: FileStorageService) {
+        const dir = this.getTaskResultsDir();
+        yield* this.ensureDirectoryExists(dir);
+        const path = this.getTaskResultsPath(result.taskId);
 
-      // Read existing results, append new one, write back
-      const existing = yield* this.readJsonFile<TaskResult[]>(path).pipe(
-        Effect.catchAll(() => Effect.succeed([]))
-      );
-      const updated = [...existing, result];
-      yield* this.writeJsonFile(path, updated);
-    }.bind(this));
+        // Read existing results, append new one, write back
+        const existing = yield* this.readJsonFile<TaskResult[]>(path).pipe(
+          Effect.catchAll(() => Effect.succeed([]))
+        );
+        const updated = [...existing, result];
+        yield* this.writeJsonFile(path, updated);
+      }.bind(this)
+    );
   }
 
   getTaskResults(taskId: string): Effect.Effect<readonly TaskResult[], StorageError> {
     const path = this.getTaskResultsPath(taskId);
-    return this.readJsonFile<TaskResult[]>(path).pipe(
-      Effect.catchAll(() => Effect.succeed([]))
-    );
+    return this.readJsonFile<TaskResult[]>(path).pipe(Effect.catchAll(() => Effect.succeed([])));
   }
 
   saveAgentResult(result: AgentResult): Effect.Effect<void, StorageError> {
-    return Effect.gen(function* (this: FileStorageService) {
-      const dir = this.getAgentResultsDir();
-      yield* this.ensureDirectoryExists(dir);
-      const path = this.getAgentResultsPath(result.agentId);
+    return Effect.gen(
+      function* (this: FileStorageService) {
+        const dir = this.getAgentResultsDir();
+        yield* this.ensureDirectoryExists(dir);
+        const path = this.getAgentResultsPath(result.agentId);
 
-      // Read existing results, append new one, write back
-      const existing = yield* this.readJsonFile<AgentResult[]>(path).pipe(
-        Effect.catchAll(() => Effect.succeed([]))
-      );
-      const updated = [...existing, result];
-      yield* this.writeJsonFile(path, updated);
-    }.bind(this));
+        // Read existing results, append new one, write back
+        const existing = yield* this.readJsonFile<AgentResult[]>(path).pipe(
+          Effect.catchAll(() => Effect.succeed([]))
+        );
+        const updated = [...existing, result];
+        yield* this.writeJsonFile(path, updated);
+      }.bind(this)
+    );
   }
 
   getAgentResults(agentId: string): Effect.Effect<readonly AgentResult[], StorageError> {
     const path = this.getAgentResultsPath(agentId);
-    return this.readJsonFile<AgentResult[]>(path).pipe(
-      Effect.catchAll(() => Effect.succeed([]))
-    );
+    return this.readJsonFile<AgentResult[]>(path).pipe(Effect.catchAll(() => Effect.succeed([])));
   }
 }
 
-export function createFileStorageLayer(basePath: string): Layer.Layer<StorageService, never, FileSystem.FileSystem> {
+export function createFileStorageLayer(
+  basePath: string
+): Layer.Layer<StorageService, never, FileSystem.FileSystem> {
   return Layer.effect(
-    StorageService,
+    StorageServiceTag,
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       return new FileStorageService(basePath, fs);

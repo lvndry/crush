@@ -8,12 +8,13 @@ import {
   deleteAgentCommand,
   getAgentCommand,
   listAgentsCommand,
-  runAgentCommand
+  runAgentCommand,
 } from "./cli/commands/agent";
+import { createInteractiveAgentCommand } from "./cli/commands/interactive-agent";
 import { createAgentServiceLayer } from "./core/agent/agent-service";
 import type { AppConfig } from "./core/types/index";
 import { createConfigLayer } from "./services/config";
-import { createLoggerLayer } from "./services/logger";
+import { createLoggerLayer, LoggerServiceTag } from "./services/logger";
 import { createFileStorageLayer } from "./services/storage";
 
 /**
@@ -31,32 +32,30 @@ function createAppLayer(config: AppConfig) {
     Layer.provide(baseLayer)
   );
 
-  return Layer.mergeAll(
-    baseLayer,
-    storageLayer,
-    createAgentServiceLayer()
-  ).pipe(Layer.provide(Layer.mergeAll(baseLayer, storageLayer)));
+  return Layer.mergeAll(baseLayer, storageLayer, createAgentServiceLayer()).pipe(
+    Layer.provide(Layer.mergeAll(baseLayer, storageLayer))
+  );
 }
 
 function main(): Effect.Effect<void, never, never> {
-  return Effect.gen(function* () {
+  return Effect.sync(() => {
     // Default configuration
     const defaultConfig: AppConfig = {
       storage: {
         type: "file",
-        path: "./data"
+        path: "./data",
       },
       logging: {
         level: "info",
         format: "pretty",
-        output: "console"
+        output: "console",
       },
       security: {},
       performance: {
         maxConcurrentAgents: 5,
         maxConcurrentTasks: 10,
-        timeout: 30000
-      }
+        timeout: 30000,
+      },
     };
 
     const appLayer = createAppLayer(defaultConfig);
@@ -64,10 +63,7 @@ function main(): Effect.Effect<void, never, never> {
     // Initialize CLI
     const program = new Command();
 
-    program
-      .name("crush")
-      .description("A powerful agentic automation CLI")
-      .version("0.1.0");
+    program.name("crush").description("A powerful agentic automation CLI").version("0.1.0");
 
     // Global options
     program
@@ -76,64 +72,117 @@ function main(): Effect.Effect<void, never, never> {
       .option("--config <path>", "Path to configuration file");
 
     // Agent commands
-    const agentCommand = program
-      .command("agent")
-      .description("Manage agents");
+    const agentCommand = program.command("agent").description("Manage agents");
 
     agentCommand
       .command("list")
       .description("List all agents")
       .action(() => {
-        Effect.runPromise(
+        void Effect.runPromise(
           listAgentsCommand().pipe(
             Effect.provide(appLayer),
             Effect.catchAll(error => {
               if (error._tag === "StorageError") {
-                console.error(`❌ Storage error: ${error.reason}`);
+                return Effect.gen(function* () {
+                  const logger = yield* LoggerServiceTag;
+                  yield* logger.error(`❌ Storage error: ${error.reason}`);
+                }).pipe(Effect.provide(appLayer));
               } else {
-                console.error("❌ Error listing agents:", error);
+                return Effect.gen(function* () {
+                  const logger = yield* LoggerServiceTag;
+                  yield* logger.error("❌ Error listing agents:", { error });
+                }).pipe(Effect.provide(appLayer));
               }
-              return Effect.void;
             })
           )
         );
       });
 
     agentCommand
-      .command("create <name>")
-      .description("Create a new agent")
-      .option("-d, --description <description>", "Agent description")
-      .option("-t, --timeout <timeout>", "Agent timeout in milliseconds", (value) => parseInt(value, 10))
-      .option("-r, --max-retries <retries>", "Maximum number of retries", (value) => parseInt(value, 10))
-      .option("--retry-delay <delay>", "Retry delay in milliseconds", (value) => parseInt(value, 10))
-      .option("--retry-backoff <backoff>", "Retry backoff strategy", "exponential")
-      .action((name: string, options: {
-        description?: string;
-        timeout?: number;
-        maxRetries?: number;
-        retryDelay?: number;
-        retryBackoff?: "linear" | "exponential" | "fixed";
-      }) => {
-        Effect.runPromise(
-          createAgentCommand(name, options.description || "", options).pipe(
+      .command("create")
+      .description("Create a new agent (interactive mode)")
+      .action(() => {
+        void Effect.runPromise(
+          createInteractiveAgentCommand().pipe(
             Effect.provide(appLayer),
             Effect.catchAll(error => {
-              if (error._tag === "StorageError") {
-                console.error(`❌ Storage error: ${error.reason}`);
-              } else if (error._tag === "AgentAlreadyExistsError") {
-                console.error(`❌ Agent with name "${name}" already exists`);
-              } else if (error._tag === "AgentConfigurationError") {
-                console.error(`❌ Configuration error: ${error.message}`);
-              } else if (error._tag === "ValidationError") {
-                console.error(`❌ Validation error: ${error.message}`);
-              } else {
-                console.error("❌ Error creating agent:", error);
-              }
-              return Effect.void;
+              return Effect.gen(function* () {
+                const logger = yield* LoggerServiceTag;
+                if (error._tag === "StorageError") {
+                  yield* logger.error(`❌ Storage error: ${error.reason}`);
+                } else if (error._tag === "AgentAlreadyExistsError") {
+                  yield* logger.error(`❌ Agent with that name already exists`);
+                } else if (error._tag === "AgentConfigurationError") {
+                  yield* logger.error(`❌ Configuration error: ${error.message}`);
+                } else if (error._tag === "ValidationError") {
+                  yield* logger.error(`❌ Validation error: ${error.message}`);
+                } else {
+                  yield* logger.error("❌ Error creating agent:", { error });
+                }
+              }).pipe(Effect.provide(appLayer));
             })
           )
         );
       });
+
+    agentCommand
+      .command("create-quick <name>")
+      .description("Create a new agent quickly with command line options")
+      .option("-d, --description <description>", "Agent description")
+      .option("-t, --timeout <timeout>", "Agent timeout in milliseconds", value =>
+        parseInt(value, 10)
+      )
+      .option("-r, --max-retries <retries>", "Maximum number of retries", value =>
+        parseInt(value, 10)
+      )
+      .option("--retry-delay <delay>", "Retry delay in milliseconds", value => parseInt(value, 10))
+      .option("--retry-backoff <backoff>", "Retry backoff strategy", "exponential")
+      .action(
+        (
+          name: string,
+          options: {
+            description?: string;
+            timeout?: number;
+            maxRetries?: number;
+            retryDelay?: number;
+            retryBackoff?: "linear" | "exponential" | "fixed";
+          }
+        ) => {
+          void Effect.runPromise(
+            createAgentCommand(name, options.description || "", options).pipe(
+              Effect.provide(appLayer),
+              Effect.catchAll(error => {
+                if (error._tag === "StorageError") {
+                  return Effect.gen(function* () {
+                    const logger = yield* LoggerServiceTag;
+                    yield* logger.error(`❌ Storage error: ${error.reason}`);
+                  }).pipe(Effect.provide(appLayer));
+                } else if (error._tag === "AgentAlreadyExistsError") {
+                  return Effect.gen(function* () {
+                    const logger = yield* LoggerServiceTag;
+                    yield* logger.error(`❌ Agent with name "${name}" already exists`);
+                  }).pipe(Effect.provide(appLayer));
+                } else if (error._tag === "AgentConfigurationError") {
+                  return Effect.gen(function* () {
+                    const logger = yield* LoggerServiceTag;
+                    yield* logger.error(`❌ Configuration error: ${error.message}`);
+                  }).pipe(Effect.provide(appLayer));
+                } else if (error._tag === "ValidationError") {
+                  return Effect.gen(function* () {
+                    const logger = yield* LoggerServiceTag;
+                    yield* logger.error(`❌ Validation error: ${error.message}`);
+                  }).pipe(Effect.provide(appLayer));
+                } else {
+                  return Effect.gen(function* () {
+                    const logger = yield* LoggerServiceTag;
+                    yield* logger.error("❌ Error creating agent:", { error });
+                  }).pipe(Effect.provide(appLayer));
+                }
+              })
+            )
+          );
+        }
+      );
 
     agentCommand
       .command("run <agentId>")
@@ -141,18 +190,26 @@ function main(): Effect.Effect<void, never, never> {
       .option("--watch", "Watch for changes")
       .option("--dry-run", "Show what would be executed without running")
       .action((agentId: string, options: { watch?: boolean; dryRun?: boolean; }) => {
-        Effect.runPromise(
+        void Effect.runPromise(
           runAgentCommand(agentId, options).pipe(
             Effect.provide(appLayer),
             Effect.catchAll(error => {
               if (error._tag === "StorageNotFoundError") {
-                console.error(`❌ Agent with ID "${agentId}" not found`);
+                return Effect.gen(function* () {
+                  const logger = yield* LoggerServiceTag;
+                  yield* logger.error(`❌ Agent with ID "${agentId}" not found`);
+                }).pipe(Effect.provide(appLayer));
               } else if (error._tag === "StorageError") {
-                console.error(`❌ Storage error: ${error.reason}`);
+                return Effect.gen(function* () {
+                  const logger = yield* LoggerServiceTag;
+                  yield* logger.error(`❌ Storage error: ${error.reason}`);
+                }).pipe(Effect.provide(appLayer));
               } else {
-                console.error("❌ Error running agent:", error);
+                return Effect.gen(function* () {
+                  const logger = yield* LoggerServiceTag;
+                  yield* logger.error("❌ Error running agent:", { error });
+                }).pipe(Effect.provide(appLayer));
               }
-              return Effect.void;
             })
           )
         );
@@ -162,18 +219,26 @@ function main(): Effect.Effect<void, never, never> {
       .command("get <agentId>")
       .description("Get agent details")
       .action((agentId: string) => {
-        Effect.runPromise(
+        void Effect.runPromise(
           getAgentCommand(agentId).pipe(
             Effect.provide(appLayer),
             Effect.catchAll(error => {
               if (error._tag === "StorageNotFoundError") {
-                console.error(`❌ Agent with ID "${agentId}" not found`);
+                return Effect.gen(function* () {
+                  const logger = yield* LoggerServiceTag;
+                  yield* logger.error(`❌ Agent with ID "${agentId}" not found`);
+                }).pipe(Effect.provide(appLayer));
               } else if (error._tag === "StorageError") {
-                console.error(`❌ Storage error: ${error.reason}`);
+                return Effect.gen(function* () {
+                  const logger = yield* LoggerServiceTag;
+                  yield* logger.error(`❌ Storage error: ${error.reason}`);
+                }).pipe(Effect.provide(appLayer));
               } else {
-                console.error("❌ Error getting agent:", error);
+                return Effect.gen(function* () {
+                  const logger = yield* LoggerServiceTag;
+                  yield* logger.error("❌ Error getting agent:", { error });
+                }).pipe(Effect.provide(appLayer));
               }
-              return Effect.void;
             })
           )
         );
@@ -183,35 +248,42 @@ function main(): Effect.Effect<void, never, never> {
       .command("delete <agentId>")
       .description("Delete an agent")
       .action((agentId: string) => {
-        Effect.runPromise(
+        void Effect.runPromise(
           deleteAgentCommand(agentId).pipe(
             Effect.provide(appLayer),
             Effect.catchAll(error => {
               if (error._tag === "StorageNotFoundError") {
-                console.error(`❌ Agent with ID "${agentId}" not found`);
+                return Effect.gen(function* () {
+                  const logger = yield* LoggerServiceTag;
+                  yield* logger.error(`❌ Agent with ID "${agentId}" not found`);
+                }).pipe(Effect.provide(appLayer));
               } else if (error._tag === "StorageError") {
-                console.error(`❌ Storage error: ${error.reason}`);
+                return Effect.gen(function* () {
+                  const logger = yield* LoggerServiceTag;
+                  yield* logger.error(`❌ Storage error: ${error.reason}`);
+                }).pipe(Effect.provide(appLayer));
               } else {
-                console.error("❌ Error deleting agent:", error);
+                return Effect.gen(function* () {
+                  const logger = yield* LoggerServiceTag;
+                  yield* logger.error("❌ Error deleting agent:", { error });
+                }).pipe(Effect.provide(appLayer));
               }
-              return Effect.void;
             })
           )
         );
       });
 
     // Automation commands
-    const automationCommand = program
-      .command("automation")
-      .description("Manage automations");
+    const automationCommand = program.command("automation").description("Manage automations");
 
     automationCommand
       .command("list")
       .description("List all automations")
       .action(() => {
-        Effect.runPromise(
+        void Effect.runPromise(
           Effect.gen(function* () {
-            console.log("Listing automations...");
+            const logger = yield* LoggerServiceTag;
+            yield* logger.info("Listing automations...");
             // TODO: Implement automation listing
           }).pipe(Effect.provide(appLayer))
         );
@@ -222,11 +294,12 @@ function main(): Effect.Effect<void, never, never> {
       .description("Create a new automation")
       .option("-d, --description <description>", "Automation description")
       .action((name: string, options: { description?: string; }) => {
-        Effect.runPromise(
+        void Effect.runPromise(
           Effect.gen(function* () {
-            console.log(`Creating automation: ${name}`);
+            const logger = yield* LoggerServiceTag;
+            yield* logger.info(`Creating automation: ${name}`);
             if (options.description) {
-              console.log(`Description: ${options.description}`);
+              yield* logger.info(`Description: ${options.description}`);
             }
             // TODO: Implement automation creation
           }).pipe(Effect.provide(appLayer))
@@ -234,17 +307,16 @@ function main(): Effect.Effect<void, never, never> {
       });
 
     // Config commands
-    const configCommand = program
-      .command("config")
-      .description("Manage configuration");
+    const configCommand = program.command("config").description("Manage configuration");
 
     configCommand
       .command("get <key>")
       .description("Get a configuration value")
       .action((key: string) => {
-        Effect.runPromise(
+        void Effect.runPromise(
           Effect.gen(function* () {
-            console.log(`Getting config: ${key}`);
+            const logger = yield* LoggerServiceTag;
+            yield* logger.info(`Getting config: ${key}`);
             // TODO: Implement config retrieval
           }).pipe(Effect.provide(appLayer))
         );
@@ -254,9 +326,10 @@ function main(): Effect.Effect<void, never, never> {
       .command("set <key> <value>")
       .description("Set a configuration value")
       .action((key: string, value: string) => {
-        Effect.runPromise(
+        void Effect.runPromise(
           Effect.gen(function* () {
-            console.log(`Setting config: ${key} = ${value}`);
+            const logger = yield* LoggerServiceTag;
+            yield* logger.info(`Setting config: ${key} = ${value}`);
             // TODO: Implement config setting
           }).pipe(Effect.provide(appLayer))
         );
@@ -266,9 +339,10 @@ function main(): Effect.Effect<void, never, never> {
       .command("list")
       .description("List all configuration values")
       .action(() => {
-        Effect.runPromise(
+        void Effect.runPromise(
           Effect.gen(function* () {
-            console.log("Listing configuration...");
+            const logger = yield* LoggerServiceTag;
+            yield* logger.info("Listing configuration...");
             // TODO: Implement config listing
           }).pipe(Effect.provide(appLayer))
         );
@@ -281,13 +355,14 @@ function main(): Effect.Effect<void, never, never> {
       .option("-f, --follow", "Follow log output")
       .option("-l, --level <level>", "Filter by log level", "info")
       .action((options: { follow?: boolean; level: string; }) => {
-        Effect.runPromise(
+        void Effect.runPromise(
           Effect.gen(function* () {
-            console.log("Viewing logs...");
+            const logger = yield* LoggerServiceTag;
+            yield* logger.info("Viewing logs...");
             if (options.follow) {
-              console.log("Following log output");
+              yield* logger.info("Following log output");
             }
-            console.log(`Log level: ${options.level}`);
+            yield* logger.info(`Log level: ${options.level}`);
             // TODO: Implement log viewing
           }).pipe(Effect.provide(appLayer))
         );

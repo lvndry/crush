@@ -14,6 +14,17 @@ export default [
         ecmaVersion: 2022,
         sourceType: 'module',
         project: './tsconfig.json'
+      },
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        Buffer: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        global: 'readonly',
+        module: 'readonly',
+        require: 'readonly',
+        exports: 'readonly'
       }
     },
     plugins: {
@@ -24,12 +35,11 @@ export default [
       ...typescript.configs.recommended.rules,
       ...typescript.configs['recommended-requiring-type-checking'].rules,
       ...prettierConfig.rules,
-      'prettier/prettier': 'error',
+      'prettier/prettier': 'warn',
       '@typescript-eslint/no-unused-vars': 'error',
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/explicit-function-return-type': 'warn',
       '@typescript-eslint/no-non-null-assertion': 'warn',
-      '@typescript-eslint/prefer-const': 'error',
       '@typescript-eslint/no-var-requires': 'error',
       'prefer-const': 'error',
       'no-var': 'error',

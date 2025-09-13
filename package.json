@@ -34,8 +34,10 @@
         "@effect/platform": "^0.90.9",
         "@effect/platform-node": "^0.96.1",
         "@effect/schema": "^0.75.5",
+        "@types/inquirer": "^9.0.9",
         "commander": "^14.0.1",
         "effect": "^3.17.13",
+        "inquirer": "^12.9.4",
         "yaml": "^2.8.1"
     },
     "devDependencies": {

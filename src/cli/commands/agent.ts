@@ -5,7 +5,7 @@ import {
   AgentConfigurationError,
   StorageError,
   StorageNotFoundError,
-  ValidationError
+  ValidationError,
 } from "../../core/types/errors.js";
 import type { AgentConfig } from "../../core/types/index.js";
 
@@ -13,13 +13,21 @@ import type { AgentConfig } from "../../core/types/index.js";
  * CLI commands for agent management
  */
 
-export function createAgentCommand(name: string, description: string, options: {
-  description?: string;
-  timeout?: number;
-  maxRetries?: number;
-  retryDelay?: number;
-  retryBackoff?: "linear" | "exponential" | "fixed";
-}): Effect.Effect<void, StorageError | AgentAlreadyExistsError | AgentConfigurationError | ValidationError, AgentService> {
+export function createAgentCommand(
+  name: string,
+  description: string,
+  options: {
+    description?: string;
+    timeout?: number;
+    maxRetries?: number;
+    retryDelay?: number;
+    retryBackoff?: "linear" | "exponential" | "fixed";
+  }
+): Effect.Effect<
+  void,
+  StorageError | AgentAlreadyExistsError | AgentConfigurationError | ValidationError,
+  AgentService
+> {
   return Effect.gen(function* () {
     const agentService = yield* AgentService;
 
@@ -33,11 +41,15 @@ export function createAgentCommand(name: string, description: string, options: {
       (config as any).timeout = options.timeout;
     }
 
-    if (options.maxRetries !== undefined || options.retryDelay !== undefined || options.retryBackoff) {
+    if (
+      options.maxRetries !== undefined ||
+      options.retryDelay !== undefined ||
+      options.retryBackoff
+    ) {
       (config as any).retryPolicy = {
         maxRetries: options.maxRetries || 3,
         delay: options.retryDelay || 1000,
-        backoff: options.retryBackoff || "exponential"
+        backoff: options.retryBackoff || "exponential",
       };
     }
 
@@ -57,7 +69,9 @@ export function createAgentCommand(name: string, description: string, options: {
     }
 
     if (config.retryPolicy) {
-      console.log(`   Retry Policy: ${config.retryPolicy.maxRetries} retries, ${config.retryPolicy.delay}ms delay, ${config.retryPolicy.backoff} backoff`);
+      console.log(
+        `   Retry Policy: ${config.retryPolicy.maxRetries} retries, ${config.retryPolicy.delay}ms delay, ${config.retryPolicy.backoff} backoff`
+      );
     }
   });
 }
@@ -86,10 +100,13 @@ export function listAgentsCommand(): Effect.Effect<void, StorageError, AgentServ
   });
 }
 
-export function runAgentCommand(agentId: string, options: {
-  watch?: boolean;
-  dryRun?: boolean;
-}): Effect.Effect<void, StorageError | StorageNotFoundError, AgentService> {
+export function runAgentCommand(
+  agentId: string,
+  options: {
+    watch?: boolean;
+    dryRun?: boolean;
+  }
+): Effect.Effect<void, StorageError | StorageNotFoundError, AgentService> {
   return Effect.gen(function* () {
     const agent = yield* getAgentById(agentId);
 
@@ -123,7 +140,9 @@ export function runAgentCommand(agentId: string, options: {
   });
 }
 
-export function deleteAgentCommand(agentId: string): Effect.Effect<void, StorageError | StorageNotFoundError, AgentService> {
+export function deleteAgentCommand(
+  agentId: string
+): Effect.Effect<void, StorageError | StorageNotFoundError, AgentService> {
   return Effect.gen(function* () {
     const agentService = yield* AgentService;
 
@@ -139,7 +158,9 @@ export function deleteAgentCommand(agentId: string): Effect.Effect<void, Storage
   });
 }
 
-export function getAgentCommand(agentId: string): Effect.Effect<void, StorageError | StorageNotFoundError, AgentService> {
+export function getAgentCommand(
+  agentId: string
+): Effect.Effect<void, StorageError | StorageNotFoundError, AgentService> {
   return Effect.gen(function* () {
     const agent = yield* getAgentById(agentId);
 
@@ -197,7 +218,9 @@ export function getAgentCommand(agentId: string): Effect.Effect<void, StorageErr
             break;
           case "script":
             if (task.config.script) {
-              console.log(`      Script: ${task.config.script.substring(0, 100)}${task.config.script.length > 100 ? "..." : ""}`);
+              console.log(
+                `      Script: ${task.config.script.substring(0, 100)}${task.config.script.length > 100 ? "..." : ""}`
+              );
             }
             break;
           case "api":
