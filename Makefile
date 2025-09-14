@@ -114,7 +114,7 @@ release-build: clean build test ## Build release version
 	@echo "Building release version..."
 	@echo "Release build completed!"
 
-# Docker (if needed in future)
+# Docker
 docker-build: ## Build Docker image
 	@echo "Building Docker image..."
 	@if [ -f Dockerfile ]; then \
@@ -197,15 +197,6 @@ quick: format lint-fix build test ## Quick development cycle
 tree: ## Show project structure
 	@echo "Project structure:"
 	@tree -I 'node_modules|dist|.git' -a
-
-# Git helpers
-git-status: ## Show git status
-	@echo "Git status:"
-	@git status --short
-
-git-log: ## Show recent git commits
-	@echo "Recent commits:"
-	@git log --oneline -10
 
 # Performance
 benchmark: ## Run performance benchmarks
