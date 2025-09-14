@@ -152,11 +152,15 @@ export interface AppConfig {
   readonly performance: PerformanceConfig;
 }
 
-export interface StorageConfig {
-  readonly type: "file" | "database";
-  readonly path?: string;
-  readonly connectionString?: string;
-}
+export type StorageConfig =
+  | {
+      readonly type: "file";
+      readonly path: string;
+    }
+  | {
+      readonly type: "database";
+      readonly connectionString: string;
+    };
 
 export interface LoggingConfig {
   readonly level: "debug" | "info" | "warn" | "error";

@@ -28,15 +28,14 @@ config();
  * Main entry point for the Crush CLI
  */
 function createAppLayer(config: AppConfig) {
-  // Provide FileSystem explicitly to layers that require it
   const fileSystemLayer = NodeFileSystem.layer;
 
   const configLayer = createConfigLayer().pipe(Layer.provide(fileSystemLayer));
   const loggerLayer = createLoggerLayer(config);
 
-  const storageLayer = createFileStorageLayer(config.storage.path || "./data").pipe(
-    Layer.provide(fileSystemLayer),
-  );
+  const storageLayer = createFileStorageLayer(
+    config.storage.type === "file" ? config.storage.path : "./data",
+  ).pipe(Layer.provide(fileSystemLayer));
 
   // Create Gmail service layer (requires FileSystem)
   const gmailLayer = createGmailServiceLayer().pipe(Layer.provide(fileSystemLayer));

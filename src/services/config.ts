@@ -71,15 +71,12 @@ export function createConfigLayer(): Layer.Layer<ConfigService, never, FileSyste
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const loaded = yield* loadConfigFile(fs);
-      const config = applyEnvOverrides(
-        mergeConfig(defaultConfig(), loaded.fileConfig ?? undefined),
-      );
+      const config = mergeConfig(defaultConfig(), loaded.fileConfig ?? undefined);
       return new ConfigServiceImpl(config);
     }),
   );
 }
 
-// Helper functions for common configuration operations
 export function getConfigValue<T>(
   key: string,
   defaultValue: T,
@@ -125,115 +122,6 @@ function mergeConfig(base: AppConfig, override?: Partial<AppConfig>): AppConfig 
   };
 }
 
-function applyEnvOverrides(cfg: AppConfig): AppConfig {
-  const parseNumber = (v: string | undefined): number | undefined =>
-    v !== undefined && v !== "" && !Number.isNaN(Number(v)) ? Number(v) : undefined;
-
-  const env = process.env;
-
-  // Storage
-  const envStorageType = env["CRUSH_STORAGE_TYPE"];
-  const storageType: StorageConfig["type"] =
-    envStorageType === "file" || envStorageType === "database" ? envStorageType : cfg.storage.type;
-  const envStoragePath = env["CRUSH_STORAGE_PATH"];
-  const envStorageConn = env["CRUSH_STORAGE_CONNECTION_STRING"];
-  const storage: StorageConfig = {
-    type: storageType,
-    ...(envStoragePath
-      ? { path: envStoragePath }
-      : cfg.storage.path
-        ? { path: cfg.storage.path }
-        : {}),
-    ...(envStorageConn
-      ? { connectionString: envStorageConn }
-      : cfg.storage.connectionString
-        ? { connectionString: cfg.storage.connectionString }
-        : {}),
-  };
-
-  // Logging
-  const envLevel = env["CRUSH_LOG_LEVEL"];
-  const level: LoggingConfig["level"] =
-    envLevel === "debug" || envLevel === "info" || envLevel === "warn" || envLevel === "error"
-      ? envLevel
-      : cfg.logging.level;
-  const envFormat = env["CRUSH_LOG_FORMAT"];
-  const format: LoggingConfig["format"] =
-    envFormat === "json" || envFormat === "pretty" ? envFormat : cfg.logging.format;
-  const envOutput = env["CRUSH_LOG_OUTPUT"];
-  const output: LoggingConfig["output"] =
-    envOutput === "console" || envOutput === "file" || envOutput === "both"
-      ? envOutput
-      : cfg.logging.output;
-  const envFilePath = env["CRUSH_LOG_FILE_PATH"];
-  const logging: LoggingConfig = {
-    level,
-    format,
-    output,
-    ...(envFilePath
-      ? { filePath: envFilePath }
-      : cfg.logging.filePath
-        ? { filePath: cfg.logging.filePath }
-        : {}),
-  };
-
-  // Security
-  const envKey = env["CRUSH_ENCRYPTION_KEY"];
-  const envOrigins = env["CRUSH_ALLOWED_ORIGINS"];
-  // no secBase needed; build object from parts below
-  const secRateRequests = parseNumber(env["CRUSH_RATE_LIMIT_REQUESTS"]);
-  const secRateWindow = parseNumber(env["CRUSH_RATE_LIMIT_WINDOW"]);
-  const secRateLimit =
-    secRateRequests !== undefined || secRateWindow !== undefined
-      ? {
-          rateLimit: {
-            requests:
-              secRateRequests ?? (cfg.security.rateLimit ? cfg.security.rateLimit.requests : 100),
-            window:
-              secRateWindow ?? (cfg.security.rateLimit ? cfg.security.rateLimit.window : 60000),
-          },
-        }
-      : cfg.security.rateLimit
-        ? { rateLimit: cfg.security.rateLimit }
-        : {};
-  const security: SecurityConfig = {
-    ...(envKey
-      ? { encryptionKey: envKey }
-      : cfg.security.encryptionKey
-        ? { encryptionKey: cfg.security.encryptionKey }
-        : {}),
-    ...(envOrigins
-      ? {
-          allowedOrigins: envOrigins
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean),
-        }
-      : cfg.security.allowedOrigins
-        ? { allowedOrigins: cfg.security.allowedOrigins }
-        : {}),
-    ...secRateLimit,
-  };
-
-  // Performance
-  const mAgents = parseNumber(env["CRUSH_MAX_CONCURRENT_AGENTS"]);
-  const mTasks = parseNumber(env["CRUSH_MAX_CONCURRENT_TASKS"]);
-  const timeout = parseNumber(env["CRUSH_TIMEOUT"]);
-  const mem = parseNumber(env["CRUSH_MEMORY_LIMIT"]);
-  const performance: PerformanceConfig = {
-    maxConcurrentAgents: mAgents ?? cfg.performance.maxConcurrentAgents,
-    maxConcurrentTasks: mTasks ?? cfg.performance.maxConcurrentTasks,
-    timeout: timeout ?? cfg.performance.timeout,
-    ...(mem !== undefined
-      ? { memoryLimit: mem }
-      : cfg.performance.memoryLimit !== undefined
-        ? { memoryLimit: cfg.performance.memoryLimit }
-        : {}),
-  };
-
-  return { storage, logging, security, performance };
-}
-
 function expandHome(p: string): string {
   if (p.startsWith("~")) {
     const home = process.env["HOME"] || process.env["USERPROFILE"] || "";
@@ -250,12 +138,11 @@ function loadConfigFile(fs: FileSystem.FileSystem): Effect.Effect<
   never
 > {
   return Effect.gen(function* () {
-    const fromEnv = process.env["CRUSH_CONFIG"];
+    const envConfigPath = process.env["CRUSH_CONFIG_PATH"];
     const candidates: readonly string[] = [
-      fromEnv ? expandHome(fromEnv) : "",
+      envConfigPath ? expandHome(envConfigPath) : "",
       `${process.cwd()}/crush.config.json`,
       `${expandHome("~/.crush")}/config.json`,
-      "/etc/crush/config.json",
     ].filter(Boolean);
 
     for (const path of candidates) {
@@ -284,6 +171,17 @@ function safeParseJson<T>(text: string): Option.Option<T> {
   }
 }
 
+/**
+ * Deep object property access using dot notation paths.
+ *
+ * The 'path' parameter uses dot notation to navigate nested objects:
+ * - "name" -> obj.name
+ * - "storage.type" -> obj.storage.type
+ * - "logging.level" -> obj.logging.level
+ *
+ * This allows flexible access to both simple and deeply nested properties
+ * using the same interface, commonly used in configuration management.
+ */
 function deepGet(obj: Record<string, unknown>, path: string): unknown {
   const parts = path.split(".").filter(Boolean);
   let cur: unknown = obj;
@@ -297,10 +195,20 @@ function deepGet(obj: Record<string, unknown>, path: string): unknown {
   return cur;
 }
 
+/**
+ * Checks if a property exists at the given dot notation path.
+ * Uses deepGet internally to determine existence.
+ */
 function deepHas(obj: Record<string, unknown>, path: string): boolean {
   return deepGet(obj, path) !== undefined;
 }
 
+/**
+ * Sets a value at the given dot notation path, creating intermediate objects as needed.
+ *
+ * Example: deepSet(obj, "storage.type", "file") sets obj.storage.type = "file"
+ * If obj.storage doesn't exist, it will be created as an empty object first.
+ */
 function deepSet(obj: Record<string, unknown>, path: string, value: unknown): void {
   const parts = path.split(".").filter(Boolean);
   let cur: Record<string, unknown> = obj;
