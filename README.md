@@ -50,7 +50,7 @@ bun run src/main.ts
 
 **Note**: If you haven't installed globally with `npm link`, you can run commands directly using:
 ```bash
-bun run src/main.ts <command>
+bun run src/main.ts --help
 ```
 
 ```bash
