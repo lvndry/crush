@@ -23,12 +23,17 @@
   },
   "keywords": [
     "cli",
+    "agents",
     "automation",
     "agentic",
     "typescript",
     "effect-ts"
   ],
-  "author": "",
+  "author": {
+    "name": "lvndry",
+    "email": "lvndry@proton.me",
+    "url": "https://github.com/lvndry"
+  },
   "license": "MIT",
   "dependencies": {
     "@effect/platform": "^0.90.9",
