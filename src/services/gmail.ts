@@ -1,11 +1,20 @@
 import { FileSystem } from "@effect/platform";
 import { Context, Effect, Layer } from "effect";
+import { GaxiosError } from "gaxios";
 import { google, type gmail_v1 } from "googleapis";
 import http from "node:http";
 import open from "open";
 import type { ConfigService } from "./config";
 import { AgentConfigService } from "./config";
 import type { LoggerService } from "./logger";
+
+// Helper function to extract HTTP status code from gaxios errors
+function getHttpStatusFromError(error: unknown): number | undefined {
+  if (error instanceof GaxiosError) {
+    return error.status ?? error.response?.status;
+  }
+  return undefined;
+}
 
 /**
  * Gmail service for interacting with Gmail API
@@ -22,9 +31,11 @@ export class GmailAuthenticationError extends Error {
 
 export class GmailOperationError extends Error {
   readonly _tag = "GmailOperationError";
-  constructor(message: string) {
+  readonly status: number | undefined;
+  constructor(message: string, status?: number) {
     super(message);
     this.name = "GmailOperationError";
+    this.status = status;
   }
 }
 
@@ -40,11 +51,31 @@ export interface GmailEmail {
   date: string;
   snippet: string;
   body?: string | undefined;
+  labels?: string[] | undefined;
   attachments?: Array<{
     filename: string;
     mimeType: string;
     size: number;
   }>;
+}
+
+// Gmail label interface
+export interface GmailLabel {
+  id: string;
+  name: string;
+  type: "system" | "user";
+  messagesTotal?: number | undefined;
+  messagesUnread?: number | undefined;
+  threadsTotal?: number | undefined;
+  threadsUnread?: number | undefined;
+  color?:
+    | {
+        textColor: string;
+        backgroundColor: string;
+      }
+    | undefined;
+  labelListVisibility?: "labelShow" | "labelHide" | undefined;
+  messageListVisibility?: "show" | "hide" | undefined;
 }
 
 // Gmail service interface
@@ -75,6 +106,48 @@ export interface GmailService {
     query: string,
     maxResults?: number,
   ) => Effect.Effect<GmailEmail[], GmailOperationError | GmailAuthenticationError>;
+
+  // Label management
+  readonly listLabels: () => Effect.Effect<
+    GmailLabel[],
+    GmailOperationError | GmailAuthenticationError
+  >;
+  readonly createLabel: (
+    name: string,
+    options?: {
+      labelListVisibility?: "labelShow" | "labelHide";
+      messageListVisibility?: "show" | "hide";
+      color?: { textColor: string; backgroundColor: string };
+    },
+  ) => Effect.Effect<GmailLabel, GmailOperationError | GmailAuthenticationError>;
+  readonly updateLabel: (
+    labelId: string,
+    updates: {
+      name?: string;
+      labelListVisibility?: "labelShow" | "labelHide";
+      messageListVisibility?: "show" | "hide";
+      color?: { textColor: string; backgroundColor: string };
+    },
+  ) => Effect.Effect<GmailLabel, GmailOperationError | GmailAuthenticationError>;
+  readonly deleteLabel: (
+    labelId: string,
+  ) => Effect.Effect<void, GmailOperationError | GmailAuthenticationError>;
+
+  // Email modification
+  readonly modifyEmail: (
+    emailId: string,
+    options: {
+      addLabelIds?: string[];
+      removeLabelIds?: string[];
+    },
+  ) => Effect.Effect<GmailEmail, GmailOperationError | GmailAuthenticationError>;
+  readonly batchModifyEmails: (
+    emailIds: string[],
+    options: {
+      addLabelIds?: string[];
+      removeLabelIds?: string[];
+    },
+  ) => Effect.Effect<void, GmailOperationError | GmailAuthenticationError>;
 }
 
 interface GoogleOAuthToken {
@@ -136,8 +209,10 @@ export class GmailServiceResource implements GmailService {
           }
           return emails;
         } catch (err) {
+          const status = getHttpStatusFromError(err);
           throw new GmailOperationError(
             `Failed to list emails: ${err instanceof Error ? err.message : String(err)}`,
+            status,
           );
         }
       }.bind(this),
@@ -160,8 +235,10 @@ export class GmailServiceResource implements GmailService {
           const email = this.parseMessageToEmail(full.data, true);
           return email;
         } catch (err) {
+          const status = getHttpStatusFromError(err);
           throw new GmailOperationError(
             `Failed to get email: ${err instanceof Error ? err.message : String(err)}`,
+            status,
           );
         }
       }.bind(this),
@@ -195,8 +272,10 @@ export class GmailServiceResource implements GmailService {
           );
           return void 0;
         } catch (err) {
+          const status = getHttpStatusFromError(err);
           throw new GmailOperationError(
             `Failed to send email: ${err instanceof Error ? err.message : String(err)}`,
+            status,
           );
         }
       }.bind(this),
@@ -208,6 +287,188 @@ export class GmailServiceResource implements GmailService {
     maxResults: number = 10,
   ): Effect.Effect<GmailEmail[], GmailOperationError | GmailAuthenticationError> {
     return this.listEmails(maxResults, query);
+  }
+
+  // Label management methods
+  listLabels(): Effect.Effect<GmailLabel[], GmailOperationError | GmailAuthenticationError> {
+    return Effect.gen(
+      function* (this: GmailServiceResource) {
+        yield* this.ensureAuthenticated();
+        try {
+          const response = yield* Effect.promise(() =>
+            this.gmail.users.labels.list({ userId: "me" }),
+          );
+          const labels = (response.data.labels || []).map((label) =>
+            this.parseLabelToGmailLabel(label),
+          );
+          return labels;
+        } catch (err) {
+          const status = getHttpStatusFromError(err);
+          throw new GmailOperationError(
+            `Failed to list labels: ${err instanceof Error ? err.message : String(err)}`,
+            status,
+          );
+        }
+      }.bind(this),
+    );
+  }
+
+  createLabel(
+    name: string,
+    options?: {
+      labelListVisibility?: "labelShow" | "labelHide";
+      messageListVisibility?: "show" | "hide";
+      color?: { textColor: string; backgroundColor: string };
+    },
+  ): Effect.Effect<GmailLabel, GmailOperationError | GmailAuthenticationError> {
+    return Effect.gen(
+      function* (this: GmailServiceResource) {
+        yield* this.ensureAuthenticated();
+        try {
+          const requestBody: gmail_v1.Schema$Label = {
+            name,
+            ...(options?.labelListVisibility && {
+              labelListVisibility: options.labelListVisibility,
+            }),
+            ...(options?.messageListVisibility && {
+              messageListVisibility: options.messageListVisibility,
+            }),
+            ...(options?.color && { color: options.color }),
+          };
+          const response = yield* Effect.promise(() =>
+            this.gmail.users.labels.create({ userId: "me", requestBody }),
+          );
+          return this.parseLabelToGmailLabel(response.data);
+        } catch (err) {
+          const status = getHttpStatusFromError(err);
+          throw new GmailOperationError(
+            `Failed to create label: ${err instanceof Error ? err.message : String(err)}`,
+            status,
+          );
+        }
+      }.bind(this),
+    );
+  }
+
+  updateLabel(
+    labelId: string,
+    updates: {
+      name?: string;
+      labelListVisibility?: "labelShow" | "labelHide";
+      messageListVisibility?: "show" | "hide";
+      color?: { textColor: string; backgroundColor: string };
+    },
+  ): Effect.Effect<GmailLabel, GmailOperationError | GmailAuthenticationError> {
+    return Effect.gen(
+      function* (this: GmailServiceResource) {
+        yield* this.ensureAuthenticated();
+        try {
+          const requestBody: gmail_v1.Schema$Label = {};
+          if (updates.name !== undefined) requestBody.name = updates.name;
+          if (updates.labelListVisibility !== undefined)
+            requestBody.labelListVisibility = updates.labelListVisibility;
+          if (updates.messageListVisibility !== undefined)
+            requestBody.messageListVisibility = updates.messageListVisibility;
+          if (updates.color !== undefined) requestBody.color = updates.color;
+
+          const response = yield* Effect.promise(() =>
+            this.gmail.users.labels.update({ userId: "me", id: labelId, requestBody }),
+          );
+          return this.parseLabelToGmailLabel(response.data);
+        } catch (err) {
+          const status = getHttpStatusFromError(err);
+          throw new GmailOperationError(
+            `Failed to update label: ${err instanceof Error ? err.message : String(err)}`,
+            status,
+          );
+        }
+      }.bind(this),
+    );
+  }
+
+  deleteLabel(
+    labelId: string,
+  ): Effect.Effect<void, GmailOperationError | GmailAuthenticationError> {
+    return Effect.gen(
+      function* (this: GmailServiceResource) {
+        yield* this.ensureAuthenticated();
+        try {
+          yield* Effect.promise(() =>
+            this.gmail.users.labels.delete({ userId: "me", id: labelId }),
+          );
+          return void 0;
+        } catch (err) {
+          const status = getHttpStatusFromError(err);
+          throw new GmailOperationError(
+            `Failed to delete label: ${err instanceof Error ? err.message : String(err)}`,
+            status,
+          );
+        }
+      }.bind(this),
+    );
+  }
+
+  // Email modification methods
+  modifyEmail(
+    emailId: string,
+    options: {
+      addLabelIds?: string[];
+      removeLabelIds?: string[];
+    },
+  ): Effect.Effect<GmailEmail, GmailOperationError | GmailAuthenticationError> {
+    return Effect.gen(
+      function* (this: GmailServiceResource) {
+        yield* this.ensureAuthenticated();
+        try {
+          const requestBody: gmail_v1.Schema$ModifyMessageRequest = {};
+          if (options.addLabelIds) requestBody.addLabelIds = options.addLabelIds;
+          if (options.removeLabelIds) requestBody.removeLabelIds = options.removeLabelIds;
+
+          const response = yield* Effect.promise(() =>
+            this.gmail.users.messages.modify({ userId: "me", id: emailId, requestBody }),
+          );
+          return this.parseMessageToEmail(response.data);
+        } catch (err) {
+          const status = getHttpStatusFromError(err);
+          throw new GmailOperationError(
+            `Failed to modify email: ${err instanceof Error ? err.message : String(err)}`,
+            status,
+          );
+        }
+      }.bind(this),
+    );
+  }
+
+  batchModifyEmails(
+    emailIds: string[],
+    options: {
+      addLabelIds?: string[];
+      removeLabelIds?: string[];
+    },
+  ): Effect.Effect<void, GmailOperationError | GmailAuthenticationError> {
+    return Effect.gen(
+      function* (this: GmailServiceResource) {
+        yield* this.ensureAuthenticated();
+        try {
+          const requestBody: gmail_v1.Schema$BatchModifyMessagesRequest = {
+            ids: emailIds,
+          };
+          if (options.addLabelIds) requestBody.addLabelIds = options.addLabelIds;
+          if (options.removeLabelIds) requestBody.removeLabelIds = options.removeLabelIds;
+
+          yield* Effect.promise(() =>
+            this.gmail.users.messages.batchModify({ userId: "me", requestBody }),
+          );
+          return void 0;
+        } catch (err) {
+          const status = getHttpStatusFromError(err);
+          throw new GmailOperationError(
+            `Failed to batch modify emails: ${err instanceof Error ? err.message : String(err)}`,
+            status,
+          );
+        }
+      }.bind(this),
+    );
   }
 
   private ensureAuthenticated(): Effect.Effect<void, GmailAuthenticationError> {
@@ -267,6 +528,7 @@ export class GmailServiceResource implements GmailService {
           "https://www.googleapis.com/auth/gmail.readonly",
           "https://www.googleapis.com/auth/gmail.send",
           "https://www.googleapis.com/auth/gmail.modify",
+          "https://www.googleapis.com/auth/gmail.labels",
         ];
 
         const authUrl = this.oauthClient.generateAuthUrl({
@@ -376,7 +638,28 @@ export class GmailServiceResource implements GmailService {
       date,
       snippet: message.snippet || "",
       body: bodyText,
+      labels: message.labelIds || [],
       attachments,
+    };
+  }
+
+  private parseLabelToGmailLabel(label: gmail_v1.Schema$Label): GmailLabel {
+    return {
+      id: label.id || "",
+      name: label.name || "",
+      type: label.type === "system" ? "system" : "user",
+      messagesTotal: label.messagesTotal ?? undefined,
+      messagesUnread: label.messagesUnread ?? undefined,
+      threadsTotal: label.threadsTotal ?? undefined,
+      threadsUnread: label.threadsUnread ?? undefined,
+      color: label.color
+        ? {
+            textColor: label.color.textColor || "#000000",
+            backgroundColor: label.color.backgroundColor || "#ffffff",
+          }
+        : undefined,
+      labelListVisibility: label.labelListVisibility as "labelShow" | "labelHide" | undefined,
+      messageListVisibility: label.messageListVisibility as "show" | "hide" | undefined,
     };
   }
 
@@ -454,7 +737,7 @@ export function createGmailServiceLayer(): Layer.Layer<
       const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
       const { storage } = yield* agentConfig.appConfig;
-      const dataDir = storage.type === "file" ? storage.path : "./.crush/data";
+      const dataDir = storage.type === "file" ? storage.path : "./.crush";
       const tokenFilePath = `${dataDir}/google/gmail-token.json`;
       const service: GmailService = new GmailServiceResource(
         fs,
@@ -523,5 +806,82 @@ export function searchGmailEmails(
   return Effect.gen(function* () {
     const gmailService = yield* GmailServiceTag;
     return yield* gmailService.searchEmails(query, maxResults);
+  });
+}
+
+// Label management helper functions
+export function listGmailLabels(): Effect.Effect<
+  GmailLabel[],
+  GmailOperationError | GmailAuthenticationError,
+  GmailService
+> {
+  return Effect.gen(function* () {
+    const gmailService = yield* GmailServiceTag;
+    return yield* gmailService.listLabels();
+  });
+}
+
+export function createGmailLabel(
+  name: string,
+  options?: {
+    labelListVisibility?: "labelShow" | "labelHide";
+    messageListVisibility?: "show" | "hide";
+    color?: { textColor: string; backgroundColor: string };
+  },
+): Effect.Effect<GmailLabel, GmailOperationError | GmailAuthenticationError, GmailService> {
+  return Effect.gen(function* () {
+    const gmailService = yield* GmailServiceTag;
+    return yield* gmailService.createLabel(name, options);
+  });
+}
+
+export function updateGmailLabel(
+  labelId: string,
+  updates: {
+    name?: string;
+    labelListVisibility?: "labelShow" | "labelHide";
+    messageListVisibility?: "show" | "hide";
+    color?: { textColor: string; backgroundColor: string };
+  },
+): Effect.Effect<GmailLabel, GmailOperationError | GmailAuthenticationError, GmailService> {
+  return Effect.gen(function* () {
+    const gmailService = yield* GmailServiceTag;
+    return yield* gmailService.updateLabel(labelId, updates);
+  });
+}
+
+export function deleteGmailLabel(
+  labelId: string,
+): Effect.Effect<void, GmailOperationError | GmailAuthenticationError, GmailService> {
+  return Effect.gen(function* () {
+    const gmailService = yield* GmailServiceTag;
+    return yield* gmailService.deleteLabel(labelId);
+  });
+}
+
+// Email modification helper functions
+export function modifyGmailEmail(
+  emailId: string,
+  options: {
+    addLabelIds?: string[];
+    removeLabelIds?: string[];
+  },
+): Effect.Effect<GmailEmail, GmailOperationError | GmailAuthenticationError, GmailService> {
+  return Effect.gen(function* () {
+    const gmailService = yield* GmailServiceTag;
+    return yield* gmailService.modifyEmail(emailId, options);
+  });
+}
+
+export function batchModifyGmailEmails(
+  emailIds: string[],
+  options: {
+    addLabelIds?: string[];
+    removeLabelIds?: string[];
+  },
+): Effect.Effect<void, GmailOperationError | GmailAuthenticationError, GmailService> {
+  return Effect.gen(function* () {
+    const gmailService = yield* GmailServiceTag;
+    return yield* gmailService.batchModifyEmails(emailIds, options);
   });
 }

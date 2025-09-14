@@ -40,7 +40,7 @@ Configuration files use JSON format:
 {
   "storage": {
     "type": "file",
-    "path": "./.crush/data"
+    "path": "./.crush"
   },
   "logging": {
     "level": "info",
@@ -73,7 +73,7 @@ Configuration files use JSON format:
 {
   "storage": {
     "type": "file",
-    "path": "./.crush/data"
+    "path": "./.crush"
   }
 }
 ```
@@ -266,7 +266,7 @@ For production environments:
 {
   "storage": {
     "type": "file",
-    "path": "/var/lib/crush/data"
+    "path": "/var/lib/crush"
   },
   "logging": {
     "level": "info",
@@ -509,7 +509,7 @@ Create configuration templates for different use cases:
 {
   "storage": {
     "type": "file",
-    "path": "./.crush/data"
+    "path": "./.crush"
   }
 }
 ```
@@ -520,7 +520,7 @@ Create configuration templates for different use cases:
 {
   "storage": {
     "type": "file",
-    "path": "./.crush/data"
+    "path": "./.crush"
   },
   "logging": {
     "level": "info",

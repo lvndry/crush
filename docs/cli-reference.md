@@ -426,7 +426,7 @@ Crush supports configuration via a JSON file (planned feature):
 {
   "storage": {
     "type": "file",
-    "path": "./.crush/data"
+    "path": "./.crush"
   },
   "logging": {
     "level": "info",

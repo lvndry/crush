@@ -68,6 +68,179 @@ crush agent run <agent-id> --dry-run
 crush agent delete <agent-id>
 ```
 
+## ⚙️ Configuration
+
+Crush uses a JSON configuration file to manage application settings, API keys, and service integrations. The configuration system provides sensible defaults while allowing full customization.
+
+### Configuration File Location
+
+Crush looks for configuration files in the following order:
+
+1. **Environment Variable**: `CRUSH_CONFIG_PATH` (if set)
+2. **Current Directory**: `./crush.config.json`
+3. **Home Directory**: `~/.crush/config.json`
+
+### Basic Configuration
+
+Create a `crush.config.json` file in your project root or home directory:
+
+```json
+{
+  "google": {
+    "clientId": "your-google-client-id.apps.googleusercontent.com",
+    "clientSecret": "your-google-client-secret"
+  },
+  "llm": {
+    "defaultProvider": "openai",
+    "openai": {
+      "api_key": "sk-your-openai-api-key"
+    },
+    "anthropic": {
+      "api_key": "sk-ant-your-anthropic-api-key"
+    }
+  }
+}
+```
+
+### Configuration Sections
+
+#### 🔐 Google OAuth (Optional)
+
+Required for Gmail integration and Google services:
+
+```json
+{
+  "google": {
+    "clientId": "your-client-id.apps.googleusercontent.com",
+    "clientSecret": "your-client-secret"
+  }
+}
+```
+
+**Setup Instructions:**
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select existing one
+3. Enable Gmail API
+4. Create OAuth 2.0 credentials
+5. Add `http://localhost:53682/oauth2callback` as redirect URI
+6. Copy client ID and secret to your config
+
+#### 🤖 LLM Providers
+
+Configure language model providers for AI agents:
+
+```json
+{
+  "llm": {
+    "defaultProvider": "openai",
+    "openai": {
+      "api_key": "sk-your-openai-api-key"
+    },
+    "anthropic": {
+      "api_key": "sk-ant-your-anthropic-api-key"
+    },
+    "google": {
+      "api_key": "AIza-your-google-api-key"
+    },
+    "mistral": {
+      "api_key": "mist-your-mistral-api-key"
+    }
+  }
+}
+```
+
+#### 📁 Storage (Optional)
+
+Customize where Crush stores data:
+
+```json
+{
+  "storage": {
+    "type": "file",
+    "path": "./.crush"
+  }
+}
+```
+
+**Default**: `./.crush` (no configuration needed)
+
+#### 📊 Logging (Optional)
+
+Configure logging behavior:
+
+```json
+{
+  "logging": {
+    "level": "info",
+    "format": "pretty",
+    "output": "console"
+  }
+}
+```
+
+**Options:**
+
+- `level`: `debug`, `info`, `warn`, `error`
+- `format`: `pretty`, `json`
+- `output`: `console`, `file`
+
+#### ⚡ Performance (Optional)
+
+Tune performance settings:
+
+```json
+{
+  "performance": {
+    "maxConcurrentAgents": 5,
+    "maxConcurrentTasks": 10,
+    "timeout": 30000
+  }
+}
+```
+
+### Authentication Management
+
+Crush provides built-in authentication management for services:
+
+```bash
+# Authenticate with Gmail
+crush auth gmail login
+
+# Check authentication status
+crush auth gmail status
+
+# Logout from Gmail
+crush auth gmail logout
+```
+
+**Token Storage**: Authentication tokens are automatically stored in `.crush/google/gmail-token.json` and managed securely by Crush.
+
+### Environment Variables
+
+You can also use environment variables instead of the config file:
+
+```bash
+# Google OAuth
+export GOOGLE_CLIENT_ID="your-client-id"
+export GOOGLE_CLIENT_SECRET="your-client-secret"
+
+# LLM API Keys
+export OPENAI_API_KEY="sk-your-openai-key"
+export ANTHROPIC_API_KEY="sk-ant-your-anthropic-key"
+
+# Configuration
+export CRUSH_CONFIG_PATH="/path/to/your/config.json"
+```
+
+### Configuration Validation
+
+Crush validates your configuration on startup and provides helpful error messages for missing or invalid settings. Check the logs for configuration issues:
+
+```bash
+# Run with verbose logging to see configuration details
+crush --verbose agent list
+```
 
 ## 📖 Documentation
 

@@ -1,9 +1,16 @@
 import { Effect, Layer } from "effect";
 import {
+  createAddLabelsToEmailTool,
+  createBatchModifyEmailsTool,
+  createCreateLabelTool,
+  createDeleteLabelTool,
   createGetEmailTool,
   createListEmailsTool,
+  createListLabelsTool,
+  createRemoveLabelsFromEmailTool,
   createSearchEmailsTool,
   createSendEmailTool,
+  createUpdateLabelTool,
 } from "./gmail-tools";
 import { ToolRegistryTag, type ToolRegistry } from "./tool-registry";
 
@@ -35,11 +42,33 @@ export function registerGmailTools(): Effect.Effect<void, Error, ToolRegistry> {
     const searchEmailsTool = createSearchEmailsTool();
     const sendEmailTool = createSendEmailTool();
 
+    // Create Gmail label management tools
+    const listLabelsTool = createListLabelsTool();
+    const createLabelTool = createCreateLabelTool();
+    const updateLabelTool = createUpdateLabelTool();
+    const deleteLabelTool = createDeleteLabelTool();
+
+    // Create Gmail email organization tools
+    const addLabelsToEmailTool = createAddLabelsToEmailTool();
+    const removeLabelsFromEmailTool = createRemoveLabelsFromEmailTool();
+    const batchModifyEmailsTool = createBatchModifyEmailsTool();
+
     // Register Gmail tools
     yield* registry.registerTool(listEmailsTool);
     yield* registry.registerTool(getEmailTool);
     yield* registry.registerTool(searchEmailsTool);
     yield* registry.registerTool(sendEmailTool);
+
+    // Register Gmail label management tools
+    yield* registry.registerTool(listLabelsTool);
+    yield* registry.registerTool(createLabelTool);
+    yield* registry.registerTool(updateLabelTool);
+    yield* registry.registerTool(deleteLabelTool);
+
+    // Register Gmail email organization tools
+    yield* registry.registerTool(addLabelsToEmailTool);
+    yield* registry.registerTool(removeLabelsFromEmailTool);
+    yield* registry.registerTool(batchModifyEmailsTool);
   });
 }
 

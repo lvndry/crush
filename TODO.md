@@ -6,7 +6,7 @@
 
 ### ✅ **Storage System (Complete)**
 
-- Agents are persisted to `./data/agents/` as JSON files
+- Agents are persisted to `./.crush/agents/` as JSON files
 - Full CRUD operations working
 - File-based and in-memory storage implementations
 - Automatic directory creation and error handling
@@ -327,3 +327,15 @@
 - ✅ CLI user experience improvements - COMPLETED
 - 🔄 Task execution engine design - IN PROGRESS
 - 📋 MCP protocol integration - PLANNED
+
+### Ideas not in roadmap yet
+
+- Being able to create agents from config file `crush agent create --config agent.json`
+- Right authentification info are stored and shared by all agents. But maybe we'd like to have one auth per agent. For example one agent connected to gmail account 1 and an other for gmail account 2 ?
+
+### Use Cases/Workflows/Ideas I'ld like to see
+
+- Read the diff code, create the commit message, commit and push
+- Summarize my emails with `newsletter` label and then delete them
+- Download an image from the internet to my destination folder
+- Given a URL to a github repo, clone the repo and follow the setup instructions from the repo and setup everything for me

@@ -103,7 +103,7 @@ export function requireConfigValue<T>(key: string): Effect.Effect<T, never, Conf
 // -----------------
 
 function defaultConfig(): AppConfig {
-  const storage: StorageConfig = { type: "file", path: "./.crush/data" };
+  const storage: StorageConfig = { type: "file", path: "./.crush" };
   const logging: LoggingConfig = { level: "info", format: "pretty", output: "console" };
   const security: SecurityConfig = {};
   const performance: PerformanceConfig = {

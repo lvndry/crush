@@ -13,6 +13,7 @@ import {
   ValidationError,
 } from "../../core/types/errors";
 import type { Agent, AgentConfig } from "../../core/types/index";
+import type { ConfigService } from "../../services/config";
 import { LLMConfigurationError, LLMServiceTag, type LLMService } from "../../services/llm/types";
 import { LoggerServiceTag, type LoggerService } from "../../services/logger";
 
@@ -192,7 +193,7 @@ export function chatWithAIAgentCommand(
 ): Effect.Effect<
   void,
   StorageError | StorageNotFoundError,
-  AgentService | LLMService | ToolRegistry | LoggerService
+  AgentService | ConfigService | LLMService | ToolRegistry | LoggerService
 > {
   return Effect.gen(function* () {
     // Get the agent service
@@ -226,7 +227,7 @@ export function chatWithAIAgentCommand(
  */
 function startChatLoop(
   agent: Agent,
-): Effect.Effect<void, Error, LLMService | ToolRegistry | LoggerService> {
+): Effect.Effect<void, Error, ConfigService | LLMService | ToolRegistry | LoggerService> {
   return Effect.gen(function* () {
     let chatActive = true;
     let conversationId: string | undefined;

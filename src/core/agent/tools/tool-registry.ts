@@ -1,5 +1,11 @@
 import { Context, Effect, Layer } from "effect";
 import { type ToolDefinition } from "../../../services/llm/types";
+import {
+  type LoggerService,
+  logToolExecutionError,
+  logToolExecutionStart,
+  logToolExecutionSuccess,
+} from "../../../services/logger";
 
 /**
  * Tool registry for managing agent tools
@@ -37,7 +43,7 @@ export interface ToolRegistry {
     name: string,
     args: Record<string, unknown>,
     context: ToolExecutionContext,
-  ) => Effect.Effect<ToolExecutionResult, Error, ToolRegistry>;
+  ) => Effect.Effect<ToolExecutionResult, Error, ToolRegistry | LoggerService>;
 }
 
 class DefaultToolRegistry implements ToolRegistry {
@@ -93,11 +99,17 @@ class DefaultToolRegistry implements ToolRegistry {
     name: string,
     args: Record<string, unknown>,
     context: ToolExecutionContext,
-  ): Effect.Effect<ToolExecutionResult, Error, ToolRegistry> {
+  ): Effect.Effect<ToolExecutionResult, Error, ToolRegistry | LoggerService> {
     return Effect.gen(
       function* (this: DefaultToolRegistry) {
         const start = Date.now();
         const tool = yield* this.getTool(name);
+
+        // Log tool execution start
+        yield* logToolExecutionStart(name, context.agentId, context.conversationId).pipe(
+          Effect.catchAll(() => Effect.void),
+        );
+
         try {
           const exec = tool.execute as (
             a: Record<string, unknown>,
@@ -105,28 +117,102 @@ class DefaultToolRegistry implements ToolRegistry {
           ) => Effect.Effect<ToolExecutionResult, Error, never>;
           const result = yield* exec(args, context);
           const durationMs = Date.now() - start;
-          // Best-effort audit log; do not fail the call if logging fails
-          yield* Effect.logInfo("tool.execute.success", {
-            toolName: name,
-            agentId: context.agentId,
-            conversationId: context.conversationId,
+
+          // Create a summary of the result for better logging
+          const resultSummary = createResultSummary(name, result);
+
+          // Log successful execution with improved formatting
+          yield* logToolExecutionSuccess(
+            name,
+            context.agentId,
             durationMs,
-          }).pipe(Effect.catchAll(() => Effect.void));
+            context.conversationId,
+            resultSummary,
+          ).pipe(Effect.catchAll(() => Effect.void));
+
           return result;
         } catch (err) {
           const durationMs = Date.now() - start;
-          yield* Effect.logError("tool.execute.error", {
-            toolName: name,
-            agentId: context.agentId,
-            conversationId: context.conversationId,
+          const errorMessage = err instanceof Error ? err.message : String(err);
+
+          // Log error with improved formatting
+          yield* logToolExecutionError(
+            name,
+            context.agentId,
             durationMs,
-            error: err instanceof Error ? err.message : String(err),
-          }).pipe(Effect.catchAll(() => Effect.void));
+            errorMessage,
+            context.conversationId,
+          ).pipe(Effect.catchAll(() => Effect.void));
+
           throw err as Error;
         }
       }.bind(this),
     );
   }
+}
+
+// Helper function to create meaningful result summaries
+function createResultSummary(toolName: string, result: ToolExecutionResult): string | undefined {
+  if (!result.success) {
+    return undefined;
+  }
+
+  const data = result.result;
+
+  switch (toolName) {
+    case "listEmails":
+      if (Array.isArray(data)) {
+        return `Found ${data.length} emails`;
+      }
+      break;
+
+    case "getEmail":
+      if (data && typeof data === "object" && "subject" in data) {
+        return `Retrieved: ${(data as unknown as { subject: string }).subject}`;
+      }
+      break;
+
+    case "sendEmail":
+      if (data && typeof data === "object" && "messageId" in data) {
+        return `Sent successfully (ID: ${(data as unknown as { messageId: string }).messageId})`;
+      }
+      break;
+
+    case "replyToEmail":
+    case "forwardEmail":
+      if (data && typeof data === "object" && "messageId" in data) {
+        return `Message sent (ID: ${(data as unknown as { messageId: string }).messageId})`;
+      }
+      break;
+
+    case "markAsRead":
+    case "markAsUnread":
+      return "Status updated";
+
+    case "deleteEmail":
+      return "Email deleted";
+
+    case "createLabel":
+      if (data && typeof data === "object" && "id" in data) {
+        return `Label created (ID: ${(data as unknown as { id: string }).id})`;
+      }
+      break;
+
+    case "addLabel":
+    case "removeLabel":
+      return "Labels updated";
+
+    case "searchEmails":
+      if (Array.isArray(data)) {
+        return `Found ${data.length} matching emails`;
+      }
+      break;
+
+    default:
+      return undefined;
+  }
+
+  return undefined;
 }
 
 // Create a service tag for dependency injection
@@ -149,7 +235,7 @@ export function executeTool(
   name: string,
   args: Record<string, unknown>,
   context: ToolExecutionContext,
-): Effect.Effect<ToolExecutionResult, Error, ToolRegistry> {
+): Effect.Effect<ToolExecutionResult, Error, ToolRegistry | LoggerService> {
   return Effect.gen(function* () {
     const registry = yield* ToolRegistryTag;
     return yield* registry.executeTool(name, args, context);

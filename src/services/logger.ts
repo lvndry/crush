@@ -160,3 +160,109 @@ export function logAutomationEvent(
     });
   });
 }
+
+// Tool execution logging helpers
+export function logToolExecutionStart(
+  toolName: string,
+  agentId: string,
+  conversationId?: string,
+): Effect.Effect<void, never, LoggerService> {
+  return Effect.gen(function* () {
+    const logger = yield* LoggerServiceTag;
+    const toolEmoji = getToolEmoji(toolName);
+    yield* logger.info(`${toolEmoji} ${toolName}`, {
+      toolName,
+      agentId,
+      conversationId,
+      status: "started",
+    });
+  });
+}
+
+export function logToolExecutionSuccess(
+  toolName: string,
+  agentId: string,
+  durationMs: number,
+  conversationId?: string,
+  resultSummary?: string,
+): Effect.Effect<void, never, LoggerService> {
+  return Effect.gen(function* () {
+    const logger = yield* LoggerServiceTag;
+    const toolEmoji = getToolEmoji(toolName);
+    const duration = formatDuration(durationMs);
+    const message = resultSummary
+      ? `${toolEmoji} ${toolName} ✓ (${duration}) - ${resultSummary}`
+      : `${toolEmoji} ${toolName} ✓ (${duration})`;
+
+    yield* logger.info(message, {
+      toolName,
+      agentId,
+      conversationId,
+      durationMs,
+      status: "success",
+    });
+  });
+}
+
+export function logToolExecutionError(
+  toolName: string,
+  agentId: string,
+  durationMs: number,
+  error: string,
+  conversationId?: string,
+): Effect.Effect<void, never, LoggerService> {
+  return Effect.gen(function* () {
+    const logger = yield* LoggerServiceTag;
+    const toolEmoji = getToolEmoji(toolName);
+    const duration = formatDuration(durationMs);
+    const message = `${toolEmoji} ${toolName} ✗ (${duration}) - ${error}`;
+
+    yield* logger.error(message, {
+      toolName,
+      agentId,
+      conversationId,
+      durationMs,
+      status: "error",
+      error,
+    });
+  });
+}
+
+// Utility functions for tool logging
+function getToolEmoji(toolName: string): string {
+  const toolEmojis: Record<string, string> = {
+    // Gmail tools
+    listEmails: "📧",
+    getEmail: "📨",
+    sendEmail: "📤",
+    replyToEmail: "↩️",
+    forwardEmail: "↗️",
+    markAsRead: "👁️",
+    markAsUnread: "👁️‍🗨️",
+    deleteEmail: "🗑️",
+    createLabel: "🏷️",
+    addLabel: "🏷️",
+    removeLabel: "🏷️",
+    searchEmails: "🔍",
+    // Default
+    default: "🔧",
+  };
+
+  const emoji = toolEmojis[toolName];
+  if (emoji !== undefined) {
+    return emoji;
+  }
+  return "🔧"; // Default emoji
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 1000) {
+    return `${ms}ms`;
+  } else if (ms < 60000) {
+    return `${(ms / 1000).toFixed(1)}s`;
+  } else {
+    const minutes = Math.floor(ms / 60000);
+    const seconds = ((ms % 60000) / 1000).toFixed(1);
+    return `${minutes}m ${seconds}s`;
+  }
+}

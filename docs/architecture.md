@@ -262,7 +262,7 @@ function createAppLayer(config: AppConfig) {
   );
 
   const storageLayer = createFileStorageLayer(
-    config.storage.path || "./.crush/data",
+    config.storage.path || "./.crush",
   ).pipe(Layer.provide(baseLayer));
 
   return Layer.mergeAll(

@@ -13,6 +13,7 @@ import {
   runAgentCommand,
 } from "./cli/commands/agent";
 import { chatWithAIAgentCommand, createAIAgentCommand } from "./cli/commands/ai-agent";
+import { gmailLoginCommand, gmailLogoutCommand, gmailStatusCommand } from "./cli/commands/auth";
 import { createAgentServiceLayer } from "./core/agent/agent-service";
 import { createToolRegistrationLayer } from "./core/agent/tools/register-tools";
 import { createToolRegistryLayer } from "./core/agent/tools/tool-registry";
@@ -40,7 +41,7 @@ function createAppLayer() {
     Effect.gen(function* () {
       const config = yield* AgentConfigService;
       const { storage } = yield* config.appConfig;
-      const basePath = storage.type === "file" ? storage.path : "./.crush/data";
+      const basePath = storage.type === "file" ? storage.path : "./.crush";
       const fs = yield* FileSystem.FileSystem;
       return new FileStorageService(basePath, fs);
     }),
@@ -54,18 +55,16 @@ function createAppLayer() {
 
   const llmLayer = createLiteLLMServiceLayer().pipe(Layer.provide(configLayer));
 
-  // Create tool registry layer
   const toolRegistryLayer = createToolRegistryLayer();
 
-  // Register tools (requires only ToolRegistry)
   const toolRegistrationLayer = createToolRegistrationLayer().pipe(
     Layer.provide(toolRegistryLayer),
   );
 
-  // Create agent service layer (requires StorageService)
   const agentLayer = createAgentServiceLayer().pipe(Layer.provide(storageLayer));
 
   return Layer.mergeAll(
+    fileSystemLayer,
     configLayer,
     loggerLayer,
     storageLayer,
@@ -303,6 +302,60 @@ function main() {
         );
       });
 
+    // Auth commands
+    const authCommand = program.command("auth").description("Manage authentication");
+    const gmailAuthCommand = authCommand
+      .command("gmail")
+      .description("Gmail authentication commands");
+
+    gmailAuthCommand
+      .command("login")
+      .description("Authenticate with Gmail")
+      .action(() => {
+        void Effect.runPromise(
+          gmailLoginCommand().pipe(
+            Effect.provide(createAppLayer()),
+            Effect.catchAll((error) =>
+              Effect.sync(() => {
+                console.error("❌ Error during Gmail login:", error);
+              }),
+            ),
+          ),
+        );
+      });
+
+    gmailAuthCommand
+      .command("logout")
+      .description("Logout from Gmail")
+      .action(() => {
+        void Effect.runPromise(
+          gmailLogoutCommand().pipe(
+            Effect.provide(createAppLayer()),
+            Effect.catchAll((error) =>
+              Effect.sync(() => {
+                console.error("❌ Error during Gmail logout:", error);
+              }),
+            ),
+          ),
+        );
+      });
+
+    gmailAuthCommand
+      .command("status")
+      .description("Check Gmail authentication status")
+      .action(() => {
+        void Effect.runPromise(
+          gmailStatusCommand().pipe(
+            Effect.provide(createAppLayer()),
+            Effect.catchAll((error) =>
+              Effect.sync(() => {
+                console.error("❌ Error checking Gmail status:", error);
+              }),
+            ),
+          ),
+        );
+      });
+
     // Logs command
     program
       .command("logs")
@@ -323,12 +376,10 @@ function main() {
         );
       });
 
-    // Parse command line arguments
     program.parse();
   });
 }
 
-// Run the main function
 Effect.runPromise(main()).catch((error) => {
   console.error("Fatal error:", error);
   process.exit(1);
