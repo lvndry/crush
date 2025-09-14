@@ -48,36 +48,24 @@ bun run src/main.ts
 
 ### Basic Usage
 
-**Note**: If you haven't installed globally with `npm link`, you can run commands directly using:
-```bash
-bun run src/main.ts --help
-```
+> [!TIP]
+> If you haven't installed `crush` globally with `npm link`, you can run commands directly using: `bun run src/main.ts` from the root of the repository.
 
 ```bash
 # Create your first agent
 crush agent create my-agent --description "My first automation agent"
-# OR if not installed globally:
-bun run src/main.ts agent create my-agent --description "My first automation agent"
 
 # List all agents
 crush agent list
-# OR if not installed globally:
-bun run src/main.ts agent list
 
 # Get agent details
 crush agent get <agent-id>
-# OR if not installed globally:
-bun run src/main.ts agent get <agent-id>
 
 # Run an agent (dry run)
 crush agent run <agent-id> --dry-run
-# OR if not installed globally:
-bun run src/main.ts agent run <agent-id> --dry-run
 
 # Delete an agent
 crush agent delete <agent-id>
-# OR if not installed globally:
-bun run src/main.ts agent delete <agent-id>
 ```
 
 
