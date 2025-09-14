@@ -30,7 +30,7 @@ Crush is a command-line tool designed to help you create, manage, and execute au
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/crush.git
+git clone https://github.com/lvndry/crush.git
 cd crush
 
 # Install dependencies
@@ -41,26 +41,45 @@ bun run build
 
 # Install globally (optional)
 bun run build && npm link
+
+# Alternative: Run directly without global installation
+bun run src/main.ts
 ```
 
 ### Basic Usage
 
+**Note**: If you haven't installed globally with `npm link`, you can run commands directly using:
+```bash
+bun run src/main.ts <command>
+```
+
 ```bash
 # Create your first agent
 crush agent create my-agent --description "My first automation agent"
+# OR if not installed globally:
+bun run src/main.ts agent create my-agent --description "My first automation agent"
 
 # List all agents
 crush agent list
+# OR if not installed globally:
+bun run src/main.ts agent list
 
 # Get agent details
 crush agent get <agent-id>
+# OR if not installed globally:
+bun run src/main.ts agent get <agent-id>
 
 # Run an agent (dry run)
 crush agent run <agent-id> --dry-run
+# OR if not installed globally:
+bun run src/main.ts agent run <agent-id> --dry-run
 
 # Delete an agent
 crush agent delete <agent-id>
+# OR if not installed globally:
+bun run src/main.ts agent delete <agent-id>
 ```
+
 
 ## 📖 Documentation
 
@@ -152,31 +171,7 @@ bun run clean
 
 ## 📋 Current Status
 
-### ✅ Implemented
-
-- [x] Project bootstrap with TypeScript + Effect-TS
-- [x] Core type definitions and interfaces
-- [x] Effect layers for services (logging, config, storage)
-- [x] CLI framework with Commander.js
-- [x] Error handling with tagged errors
-- [x] Agent CRUD operations
-- [x] File-based and in-memory storage
-- [x] Basic CLI commands for agent management
-
-### 🔄 In Progress
-
-- [ ] Agent execution engine
-- [ ] Task execution framework
-- [ ] MCP (Model Context Protocol) integration
-- [ ] Automation and scheduling system
-
-### 📋 Planned
-
-- [ ] Advanced task types (API, file operations, webhooks)
-- [ ] Monitoring and observability features
-- [ ] Plugin system for extensibility
-- [ ] Interactive CLI commands
-- [ ] Comprehensive testing suite
+[TODO.md](./TODO.md)
 
 ## 📄 License
 
@@ -191,8 +186,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 - 📖 [Documentation](docs/)
-- 🐛 [Issue Tracker](https://github.com/your-username/crush/issues)
-- 💬 [Discussions](https://github.com/your-username/crush/discussions)
+- 🐛 [Issue Tracker](https://github.com/lvndry/crush/issues)
+- 💬 [Discussions](https://github.com/lvndry/crush/discussions)
 
 ---
 
