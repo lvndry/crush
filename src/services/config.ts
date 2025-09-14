@@ -2,6 +2,8 @@ import { FileSystem } from "@effect/platform";
 import { Context, Effect, Layer, Option } from "effect";
 import type {
   AppConfig,
+  GoogleConfig,
+  LLMConfig,
   LoggingConfig,
   PerformanceConfig,
   SecurityConfig,
@@ -101,7 +103,7 @@ export function requireConfigValue<T>(key: string): Effect.Effect<T, never, Conf
 // -----------------
 
 function defaultConfig(): AppConfig {
-  const storage: StorageConfig = { type: "file", path: "./data" };
+  const storage: StorageConfig = { type: "file", path: "./.crush/data" };
   const logging: LoggingConfig = { level: "info", format: "pretty", output: "console" };
   const security: SecurityConfig = {};
   const performance: PerformanceConfig = {
@@ -109,7 +111,10 @@ function defaultConfig(): AppConfig {
     maxConcurrentTasks: 10,
     timeout: 30000,
   };
-  return { storage, logging, security, performance };
+  const google: GoogleConfig = {};
+  const llm: LLMConfig = {};
+
+  return { storage, logging, security, performance, google, llm };
 }
 
 function mergeConfig(base: AppConfig, override?: Partial<AppConfig>): AppConfig {
@@ -119,6 +124,8 @@ function mergeConfig(base: AppConfig, override?: Partial<AppConfig>): AppConfig 
     logging: { ...base.logging, ...(override.logging ?? {}) },
     security: { ...base.security, ...(override.security ?? {}) },
     performance: { ...base.performance, ...(override.performance ?? {}) },
+    google: { ...(base.google ?? {}), ...(override.google ?? {}) },
+    llm: { ...(base.llm ?? {}), ...(override.llm ?? {}) },
   };
 }
 

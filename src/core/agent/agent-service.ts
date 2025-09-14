@@ -1,7 +1,7 @@
 import { Context, Effect, Layer, Schema } from "effect";
 import shortuuid from "short-uuid";
-import type { StorageService } from "../../services/storage";
-import { StorageServiceTag } from "../../services/storage";
+import type { StorageService } from "../../services/storage/service";
+import { StorageServiceTag } from "../../services/storage/service";
 import {
   AgentAlreadyExistsError,
   AgentConfigurationError,
@@ -94,17 +94,6 @@ export class DefaultAgentService implements AgentService {
           createdAt: now,
           updatedAt: now,
         };
-
-        // Note: Schema validation is commented out due to Date serialization issues
-        // The agent structure is validated through the interface and business logic
-        // yield* Effect.try({
-        //     try: () => Schema.decodeUnknownSync(AgentSchema)(agent),
-        //     catch: (error) => new ValidationError({
-        //         field: "agent",
-        //         message: `Invalid agent structure: ${error}`,
-        //         value: agent
-        //     })
-        // });
 
         // Save the agent
         yield* this.storage.saveAgent(agent);
@@ -342,10 +331,7 @@ export const AgentServiceTag = Context.GenericTag<AgentService>("AgentService");
 export function createAgentServiceLayer(): Layer.Layer<AgentService, never, StorageService> {
   return Layer.effect(
     AgentServiceTag,
-    Effect.gen(function* () {
-      const storage = yield* StorageServiceTag;
-      return new DefaultAgentService(storage);
-    }),
+    Effect.map(StorageServiceTag, (storage) => new DefaultAgentService(storage)),
   );
 }
 

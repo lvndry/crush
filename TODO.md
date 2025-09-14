@@ -5,24 +5,28 @@
 ## 🚀 What's Working Right Now
 
 ### ✅ **Storage System (Complete)**
+
 - Agents are persisted to `./data/agents/` as JSON files
 - Full CRUD operations working
 - File-based and in-memory storage implementations
 - Automatic directory creation and error handling
 
 ### ✅ **Validation System (Complete)**
+
 - Agent name validation (alphanumeric with hyphens/underscores)
 - Description validation (required, max 500 chars)
 - Configuration validation (timeout, retry policies)
 - Task validation using Schema
 
 ### ✅ **CLI Interface (Complete)**
+
 - Full command structure with help system
 - Error handling with user-friendly messages
 - Command options for timeout, retries, backoff strategies
 - Global options for verbose/quiet modes
 
 ### ✅ **Documentation (Complete)**
+
 - Comprehensive README with installation guide
 - Complete API documentation
 - Architecture overview
@@ -30,6 +34,7 @@
 - CLI reference with all commands
 
 ### 🔄 **What's Missing (Main Priority)**
+
 - **Task Execution Engine**: The core functionality to actually run tasks
 - **MCP Integration**: Model Context Protocol support
 - **Automation System**: Scheduling and triggers
@@ -39,6 +44,7 @@
 ### Phase 1: Basic Agent Management ✅ COMPLETED
 
 #### ✅ Completed
+
 - [x] Project bootstrap with TypeScript + Effect
 - [x] Core type definitions and interfaces
 - [x] Effect layers for services (logging, config, storage)
@@ -46,7 +52,7 @@
 - [x] Error handling with tagged errors
 - [x] Basic CLI structure and commands
 - [x] **Agent Creation CLI Command**
-  - [x] Implement `crush agent create <name>` command
+  - [x] Implement `crush agent create` command
   - [x] Add agent validation using Schema
   - [x] Generate unique agent IDs
   - [x] Store agents in storage service
@@ -62,11 +68,11 @@
   - [x] Basic dependency validation
   - [x] Environment variable validation
 
-
 #### 🔄 In Progress
+
 - [ ] **Task Execution Engine**
-  - [X] Implement task execution framework
-  - [X] Implement Gmail tool execution
+  - [x] Implement task execution framework
+  - [x] Implement Gmail tool execution
   - [ ] Command execution capability
   - [ ] Script execution capability
   - [ ] API call execution
@@ -74,9 +80,10 @@
   - [ ] Result tracking and storage
 
 - [ ] **Ease of use**
-    - [ ] Cookbooks with concrete example of agents and worfklows that can be created
+  - [ ] Cookbooks with concrete example of agents and worfklows that can be created
 
 #### 📋 Pending - Core Features
+
 - [ ] **Agent Execution**
   - [ ] Task queue management
   - [ ] Concurrent task execution
@@ -91,6 +98,7 @@
 ### Phase 2: Task Execution Engine
 
 #### 📋 Task Execution Core
+
 - [ ] **Task Types Implementation**
   - [ ] Command execution (shell commands)
   - [ ] Script execution (JavaScript/TypeScript)
@@ -111,6 +119,7 @@
   - [ ] Circular dependency detection
 
 #### 📋 Agent Execution Engine
+
 - [ ] **Agent Lifecycle Management**
   - [ ] Agent start/stop/pause/resume
   - [ ] Execution state tracking
@@ -132,6 +141,7 @@
 ### Phase 3: MCP Integration
 
 #### 📋 MCP (Model Context Protocol) Support
+
 - [ ] **MCP Client Implementation**
   - [ ] MCP protocol client
   - [ ] Tool discovery and registration
@@ -151,6 +161,7 @@
   - [ ] Tool dependency management
 
 #### 📋 MCP Tool Categories
+
 - [ ] **File System Tools**
   - [ ] File read/write operations
   - [ ] Directory management
@@ -178,6 +189,7 @@
 ### Phase 4: Advanced Features
 
 #### 📋 Automation & Scheduling
+
 - [ ] **Automation Management**
   - [ ] Automation creation and configuration
   - [ ] Trigger system (schedule, file, webhook, manual)
@@ -191,6 +203,7 @@
   - [ ] Timezone handling
 
 #### 📋 Monitoring & Observability
+
 - [ ] **Agent Monitoring**
   - [ ] Real-time agent status
   - [ ] Performance metrics collection
@@ -210,6 +223,7 @@
   - [ ] Historical data retention
 
 #### 📋 Configuration & Security
+
 - [ ] **Configuration Management**
   - [ ] Environment-based configuration
   - [ ] Configuration file support (JSON/YAML)
@@ -225,6 +239,7 @@
 ### Phase 5: Developer Experience
 
 #### 📋 CLI Enhancements
+
 - [ ] **Interactive Commands**
   - [ ] Agent creation wizard
   - [ ] Configuration setup assistant
@@ -238,6 +253,7 @@
   - [ ] Colored output and themes
 
 #### 📋 Development Tools
+
 - [ ] **Testing Framework**
   - [ ] Unit tests for core functionality
   - [ ] Integration tests for CLI commands
@@ -251,6 +267,7 @@
   - [ ] MCP integration tutorial
 
 #### 📋 Plugin System
+
 - [ ] **Plugin Architecture**
   - [ ] Plugin loading and management
   - [ ] Plugin API definition
@@ -266,18 +283,21 @@
 ## 🚀 Quick Start Implementation Order
 
 ### ✅ Completed (Week 1)
+
 1. **✅ Implement basic agent creation command**
-   - [X] Add agent creation logic to CLI
-   - [X] Implement agent storage
-   - [X] Add basic validation
+   - [x] Add agent creation logic to CLI
+   - [x] Implement agent storage
+   - [x] Add basic validation
 
 ### 🔄 Current Priority (Week 2)
+
 2. **🔄 Create agent execution framework**
    - [ ] Basic task execution engine
    - [ ] Command execution capability
    - [ ] Result tracking
 
 ### Short Term (Weeks 2-4)
+
 3. **Add more task types**
    - Script execution
    - API calls
@@ -289,6 +309,7 @@
    - Agent-MCP communication
 
 ### Medium Term (Months 2-3)
+
 5. **Advanced features**
    - Scheduling and automation
    - Monitoring and logging

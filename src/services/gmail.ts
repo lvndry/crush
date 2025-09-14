@@ -3,6 +3,9 @@ import { Context, Effect, Layer } from "effect";
 import { google, type gmail_v1 } from "googleapis";
 import http from "node:http";
 import open from "open";
+import type { ConfigService } from "./config";
+import { AgentConfigService } from "./config";
+import type { LoggerService } from "./logger";
 
 /**
  * Gmail service for interacting with Gmail API
@@ -74,7 +77,6 @@ export interface GmailService {
   ) => Effect.Effect<GmailEmail[], GmailOperationError | GmailAuthenticationError>;
 }
 
-// Real Gmail service implementation
 interface GoogleOAuthToken {
   access_token?: string;
   refresh_token?: string;
@@ -89,6 +91,7 @@ export class GmailServiceResource implements GmailService {
     private readonly tokenFilePath: string,
     private oauthClient: InstanceType<typeof google.auth.OAuth2>,
     private gmail: gmail_v1.Gmail,
+    private readonly requireCredentials: () => Effect.Effect<void, GmailAuthenticationError>,
   ) {}
 
   authenticate(): Effect.Effect<void, GmailAuthenticationError> {
@@ -210,6 +213,8 @@ export class GmailServiceResource implements GmailService {
   private ensureAuthenticated(): Effect.Effect<void, GmailAuthenticationError> {
     return Effect.gen(
       function* (this: GmailServiceResource) {
+        // Fail fast if credentials are missing when a Gmail operation is invoked
+        yield* this.requireCredentials();
         const tokenLoaded = yield* this.readTokenIfExists();
         if (!tokenLoaded) {
           yield* this.performOAuthFlow();
@@ -416,33 +421,49 @@ export class GmailServiceResource implements GmailService {
 export const GmailServiceTag = Context.GenericTag<GmailService>("GmailService");
 
 // Layer for providing the real Gmail service
-export function createGmailServiceLayer(): Layer.Layer<GmailService, never, FileSystem.FileSystem> {
+export function createGmailServiceLayer(): Layer.Layer<
+  GmailService,
+  never,
+  FileSystem.FileSystem | ConfigService | LoggerService
+> {
   return Layer.effect(
     GmailServiceTag,
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
 
-      const clientId = process.env["GOOGLE_CLIENT_ID"];
-      const clientSecret = process.env["GOOGLE_CLIENT_SECRET"];
-      if (!clientId || !clientSecret) {
-        throw new GmailAuthenticationError(
-          "Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET in environment",
-        );
+      const agentConfig = yield* AgentConfigService;
+      const appConfig = yield* agentConfig.appConfig;
+      const clientId = appConfig.google?.clientId;
+      const clientSecret = appConfig.google?.clientSecret;
+      const missingCreds = !clientId || !clientSecret;
+
+      function requireCredentials(): Effect.Effect<void, GmailAuthenticationError> {
+        if (missingCreds) {
+          return Effect.fail(
+            new GmailAuthenticationError(
+              "Missing Google OAuth credentials. Set config.google.clientId and config.google.clientSecret.",
+            ),
+          );
+        }
+        return Effect.void as Effect.Effect<void, GmailAuthenticationError>;
       }
 
-      const port = Number(process.env["GOOGLE_REDIRECT_PORT"] || 53682);
+      const port = 53682;
       const redirectUri = `http://localhost:${port}/oauth2callback`;
       const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
       const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
-      const dataDir = process.env["CRUSH_DATA_DIR"] || "./data";
+      const { storage } = yield* agentConfig.appConfig;
+      const dataDir = storage.type === "file" ? storage.path : "./.crush/data";
       const tokenFilePath = `${dataDir}/google/gmail-token.json`;
       const service: GmailService = new GmailServiceResource(
         fs,
         tokenFilePath,
         oauth2Client,
         gmail,
+        requireCredentials,
       );
+
       return service;
     }),
   );

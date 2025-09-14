@@ -1,5 +1,6 @@
 import { Effect, Layer } from "effect";
 import litellm from "litellm";
+import { AgentConfigService, type ConfigService } from "../config";
 import {
   LLMAuthenticationError,
   LLMConfigurationError,
@@ -304,55 +305,46 @@ class DefaultLiteLLMService implements LLMService {
   }
 }
 
-// Load configuration from environment variables
-function loadLiteLLMConfig(): Effect.Effect<LiteLLMConfig, LLMConfigurationError> {
-  return Effect.try({
-    try: () => {
-      const apiKeys: Record<string, string> = {};
-
-      if ((process.env["OPENAI_API_KEY"] || "") !== "") {
-        apiKeys["openai"] = process.env["OPENAI_API_KEY"] || "";
-      }
-      if ((process.env["ANTHROPIC_API_KEY"] || "") !== "") {
-        apiKeys["anthropic"] = process.env["ANTHROPIC_API_KEY"] || "";
-      }
-      if ((process.env["GOOGLE_API_KEY"] || "") !== "") {
-        apiKeys["google"] = process.env["GOOGLE_API_KEY"] || "";
-      }
-      if ((process.env["MISTRAL_API_KEY"] || "") !== "") {
-        apiKeys["mistral"] = process.env["MISTRAL_API_KEY"] || "";
-      }
-
-      const providers = Object.keys(apiKeys);
-      if (providers.length === 0) {
-        throw new LLMConfigurationError(
-          "unknown",
-          "No API keys found. Please set environment variables (e.g., OPENAI_API_KEY).",
-        );
-      }
-
-      const defaultProvider = providers[0] as string;
-
-      return {
-        defaultProvider,
-        apiKeys,
-      } satisfies LiteLLMConfig;
-    },
-    catch: (error: unknown) =>
-      new LLMConfigurationError(
-        "unknown",
-        `Failed to load LLM configuration: ${error instanceof Error ? error.message : String(error)}`,
-      ),
-  });
-}
-
 // Create LiteLLM service layer
-export function createLiteLLMServiceLayer(): Layer.Layer<LLMService, LLMConfigurationError> {
+export function createLiteLLMServiceLayer(): Layer.Layer<
+  LLMService,
+  LLMConfigurationError,
+  ConfigService
+> {
   return Layer.effect(
     LLMServiceTag,
     Effect.gen(function* () {
-      const config = yield* loadLiteLLMConfig();
-      return new DefaultLiteLLMService(config);
+      const configService = yield* AgentConfigService;
+      const appConfig = yield* configService.appConfig;
+
+      const apiKeys: Record<string, string> = {};
+
+      const openAIAPIKey = appConfig.llm?.openai?.api_key;
+      if (openAIAPIKey) apiKeys["openai"] = openAIAPIKey;
+
+      const anthropicAPIKey = appConfig.llm?.anthropic?.api_key;
+      if (anthropicAPIKey) apiKeys["anthropic"] = anthropicAPIKey;
+
+      const googleAPIKey = appConfig.llm?.google?.api_key;
+      if (googleAPIKey) apiKeys["google"] = googleAPIKey;
+
+      const mistralAPIKey = appConfig.llm?.mistral?.api_key;
+      if (mistralAPIKey) apiKeys["mistral"] = mistralAPIKey;
+
+      const providers = Object.keys(apiKeys);
+      if (providers.length === 0) {
+        return yield* Effect.fail(
+          new LLMConfigurationError(
+            "unknown",
+            "No LLM API keys configured. Set config.llm.<provider>.api_key or env (e.g., OPENAI_API_KEY).",
+          ),
+        );
+      }
+
+      const defaultProvider = appConfig.llm?.defaultProvider || (providers[0] as string);
+
+      const liteConfig: LiteLLMConfig = { defaultProvider, apiKeys };
+      return new DefaultLiteLLMService(liteConfig);
     }),
   );
 }

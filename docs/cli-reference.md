@@ -12,13 +12,13 @@ crush [global-options] <command> [command-options]
 
 ### Global Options
 
-| Option | Short | Description | Default |
-|--------|-------|-------------|---------|
-| `--verbose` | `-v` | Enable verbose logging | `false` |
-| `--quiet` | `-q` | Suppress output | `false` |
-| `--config <path>` | | Path to configuration file | `./crush.config.json` |
-| `--help` | `-h` | Show help information | |
-| `--version` | `-V` | Show version information | |
+| Option            | Short | Description                | Default               |
+| ----------------- | ----- | -------------------------- | --------------------- |
+| `--verbose`       | `-v`  | Enable verbose logging     | `false`               |
+| `--quiet`         | `-q`  | Suppress output            | `false`               |
+| `--config <path>` |       | Path to configuration file | `./crush.config.json` |
+| `--help`          | `-h`  | Show help information      |                       |
+| `--version`       | `-V`  | Show version information   |                       |
 
 ### Examples
 
@@ -46,6 +46,7 @@ crush agent list
 ```
 
 **Output:**
+
 ```
 Found 2 agent(s):
 
@@ -64,28 +65,30 @@ Found 2 agent(s):
    Updated: 2024-01-15T11:00:00.000Z
 ```
 
-### `crush agent create <name>`
+### `crush agent create`
 
 Create a new agent with the specified name.
 
 ```bash
-crush agent create <name> [options]
+crush agent create [options]
 ```
 
 **Arguments:**
+
 - `<name>` - Agent name (required, alphanumeric with hyphens/underscores)
 
 **Options:**
 
-| Option | Short | Description | Default |
-|--------|-------|-------------|---------|
-| `--description <description>` | `-d` | Agent description | `Agent for <name>` |
-| `--timeout <timeout>` | `-t` | Agent timeout in milliseconds | `30000` |
-| `--max-retries <retries>` | `-r` | Maximum number of retries | `3` |
-| `--retry-delay <delay>` | | Retry delay in milliseconds | `1000` |
-| `--retry-backoff <backoff>` | | Retry backoff strategy | `exponential` |
+| Option                        | Short | Description                   | Default            |
+| ----------------------------- | ----- | ----------------------------- | ------------------ |
+| `--description <description>` | `-d`  | Agent description             | `Agent for <name>` |
+| `--timeout <timeout>`         | `-t`  | Agent timeout in milliseconds | `30000`            |
+| `--max-retries <retries>`     | `-r`  | Maximum number of retries     | `3`                |
+| `--retry-delay <delay>`       |       | Retry delay in milliseconds   | `1000`             |
+| `--retry-backoff <backoff>`   |       | Retry backoff strategy        | `exponential`      |
 
 **Backoff Strategies:**
+
 - `linear` - Constant delay between retries
 - `exponential` - Exponentially increasing delay
 - `fixed` - Fixed delay for all retries
@@ -109,6 +112,7 @@ crush agent create api-agent \
 ```
 
 **Output:**
+
 ```
 ✅ Agent created successfully!
    ID: 1724243d-344e-42ec-97e8-e53a2c8fd9d8
@@ -129,14 +133,17 @@ crush agent get <agent-id>
 ```
 
 **Arguments:**
+
 - `<agent-id>` - Agent UUID (required)
 
 **Example:**
+
 ```bash
 crush agent get 1724243d-344e-42ec-97e8-e53a2c8fd9d8
 ```
 
 **Output:**
+
 ```
 📋 Agent Details:
    ID: 1724243d-344e-42ec-97e8-e53a2c8fd9d8
@@ -166,13 +173,14 @@ crush agent run <agent-id> [options]
 ```
 
 **Arguments:**
+
 - `<agent-id>` - Agent UUID (required)
 
 **Options:**
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--watch` | Watch for changes and re-run | `false` |
+| Option      | Description                                 | Default |
+| ----------- | ------------------------------------------- | ------- |
+| `--watch`   | Watch for changes and re-run                | `false` |
 | `--dry-run` | Show what would be executed without running | `false` |
 
 **Examples:**
@@ -189,6 +197,7 @@ crush agent run 1724243d-344e-42ec-97e8-e53a2c8fd9d8 --watch
 ```
 
 **Output (Dry Run):**
+
 ```
 🚀 Running agent: my-agent (1724243d-344e-42ec-97e8-e53a2c8fd9d8)
    Description: My first automation agent
@@ -205,6 +214,7 @@ Tasks that would be executed:
 ```
 
 **Output (Normal Run):**
+
 ```
 🚀 Running agent: my-agent (1724243d-344e-42ec-97e8-e53a2c8fd9d8)
    Description: My first automation agent
@@ -225,14 +235,17 @@ crush agent delete <agent-id>
 ```
 
 **Arguments:**
+
 - `<agent-id>` - Agent UUID (required)
 
 **Example:**
+
 ```bash
 crush agent delete 1724243d-344e-42ec-97e8-e53a2c8fd9d8
 ```
 
 **Output:**
+
 ```
 🗑️  Agent deleted successfully!
    Name: my-agent
@@ -253,22 +266,23 @@ crush automation list
 
 **Status:** 🚧 Planned - Not yet implemented
 
-### `crush automation create <name>`
+### `crush automation create`
 
 Create a new automation workflow.
 
 ```bash
-crush automation create <name> [options]
+crush automation create [options]
 ```
 
 **Arguments:**
+
 - `<name>` - Automation name (required)
 
 **Options:**
 
-| Option | Short | Description | Default |
-|--------|-------|-------------|---------|
-| `--description <description>` | `-d` | Automation description | |
+| Option                        | Short | Description            | Default |
+| ----------------------------- | ----- | ---------------------- | ------- |
+| `--description <description>` | `-d`  | Automation description |         |
 
 **Status:** 🚧 Planned - Not yet implemented
 
@@ -285,6 +299,7 @@ crush config get <key>
 ```
 
 **Arguments:**
+
 - `<key>` - Configuration key (required)
 
 **Status:** 🚧 Planned - Not yet implemented
@@ -298,6 +313,7 @@ crush config set <key> <value>
 ```
 
 **Arguments:**
+
 - `<key>` - Configuration key (required)
 - `<value>` - Configuration value (required)
 
@@ -327,12 +343,13 @@ crush logs [options]
 
 **Options:**
 
-| Option | Short | Description | Default |
-|--------|-------|-------------|---------|
-| `--follow` | `-f` | Follow log output | `false` |
-| `--level <level>` | `-l` | Filter by log level | `info` |
+| Option            | Short | Description         | Default |
+| ----------------- | ----- | ------------------- | ------- |
+| `--follow`        | `-f`  | Follow log output   | `false` |
+| `--level <level>` | `-l`  | Filter by log level | `info`  |
 
 **Log Levels:**
+
 - `debug` - Detailed debugging information
 - `info` - General information messages
 - `warn` - Warning messages
@@ -361,40 +378,45 @@ crush logs --follow --level debug
 ### Common Error Messages
 
 #### Agent Not Found
+
 ```
 ❌ Agent with ID "invalid-id" not found
 ```
 
 #### Storage Error
+
 ```
 ❌ Storage error: Failed to read file: ENOENT: no such file or directory
 ```
 
 #### Validation Error
+
 ```
 ❌ Validation error: Agent name can only contain letters, numbers, underscores, and hyphens
 ```
 
 #### Agent Already Exists
+
 ```
 ❌ Agent with name "existing-agent" already exists
 ```
 
 #### Configuration Error
+
 ```
 ❌ Configuration error: Timeout must be between 1000ms and 3600000ms (1 hour)
 ```
 
 ### Exit Codes
 
-| Code | Description |
-|------|-------------|
-| `0` | Success |
-| `1` | General error |
-| `2` | Invalid command or option |
-| `3` | Agent not found |
-| `4` | Storage error |
-| `5` | Validation error |
+| Code | Description               |
+| ---- | ------------------------- |
+| `0`  | Success                   |
+| `1`  | General error             |
+| `2`  | Invalid command or option |
+| `3`  | Agent not found           |
+| `4`  | Storage error             |
+| `5`  | Validation error          |
 
 ## 🔧 Configuration File
 
@@ -404,7 +426,7 @@ Crush supports configuration via a JSON file (planned feature):
 {
   "storage": {
     "type": "file",
-    "path": "./data"
+    "path": "./.crush/data"
   },
   "logging": {
     "level": "info",

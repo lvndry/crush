@@ -1,5 +1,4 @@
 import { Context, Effect, Layer } from "effect";
-import type { AppConfig } from "../core/types/index";
 
 /**
  * Structured logging service using Effect's Logger
@@ -13,35 +12,108 @@ export interface LoggerService {
 }
 
 export class LoggerServiceImpl implements LoggerService {
-  constructor(_config: AppConfig) {
-    // Config is available for future use
-    void _config;
-  }
+  constructor() {}
 
   debug(message: string, meta?: Record<string, unknown>): Effect.Effect<void> {
-    return Effect.logDebug(message, meta);
+    return Effect.sync(() => {
+      const line = formatLogLine("debug", message, meta);
+
+      console.debug(line);
+    });
   }
 
   info(message: string, meta?: Record<string, unknown>): Effect.Effect<void> {
-    return Effect.logInfo(message, meta);
+    return Effect.sync(() => {
+      const line = formatLogLine("info", message, meta);
+
+      console.info(line);
+    });
   }
 
   warn(message: string, meta?: Record<string, unknown>): Effect.Effect<void> {
-    return Effect.logWarning(message, meta);
+    return Effect.sync(() => {
+      const line = formatLogLine("warn", message, meta);
+
+      console.warn(line);
+    });
   }
 
   error(message: string, meta?: Record<string, unknown>): Effect.Effect<void> {
-    return Effect.logError(message, meta);
+    return Effect.sync(() => {
+      const line = formatLogLine("error", message, meta);
+
+      console.error(line);
+    });
   }
 }
 
-export const LoggerServiceTag = Context.GenericTag<LoggerService>("LoggerService");
+type LogLevel = "debug" | "info" | "warn" | "error";
 
-export function createLoggerLayer(config: AppConfig): Layer.Layer<LoggerService> {
-  return Layer.succeed(LoggerServiceTag, new LoggerServiceImpl(config));
+function formatLogLine(level: LogLevel, message: string, meta?: Record<string, unknown>): string {
+  const now = new Date();
+  const ts = now.toISOString();
+  const color = selectColor(level);
+  const levelLabel = padLevel(level.toUpperCase());
+  const emoji = selectEmoji(level);
+  const metaText = meta && Object.keys(meta).length > 0 ? dim(" " + JSON.stringify(meta)) : "";
+  const body = indentMultiline(message);
+  return `${dim(ts)} ${color(levelLabel)} ${emoji} ${body}${metaText}`;
 }
 
-// Removed createLoggerLayerFromConfig due to Config API complexity
+function selectColor(level: LogLevel): (text: string) => string {
+  switch (level) {
+    case "debug":
+      return gray;
+    case "info":
+      return cyan;
+    case "warn":
+      return yellow;
+    case "error":
+      return red;
+  }
+}
+
+function selectEmoji(level: LogLevel): string {
+  switch (level) {
+    case "debug":
+      return "🔍";
+    case "info":
+      return "ℹ️";
+    case "warn":
+      return "⚠️";
+    case "error":
+      return "❌";
+  }
+}
+
+function padLevel(level: string): string {
+  // Ensures consistent width: DEBUG/ INFO/ WARN/ ERROR
+  return level.padEnd(5, " ");
+}
+
+function indentMultiline(text: string): string {
+  if (!text.includes("\n")) return text;
+  const lines = text.split("\n");
+  return lines.map((line, idx) => (idx === 0 ? line : "  " + line)).join("\n");
+}
+
+// ANSI color helpers (no dependency)
+function wrap(open: string, close: string): (text: string) => string {
+  const enabled = process.stdout.isTTY === true;
+  return (text: string) => (enabled ? `${open}${text}${close}` : text);
+}
+
+const dim = wrap("\u001B[2m", "\u001B[22m");
+const gray = wrap("\u001B[90m", "\u001B[39m");
+const cyan = wrap("\u001B[36m", "\u001B[39m");
+const yellow = wrap("\u001B[33m", "\u001B[39m");
+const red = wrap("\u001B[31m", "\u001B[39m");
+
+export const LoggerServiceTag = Context.GenericTag<LoggerService>("LoggerService");
+
+export function createLoggerLayer(): Layer.Layer<LoggerService> {
+  return Layer.succeed(LoggerServiceTag, new LoggerServiceImpl());
+}
 
 // Helper functions for common logging patterns
 export function logAgentOperation(

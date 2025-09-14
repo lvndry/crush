@@ -29,7 +29,7 @@ export function createAgentCommand(
     maxRetries?: number;
     retryDelay?: number;
     retryBackoff?: "linear" | "exponential" | "fixed";
-  }
+  },
 ): Effect.Effect<
   void,
   StorageError | AgentAlreadyExistsError | AgentConfigurationError | ValidationError,
@@ -77,7 +77,7 @@ export function createAgentCommand(
 
     if (config.retryPolicy) {
       console.log(
-        `   Retry Policy: ${config.retryPolicy.maxRetries} retries, ${config.retryPolicy.delay}ms delay, ${config.retryPolicy.backoff} backoff`
+        `   Retry Policy: ${config.retryPolicy.maxRetries} retries, ${config.retryPolicy.delay}ms delay, ${config.retryPolicy.backoff} backoff`,
       );
     }
   });
@@ -88,7 +88,7 @@ export function listAgentsCommand(): Effect.Effect<void, StorageError, AgentServ
     const agents = yield* listAllAgents();
 
     if (agents.length === 0) {
-      console.log("No agents found. Create your first agent with: crush agent create <name>");
+      console.log("No agents found. Create your first agent with: crush agent create");
       return;
     }
 
@@ -112,7 +112,7 @@ export function runAgentCommand(
   options: {
     watch?: boolean;
     dryRun?: boolean;
-  }
+  },
 ): Effect.Effect<void, StorageError | StorageNotFoundError, AgentService | GmailService> {
   return Effect.gen(function* () {
     const agent = yield* getAgentById(agentId);
@@ -143,7 +143,7 @@ export function runAgentCommand(
     console.log();
 
     // Check if this agent has Gmail tasks
-    const gmailTasks = agent.config.tasks.filter(task => task.type === "gmail");
+    const gmailTasks = agent.config.tasks.filter((task) => task.type === "gmail");
 
     if (gmailTasks.length > 0) {
       console.log(`🔍 Found ${gmailTasks.length} Gmail task(s) to execute`);
@@ -156,7 +156,7 @@ export function runAgentCommand(
         console.log(`   Operation: ${task.config.gmailOperation}`);
 
         const result = yield* executeGmailTask(task).pipe(
-          Effect.catchAll(error =>
+          Effect.catchAll((error) =>
             Effect.succeed({
               taskId: task.id,
               status: "failure",
@@ -164,8 +164,8 @@ export function runAgentCommand(
               duration: 0,
               timestamp: new Date(),
               output: "[]",
-            })
-          )
+            }),
+          ),
         );
 
         if (result.status === "success") {
@@ -204,7 +204,7 @@ export function runAgentCommand(
 }
 
 export function deleteAgentCommand(
-  agentId: string
+  agentId: string,
 ): Effect.Effect<void, StorageError | StorageNotFoundError, AgentService> {
   return Effect.gen(function* () {
     const agentService = yield* AgentServiceTag;
@@ -222,7 +222,7 @@ export function deleteAgentCommand(
 }
 
 export function getAgentCommand(
-  agentId: string
+  agentId: string,
 ): Effect.Effect<void, StorageError | StorageNotFoundError, AgentService> {
   return Effect.gen(function* () {
     const agent = yield* getAgentById(agentId);
@@ -282,7 +282,7 @@ export function getAgentCommand(
           case "script":
             if (task.config.script) {
               console.log(
-                `      Script: ${task.config.script.substring(0, 100)}${task.config.script.length > 100 ? "..." : ""}`
+                `      Script: ${task.config.script.substring(0, 100)}${task.config.script.length > 100 ? "..." : ""}`,
               );
             }
             break;

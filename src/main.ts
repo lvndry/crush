@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 
+import { FileSystem } from "@effect/platform";
 import { NodeFileSystem } from "@effect/platform-node";
 import { Command } from "commander";
 import { config } from "dotenv";
@@ -15,33 +16,43 @@ import { chatWithAIAgentCommand, createAIAgentCommand } from "./cli/commands/ai-
 import { createAgentServiceLayer } from "./core/agent/agent-service";
 import { createToolRegistrationLayer } from "./core/agent/tools/register-tools";
 import { createToolRegistryLayer } from "./core/agent/tools/tool-registry";
-import type { AppConfig } from "./core/types/index";
-import { createConfigLayer } from "./services/config";
+import { AgentConfigService, createConfigLayer } from "./services/config";
 import { createGmailServiceLayer } from "./services/gmail";
 import { createLiteLLMServiceLayer } from "./services/llm/litellm-service";
 import { createLoggerLayer, LoggerServiceTag } from "./services/logger";
-import { createFileStorageLayer } from "./services/storage";
+import { FileStorageService } from "./services/storage/file";
+import { StorageServiceTag } from "./services/storage/service";
 
 config();
 
 /**
  * Main entry point for the Crush CLI
  */
-function createAppLayer(config: AppConfig) {
+
+function createAppLayer() {
   const fileSystemLayer = NodeFileSystem.layer;
 
   const configLayer = createConfigLayer().pipe(Layer.provide(fileSystemLayer));
-  const loggerLayer = createLoggerLayer(config);
+  const loggerLayer = createLoggerLayer();
 
-  const storageLayer = createFileStorageLayer(
-    config.storage.type === "file" ? config.storage.path : "./data",
-  ).pipe(Layer.provide(fileSystemLayer));
+  const storageLayer = Layer.effect(
+    StorageServiceTag,
+    Effect.gen(function* () {
+      const config = yield* AgentConfigService;
+      const { storage } = yield* config.appConfig;
+      const basePath = storage.type === "file" ? storage.path : "./.crush/data";
+      const fs = yield* FileSystem.FileSystem;
+      return new FileStorageService(basePath, fs);
+    }),
+  ).pipe(Layer.provide(fileSystemLayer), Layer.provide(configLayer));
 
-  // Create Gmail service layer (requires FileSystem)
-  const gmailLayer = createGmailServiceLayer().pipe(Layer.provide(fileSystemLayer));
+  const gmailLayer = createGmailServiceLayer().pipe(
+    Layer.provide(fileSystemLayer),
+    Layer.provide(configLayer),
+    Layer.provide(loggerLayer),
+  );
 
-  // Create LLM service layer (LiteLLM multi-provider) - no FileSystem required
-  const llmLayer = createLiteLLMServiceLayer();
+  const llmLayer = createLiteLLMServiceLayer().pipe(Layer.provide(configLayer));
 
   // Create tool registry layer
   const toolRegistryLayer = createToolRegistryLayer();
@@ -68,28 +79,6 @@ function createAppLayer(config: AppConfig) {
 
 function main() {
   return Effect.sync(() => {
-    // Default configuration
-    const defaultConfig: AppConfig = {
-      storage: {
-        type: "file",
-        path: "./data",
-      },
-      logging: {
-        level: "info",
-        format: "pretty",
-        output: "console",
-      },
-      security: {},
-      performance: {
-        maxConcurrentAgents: 5,
-        maxConcurrentTasks: 10,
-        timeout: 30000,
-      },
-    };
-
-    const appLayer = createAppLayer(defaultConfig);
-
-    // Initialize CLI
     const program = new Command();
 
     program.name("crush").description("A powerful agentic automation CLI").version("0.1.0");
@@ -109,14 +98,12 @@ function main() {
       .action(() => {
         void Effect.runPromise(
           listAgentsCommand().pipe(
+            Effect.provide(createAppLayer()),
             Effect.catchAll((error) =>
-              Effect.gen(function* () {
-                const logger = yield* LoggerServiceTag;
-                yield* logger.error("❌ Error listing agents", { error });
-                return yield* Effect.void;
+              Effect.sync(() => {
+                console.error("❌ Error listing agents:", error);
               }),
             ),
-            Effect.provide(appLayer),
           ),
         );
       });
@@ -127,14 +114,12 @@ function main() {
       .action(() => {
         void Effect.runPromise(
           createAIAgentCommand().pipe(
+            Effect.provide(createAppLayer()),
             Effect.catchAll((error) =>
-              Effect.gen(function* () {
-                const logger = yield* LoggerServiceTag;
-                yield* logger.error("❌ Error creating AI agent", { error });
-                return yield* Effect.void;
+              Effect.sync(() => {
+                console.error("❌ Error creating AI agent:", error);
               }),
             ),
-            Effect.provide(appLayer),
           ),
         );
       });
@@ -166,14 +151,12 @@ function main() {
         ) => {
           void Effect.runPromise(
             createAgentCommand(name, options.description || "", options).pipe(
+              Effect.provide(createAppLayer()),
               Effect.catchAll((error) =>
-                Effect.gen(function* () {
-                  const logger = yield* LoggerServiceTag;
-                  yield* logger.error("❌ Error creating agent", { error });
-                  return yield* Effect.void;
+                Effect.sync(() => {
+                  console.error("❌ Error creating agent:", error);
                 }),
               ),
-              Effect.provide(appLayer),
             ),
           );
         },
@@ -187,14 +170,12 @@ function main() {
       .action((agentId: string, options: { watch?: boolean; dryRun?: boolean }) => {
         void Effect.runPromise(
           runAgentCommand(agentId, options).pipe(
+            Effect.provide(createAppLayer()),
             Effect.catchAll((error) =>
-              Effect.gen(function* () {
-                const logger = yield* LoggerServiceTag;
-                yield* logger.error("❌ Error running agent", { error });
-                return yield* Effect.void;
+              Effect.sync(() => {
+                console.error("❌ Error running agent:", error);
               }),
             ),
-            Effect.provide(appLayer),
           ),
         );
       });
@@ -205,14 +186,12 @@ function main() {
       .action((agentId: string) => {
         void Effect.runPromise(
           getAgentCommand(agentId).pipe(
+            Effect.provide(createAppLayer()),
             Effect.catchAll((error) =>
-              Effect.gen(function* () {
-                const logger = yield* LoggerServiceTag;
-                yield* logger.error("❌ Error getting agent", { error });
-                return yield* Effect.void;
+              Effect.sync(() => {
+                console.error("❌ Error getting agent:", error);
               }),
             ),
-            Effect.provide(appLayer),
           ),
         );
       });
@@ -223,14 +202,12 @@ function main() {
       .action((agentId: string) => {
         void Effect.runPromise(
           deleteAgentCommand(agentId).pipe(
+            Effect.provide(createAppLayer()),
             Effect.catchAll((error) =>
-              Effect.gen(function* () {
-                const logger = yield* LoggerServiceTag;
-                yield* logger.error("❌ Error deleting agent", { error });
-                return yield* Effect.void;
+              Effect.sync(() => {
+                console.error("❌ Error deleting agent:", error);
               }),
             ),
-            Effect.provide(appLayer),
           ),
         );
       });
@@ -241,14 +218,12 @@ function main() {
       .action((agentId: string) => {
         void Effect.runPromise(
           chatWithAIAgentCommand(agentId).pipe(
+            Effect.provide(createAppLayer()),
             Effect.catchAll((error) =>
-              Effect.gen(function* () {
-                const logger = yield* LoggerServiceTag;
-                yield* logger.error("❌ Error chatting with AI agent", { error });
-                return yield* Effect.void;
+              Effect.sync(() => {
+                console.error("❌ Error chatting with AI agent:", error);
               }),
             ),
-            Effect.provide(appLayer),
           ),
         );
       });
@@ -265,12 +240,12 @@ function main() {
             const logger = yield* LoggerServiceTag;
             yield* logger.info("Listing automations...");
             // TODO: Implement automation listing
-          }).pipe(Effect.provide(appLayer)),
+          }).pipe(Effect.provide(createAppLayer())),
         );
       });
 
     automationCommand
-      .command("create <name>")
+      .command("create")
       .description("Create a new automation")
       .option("-d, --description <description>", "Automation description")
       .action((name: string, options: { description?: string }) => {
@@ -282,7 +257,7 @@ function main() {
               yield* logger.info(`Description: ${options.description}`);
             }
             // TODO: Implement automation creation
-          }).pipe(Effect.provide(appLayer)),
+          }).pipe(Effect.provide(createAppLayer())),
         );
       });
 
@@ -298,7 +273,7 @@ function main() {
             const logger = yield* LoggerServiceTag;
             yield* logger.info(`Getting config: ${key}`);
             // TODO: Implement config retrieval
-          }).pipe(Effect.provide(appLayer)),
+          }).pipe(Effect.provide(createAppLayer())),
         );
       });
 
@@ -311,7 +286,7 @@ function main() {
             const logger = yield* LoggerServiceTag;
             yield* logger.info(`Setting config: ${key} = ${value}`);
             // TODO: Implement config setting
-          }).pipe(Effect.provide(appLayer)),
+          }).pipe(Effect.provide(createAppLayer())),
         );
       });
 
@@ -324,7 +299,7 @@ function main() {
             const logger = yield* LoggerServiceTag;
             yield* logger.info("Listing configuration...");
             // TODO: Implement config listing
-          }).pipe(Effect.provide(appLayer)),
+          }).pipe(Effect.provide(createAppLayer())),
         );
       });
 
@@ -344,7 +319,7 @@ function main() {
             }
             yield* logger.info(`Log level: ${options.level}`);
             // TODO: Implement log viewing
-          }).pipe(Effect.provide(appLayer)),
+          }).pipe(Effect.provide(createAppLayer())),
         );
       });
 

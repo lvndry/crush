@@ -40,7 +40,7 @@ Configuration files use JSON format:
 {
   "storage": {
     "type": "file",
-    "path": "./data"
+    "path": "./.crush/data"
   },
   "logging": {
     "level": "info",
@@ -73,12 +73,13 @@ Configuration files use JSON format:
 {
   "storage": {
     "type": "file",
-    "path": "./data"
+    "path": "./.crush/data"
   }
 }
 ```
 
 **Options:**
+
 - `type` - Storage backend type (`"file"` or `"database"`)
 - `path` - Storage directory path (for file storage)
 - `connectionString` - Database connection string (for database storage)
@@ -97,6 +98,7 @@ Configuration files use JSON format:
 ```
 
 **Options:**
+
 - `level` - Log level (`"debug"`, `"info"`, `"warn"`, `"error"`)
 - `format` - Log format (`"json"` or `"pretty"`)
 - `output` - Output destination (`"console"`, `"file"`, or `"both"`)
@@ -118,6 +120,7 @@ Configuration files use JSON format:
 ```
 
 **Options:**
+
 - `encryptionKey` - Key for encrypting sensitive data
 - `allowedOrigins` - Allowed origins for CORS (planned)
 - `rateLimit` - Rate limiting configuration
@@ -138,6 +141,7 @@ Configuration files use JSON format:
 ```
 
 **Options:**
+
 - `maxConcurrentAgents` - Maximum concurrent agent executions
 - `maxConcurrentTasks` - Maximum concurrent task executions
 - `timeout` - Default timeout in milliseconds
@@ -325,6 +329,7 @@ Configure encryption for sensitive data:
 ```
 
 **Best Practices:**
+
 - Use a strong, random 32-character key
 - Store the key securely (environment variables, key management systems)
 - Rotate keys regularly
@@ -346,6 +351,7 @@ Configure rate limiting to prevent abuse:
 ```
 
 **Options:**
+
 - `requests` - Maximum requests allowed per window
 - `window` - Time window in milliseconds
 
@@ -381,6 +387,7 @@ Adjust concurrency based on your system resources:
 ```
 
 **Guidelines:**
+
 - **CPU-bound tasks**: Set limits based on CPU cores
 - **I/O-bound tasks**: Can handle higher concurrency
 - **Memory-intensive tasks**: Consider memory usage
@@ -399,6 +406,7 @@ Set appropriate timeouts for different scenarios:
 ```
 
 **Timeout Guidelines:**
+
 - **Quick tasks**: 5-30 seconds
 - **Medium tasks**: 1-10 minutes
 - **Long tasks**: 10-60 minutes
@@ -417,6 +425,7 @@ Configure memory limits to prevent resource exhaustion:
 ```
 
 **Memory Guidelines:**
+
 - **Small systems**: 512MB - 1GB
 - **Medium systems**: 1GB - 4GB
 - **Large systems**: 4GB - 16GB
@@ -442,27 +451,35 @@ interface AppConfig {
 Common validation errors and solutions:
 
 #### Invalid Log Level
+
 ```
 Error: Invalid log level 'invalid'. Must be one of: debug, info, warn, error
 ```
+
 **Solution:** Use a valid log level from the allowed values.
 
 #### Invalid Storage Type
+
 ```
 Error: Invalid storage type 'invalid'. Must be one of: file, database
 ```
+
 **Solution:** Use either `"file"` or `"database"` as the storage type.
 
 #### Invalid Timeout Value
+
 ```
 Error: Timeout must be between 1000 and 3600000 milliseconds
 ```
+
 **Solution:** Set timeout between 1 second and 1 hour.
 
 #### Missing Required Fields
+
 ```
 Error: Required field 'storage.path' is missing
 ```
+
 **Solution:** Provide all required configuration fields.
 
 ## 🛠️ Configuration Management
@@ -487,21 +504,23 @@ cp crush.config.test.json crush.config.json
 Create configuration templates for different use cases:
 
 #### Minimal Configuration
+
 ```json
 {
   "storage": {
     "type": "file",
-    "path": "./data"
+    "path": "./.crush/data"
   }
 }
 ```
 
 #### Full Configuration
+
 ```json
 {
   "storage": {
     "type": "file",
-    "path": "./data"
+    "path": "./.crush/data"
   },
   "logging": {
     "level": "info",
@@ -543,6 +562,7 @@ cp crush.config.json.backup crush.config.json
 **Problem:** Configuration file not being loaded
 
 **Solutions:**
+
 1. Check file location and permissions
 2. Verify JSON syntax is valid
 3. Use absolute paths for file locations
@@ -553,6 +573,7 @@ cp crush.config.json.backup crush.config.json
 **Problem:** Slow performance or resource exhaustion
 
 **Solutions:**
+
 1. Reduce concurrency limits
 2. Increase timeout values
 3. Monitor memory usage
@@ -563,6 +584,7 @@ cp crush.config.json.backup crush.config.json
 **Problem:** Security warnings or failures
 
 **Solutions:**
+
 1. Use strong encryption keys
 2. Configure proper rate limits
 3. Validate input data

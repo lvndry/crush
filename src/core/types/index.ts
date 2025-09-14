@@ -150,6 +150,8 @@ export interface AppConfig {
   readonly logging: LoggingConfig;
   readonly security: SecurityConfig;
   readonly performance: PerformanceConfig;
+  readonly google?: GoogleConfig;
+  readonly llm?: LLMConfig;
 }
 
 export type StorageConfig =
@@ -185,6 +187,23 @@ export interface PerformanceConfig {
   readonly maxConcurrentTasks: number;
   readonly timeout: number;
   readonly memoryLimit?: number;
+}
+
+export interface GoogleConfig {
+  readonly clientId?: string;
+  readonly clientSecret?: string;
+}
+
+export interface LLMProviderConfig {
+  readonly api_key?: string;
+}
+
+export interface LLMConfig {
+  readonly defaultProvider?: string;
+  readonly openai?: LLMProviderConfig;
+  readonly anthropic?: LLMProviderConfig;
+  readonly google?: LLMProviderConfig;
+  readonly mistral?: LLMProviderConfig;
 }
 
 // Schema definitions for runtime validation

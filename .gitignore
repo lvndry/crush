@@ -36,3 +36,5 @@ coverage/
 
 # Data files
 data/
+.crush/
+crush.config.json

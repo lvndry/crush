@@ -1,0 +1,21 @@
+{
+  "google": {
+    "clientId": "1234567890.apps.googleusercontent.com",
+    "clientSecret": "1234567890"
+  },
+  "llm": {
+    "defaultProvider": "openai",
+    "openai": {
+      "api_key": "sk-openai-..."
+    },
+    "anthropic": {
+      "api_key": "sk-ant-..."
+    },
+    "google": {
+      "api_key": "AIza-..."
+    },
+    "mistral": {
+      "api_key": "mist-..."
+    }
+  }
+}

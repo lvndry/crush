@@ -37,19 +37,21 @@ Crush follows a layered architecture pattern with clear separation of concerns, 
 The CLI layer provides the user interface and command parsing functionality.
 
 **Key Components:**
+
 - **Command Handlers**: Process user commands and delegate to services
 - **Input Validation**: Validate command-line arguments and options
 - **Output Formatting**: Format results for user consumption
 - **Error Handling**: Present user-friendly error messages
 
 **Example Structure:**
+
 ```typescript
 // src/cli/commands/agent.ts
 export function createAgentCommand(
-  name: string, 
-  description: string, 
-  options: AgentOptions
-): Effect.Effect<void, AgentError, AgentService>
+  name: string,
+  description: string,
+  options: AgentOptions,
+): Effect.Effect<void, AgentError, AgentService>;
 ```
 
 ### 2. Core Layer
@@ -57,21 +59,27 @@ export function createAgentCommand(
 The core layer contains the business logic and domain services.
 
 #### Agent Service
+
 Manages the complete lifecycle of agents:
+
 - **Creation**: Validate and create new agents
 - **Retrieval**: Get agent details and list agents
 - **Updates**: Modify agent configuration
 - **Deletion**: Remove agents and cleanup resources
 
 #### Task Engine (Planned)
+
 Will handle task execution and orchestration:
+
 - **Task Types**: Command, script, API, file operations
 - **Dependency Resolution**: Manage task dependencies
 - **Execution Context**: Provide isolated execution environments
 - **Result Collection**: Aggregate and store execution results
 
 #### Automation Service (Planned)
+
 Will manage automation workflows:
+
 - **Trigger Management**: Handle various trigger types
 - **Schedule Management**: Cron and interval-based scheduling
 - **Workflow Orchestration**: Coordinate multiple agents
@@ -81,45 +89,65 @@ Will manage automation workflows:
 Infrastructure services that provide cross-cutting concerns.
 
 #### Storage Service
+
 Handles data persistence with multiple backends:
 
 **File Storage Implementation:**
+
 ```typescript
 export class FileStorageService implements StorageService {
   private getAgentPath(id: string): string {
     return `${this.basePath}/agents/${id}.json`;
   }
-  
+
   saveAgent(agent: Agent): Effect.Effect<void, StorageError> {
-    return Effect.gen(function* (this: FileStorageService) {
-      const dir = this.getAgentsDir();
-      yield* this.ensureDirectoryExists(dir);
-      const path = this.getAgentPath(agent.id);
-      yield* this.writeJsonFile(path, agent);
-    }.bind(this));
+    return Effect.gen(
+      function* (this: FileStorageService) {
+        const dir = this.getAgentsDir();
+        yield* this.ensureDirectoryExists(dir);
+        const path = this.getAgentPath(agent.id);
+        yield* this.writeJsonFile(path, agent);
+      }.bind(this),
+    );
   }
 }
 ```
 
 **In-Memory Storage Implementation:**
+
 - Used for testing and development
 - Provides fast access with no persistence
 - Implements the same interface as file storage
 
 #### Logger Service
+
 Structured logging using Effect's built-in Logger:
 
 ```typescript
 export interface LoggerService {
-  readonly debug: (message: string, meta?: Record<string, unknown>) => Effect.Effect<void>;
-  readonly info: (message: string, meta?: Record<string, unknown>) => Effect.Effect<void>;
-  readonly warn: (message: string, meta?: Record<string, unknown>) => Effect.Effect<void>;
-  readonly error: (message: string, meta?: Record<string, unknown>) => Effect.Effect<void>;
+  readonly debug: (
+    message: string,
+    meta?: Record<string, unknown>,
+  ) => Effect.Effect<void>;
+  readonly info: (
+    message: string,
+    meta?: Record<string, unknown>,
+  ) => Effect.Effect<void>;
+  readonly warn: (
+    message: string,
+    meta?: Record<string, unknown>,
+  ) => Effect.Effect<void>;
+  readonly error: (
+    message: string,
+    meta?: Record<string, unknown>,
+  ) => Effect.Effect<void>;
 }
 ```
 
 #### Configuration Service
+
 Manages application configuration:
+
 - Environment-based configuration
 - Default value management
 - Configuration validation
@@ -129,6 +157,7 @@ Manages application configuration:
 The foundation layer providing functional programming primitives.
 
 **Key Patterns:**
+
 - **Effect.gen**: Async workflow composition (replaces async/await)
 - **Context API**: Dependency injection and service location
 - **Layers**: Service composition and lifecycle management
@@ -173,13 +202,17 @@ Services are provided through Effect's Context API:
 ```typescript
 export const AgentService = Context.GenericTag<AgentService>("AgentService");
 
-export function createAgentServiceLayer(): Layer.Layer<AgentService, never, StorageService> {
+export function createAgentServiceLayer(): Layer.Layer<
+  AgentService,
+  never,
+  StorageService
+> {
   return Layer.effect(
     AgentService,
     Effect.gen(function* () {
       const storage = yield* StorageService;
       return new DefaultAgentService(storage);
-    })
+    }),
   );
 }
 ```
@@ -205,7 +238,10 @@ export class AgentNotFoundError extends Data.TaggedError("AgentNotFoundError")<{
 Operations are composed using Effect combinators:
 
 ```typescript
-function createAgent(name: string, description: string): Effect.Effect<Agent, AgentError, AgentService> {
+function createAgent(
+  name: string,
+  description: string,
+): Effect.Effect<Agent, AgentError, AgentService> {
   return Effect.gen(function* () {
     const agentService = yield* AgentService;
     return yield* agentService.createAgent(name, description);
@@ -222,17 +258,17 @@ function createAppLayer(config: AppConfig) {
   const baseLayer = Layer.mergeAll(
     createConfigLayer(),
     createLoggerLayer(config),
-    NodeFileSystem.layer
+    NodeFileSystem.layer,
   );
 
-  const storageLayer = createFileStorageLayer(config.storage.path || "./data").pipe(
-    Layer.provide(baseLayer)
-  );
+  const storageLayer = createFileStorageLayer(
+    config.storage.path || "./.crush/data",
+  ).pipe(Layer.provide(baseLayer));
 
   return Layer.mergeAll(
     baseLayer,
     storageLayer,
-    createAgentServiceLayer()
+    createAgentServiceLayer(),
   ).pipe(Layer.provide(Layer.mergeAll(baseLayer, storageLayer)));
 }
 ```
@@ -255,6 +291,7 @@ export interface AppConfig {
 ### Environment Variables
 
 Configuration can be overridden via environment variables:
+
 - `CRUSH_STORAGE_PATH`: Storage directory path
 - `CRUSH_LOG_LEVEL`: Logging level (debug, info, warn, error)
 - `CRUSH_LOG_FORMAT`: Log format (json, pretty)
@@ -267,9 +304,9 @@ The system includes performance limits to prevent resource exhaustion:
 
 ```typescript
 export interface PerformanceConfig {
-  readonly maxConcurrentAgents: number;    // Default: 5
-  readonly maxConcurrentTasks: number;     // Default: 10
-  readonly timeout: number;                // Default: 30000ms
+  readonly maxConcurrentAgents: number; // Default: 5
+  readonly maxConcurrentTasks: number; // Default: 10
+  readonly timeout: number; // Default: 30000ms
   readonly memoryLimit?: number;
 }
 ```
@@ -314,11 +351,12 @@ export const AgentSchema = Schema.Struct({
 All operations are logged with structured data:
 
 ```typescript
-yield* logger.info("Agent created", {
-  agentId: agent.id,
-  agentName: agent.name,
-  timestamp: new Date().toISOString()
-});
+yield *
+  logger.info("Agent created", {
+    agentId: agent.id,
+    agentName: agent.name,
+    timestamp: new Date().toISOString(),
+  });
 ```
 
 ### Metrics Collection (Planned)
@@ -333,6 +371,7 @@ yield* logger.info("Agent created", {
 ### Plugin System
 
 A plugin architecture is planned to support:
+
 - Custom task types
 - External integrations
 - Community extensions
@@ -340,6 +379,7 @@ A plugin architecture is planned to support:
 ### Distributed Execution
 
 Future considerations for:
+
 - Multi-node agent execution
 - Load balancing
 - Fault tolerance
@@ -347,6 +387,7 @@ Future considerations for:
 ### API Layer
 
 Planned REST API for:
+
 - Remote agent management
 - Web-based dashboard
 - Integration with external systems

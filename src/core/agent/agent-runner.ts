@@ -1,4 +1,5 @@
 import { Effect } from "effect";
+import { AgentConfigService, type ConfigService } from "../../services/config";
 import {
   LLMServiceTag,
   type ChatMessage,
@@ -40,13 +41,19 @@ export class AgentRunner {
    */
   static run(
     options: AgentRunnerOptions,
-  ): Effect.Effect<AgentResponse, Error, LLMService | ToolRegistry | LoggerService> {
+  ): Effect.Effect<
+    AgentResponse,
+    Error,
+    LLMService | ToolRegistry | LoggerService | ConfigService
+  > {
     return Effect.gen(function* () {
       const { agent, userInput, conversationId, userId, maxIterations = 5 } = options;
 
       // Get services
       const llmService = yield* LLMServiceTag;
       const toolRegistry = yield* ToolRegistryTag;
+      const configService = yield* AgentConfigService;
+      const appConfig = yield* configService.appConfig;
 
       // Generate a conversation ID if not provided
       const actualConversationId = conversationId || `conv-${Date.now()}`;
@@ -87,7 +94,7 @@ export class AgentRunner {
       };
 
       // Determine the LLM provider and model to use
-      const provider = agent.config.llmProvider || "openai";
+      const provider = agent.config.llmProvider || appConfig.llm?.defaultProvider || "openai";
       const model = agent.config.llmModel || "gpt-4";
 
       for (let i = 0; i < maxIterations; i++) {
