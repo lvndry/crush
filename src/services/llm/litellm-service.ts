@@ -37,7 +37,7 @@ class DefaultLiteLLMService implements LLMService {
 
     // Define supported models for each provider
     this.providerModels = {
-      openai: ["gpt-5", "gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"],
+      openai: ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"],
       anthropic: ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"],
       google: ["gemini-pro", "gemini-1.5-pro"],
       mistral: ["mistral-small", "mistral-medium", "mistral-large"],
@@ -101,8 +101,14 @@ class DefaultLiteLLMService implements LLMService {
         if (options.stream === true) {
           throw new Error("Streaming responses are not supported yet");
         }
-        // Format model name for LiteLLM (e.g., "openai/gpt-4")
-        const formattedModel = `${providerName}/${options.model}`;
+
+        // Format model id: omit provider for OpenAI; use "provider/model" for others
+        const formattedModel =
+          providerName.toLowerCase() === "openai"
+            ? options.model.replace(/^openai\//i, "")
+            : options.model.includes("/")
+              ? options.model
+              : `${providerName}/${options.model}`;
 
         // Convert our message format to LiteLLM/OpenAI-compatible messages, including tools
         const convertedMessages: ReadonlyArray<Record<string, unknown>> = options.messages.map(

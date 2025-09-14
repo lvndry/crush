@@ -13,7 +13,7 @@ import {
   ValidationError,
 } from "../../core/types/errors";
 import type { Agent, AgentConfig } from "../../core/types/index";
-import { LLMServiceTag, type LLMService } from "../../services/llm/types";
+import { LLMConfigurationError, LLMServiceTag, type LLMService } from "../../services/llm/types";
 import { LoggerServiceTag, type LoggerService } from "../../services/logger";
 
 /**
@@ -34,7 +34,11 @@ interface AIAgentCreationAnswers {
  */
 export function createAIAgentCommand(): Effect.Effect<
   void,
-  StorageError | AgentAlreadyExistsError | AgentConfigurationError | ValidationError,
+  | StorageError
+  | AgentAlreadyExistsError
+  | AgentConfigurationError
+  | ValidationError
+  | LLMConfigurationError,
   AgentService | LLMService | ToolRegistry
 > {
   return Effect.gen(function* () {
@@ -52,17 +56,29 @@ export function createAIAgentCommand(): Effect.Effect<
     const toolRegistry = yield* ToolRegistryTag;
     const tools = yield* toolRegistry.listTools();
 
+    // Determine provider-aware default model
+    const defaultProvider = providers[0] || "openai";
+    const providerInfo = yield* llmService.getProvider(defaultProvider);
+    const defaultModel =
+      providerInfo.defaultModel || providerInfo.supportedModels[0] || "gpt-4o-mini";
+
     // Get agent basic information
     const agentAnswers = yield* Effect.promise(() =>
-      promptForAgentInfo(providers, agentTypes, tools)
+      promptForAgentInfo(providers, agentTypes, tools, defaultProvider, defaultModel),
     );
+
+    // Validate the chosen model against the chosen provider
+    const chosenProvider = yield* llmService.getProvider(agentAnswers.llmProvider);
+    const selectedModel = chosenProvider.supportedModels.includes(agentAnswers.llmModel)
+      ? agentAnswers.llmModel
+      : chosenProvider.defaultModel || chosenProvider.supportedModels[0] || "gpt-4o-mini";
 
     // Build agent configuration
     const config: AgentConfig = {
       tasks: [],
       agentType: agentAnswers.agentType,
       llmProvider: agentAnswers.llmProvider,
-      llmModel: agentAnswers.llmModel,
+      llmModel: selectedModel,
       tools: agentAnswers.tools,
       environment: {},
     };
@@ -72,7 +88,7 @@ export function createAIAgentCommand(): Effect.Effect<
     const agent = yield* agentService.createAgent(
       agentAnswers.name,
       agentAnswers.description,
-      config
+      config,
     );
 
     // Display success message
@@ -98,12 +114,10 @@ export function createAIAgentCommand(): Effect.Effect<
 async function promptForAgentInfo(
   providers: readonly string[],
   agentTypes: readonly string[],
-  tools: readonly string[]
+  tools: readonly string[],
+  defaultProvider: string,
+  defaultModel: string,
 ): Promise<AIAgentCreationAnswers> {
-  // Get default provider and model
-  const defaultProvider = providers[0] || "mock";
-  const defaultModel = "gpt-4";
-
   const questions = [
     {
       type: "input",
@@ -174,7 +188,7 @@ async function promptForAgentInfo(
  * Chat with an AI agent
  */
 export function chatWithAIAgentCommand(
-  agentId: string
+  agentId: string,
 ): Effect.Effect<
   void,
   StorageError | StorageNotFoundError,
@@ -195,14 +209,14 @@ export function chatWithAIAgentCommand(
 
     // Start the chat loop with error logging (do not swallow silently)
     yield* startChatLoop(agent).pipe(
-      Effect.catchAll(error =>
+      Effect.catchAll((error) =>
         Effect.gen(function* () {
           const logger = yield* LoggerServiceTag;
           yield* logger.error("Chat loop error", { error });
           console.error("❌ Chat loop error:", error);
           return yield* Effect.void;
-        })
-      )
+        }),
+      ),
     );
   });
 }
@@ -211,7 +225,7 @@ export function chatWithAIAgentCommand(
  * Chat loop for interacting with the AI agent
  */
 function startChatLoop(
-  agent: Agent
+  agent: Agent,
 ): Effect.Effect<void, Error, LLMService | ToolRegistry | LoggerService> {
   return Effect.gen(function* () {
     let chatActive = true;
@@ -226,7 +240,7 @@ function startChatLoop(
             name: "message",
             message: "You:",
           },
-        ])
+        ]),
       );
 
       const userMessage = answer.message as string;
