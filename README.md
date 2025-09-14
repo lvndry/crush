@@ -177,12 +177,6 @@ bun run clean
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
-
-- [Effect-TS](https://effect.website/) - The functional programming library that powers this project
-- [Commander.js](https://github.com/tj/commander.js) - CLI framework
-- [TypeScript](https://www.typescriptlang.org/) - Type safety and developer experience
-
 ## 📞 Support
 
 - 📖 [Documentation](docs/)

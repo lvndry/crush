@@ -1,28 +1,8 @@
-# Crush Project TODO
+# Crush TODO
 
 ## 🎯 Current Priority: Task Execution Engine
 
 ## 🚀 What's Working Right Now
-
-The following features are **fully functional** and ready to use:
-
-### ✅ **Agent Management**
-```bash
-# Create agents with custom configuration
-crush agent create my-agent --description "My automation agent" --timeout 60000
-
-# List all agents
-crush agent list
-
-# Get detailed agent information
-crush agent get <agent-id>
-
-# Delete agents
-crush agent delete <agent-id>
-
-# Run agents (dry-run mode works, actual execution is placeholder)
-crush agent run <agent-id> --dry-run
-```
 
 ### ✅ **Storage System (Complete)**
 - Agents are persisted to `./data/agents/` as JSON files
@@ -59,12 +39,11 @@ crush agent run <agent-id> --dry-run
 ### Phase 1: Basic Agent Management ✅ COMPLETED
 
 #### ✅ Completed
-- [x] Project bootstrap with TypeScript + Effect-TS
+- [x] Project bootstrap with TypeScript + Effect
 - [x] Core type definitions and interfaces
 - [x] Effect layers for services (logging, config, storage)
 - [x] CLI framework with Commander.js
 - [x] Error handling with tagged errors
-- [x] Development tools (ESLint, Prettier, EditorConfig)
 - [x] Basic CLI structure and commands
 - [x] **Agent Creation CLI Command**
   - [x] Implement `crush agent create <name>` command
@@ -85,13 +64,17 @@ crush agent run <agent-id> --dry-run
 
 
 #### 🔄 In Progress
-- [ ] **Task Execution Engine** (Main Priority)
-  - [ ] Implement task execution framework
+- [ ] **Task Execution Engine**
+  - [X] Implement task execution framework
+  - [X] Implement Gmail tool execution
   - [ ] Command execution capability
   - [ ] Script execution capability
   - [ ] API call execution
   - [ ] File operation tasks
   - [ ] Result tracking and storage
+
+- [ ] **Ease of use**
+    - [ ] Cookbooks with concrete example of agents and worfklows that can be created
 
 #### 📋 Pending - Core Features
 - [ ] **Agent Execution**
@@ -316,34 +299,10 @@ crush agent run <agent-id> --dry-run
    - Testing framework
    - Documentation
 
-## 📝 Notes
-
-- **Effect-TS**: All async operations should use Effect.gen ✅ Implemented
-- **Type Safety**: Maintain strict TypeScript configuration ✅ Implemented
-- **Error Handling**: Use tagged errors for all error scenarios ✅ Implemented
-- **Testing**: Write tests for all core functionality 🔄 Next Priority
-- **Documentation**: Keep README and examples updated ✅ Completed
-
-## 🎯 Current Status Summary
-
-**✅ COMPLETED (Phase 1)**: Agent management system is fully functional
-- Complete CRUD operations for agents
-- File-based persistence working
-- CLI interface with all commands
-- Comprehensive validation system
-- Full documentation suite
-
-**🔄 CURRENT PRIORITY**: Task execution engine implementation
-- This is the main missing piece to make agents actually functional
-- All infrastructure is ready to support task execution
-- Need to implement command, script, API, and file task execution
-
-**📋 NEXT PHASES**: MCP integration, automation system, monitoring
-
 ## 🔗 Related Issues
 
 - ✅ Agent creation command implementation - COMPLETED
+- ✅ Storage layer - COMPLETED
+- ✅ CLI user experience improvements - COMPLETED
 - 🔄 Task execution engine design - IN PROGRESS
 - 📋 MCP protocol integration - PLANNED
-- ✅ Storage layer optimization - COMPLETED
-- ✅ CLI user experience improvements - COMPLETED
