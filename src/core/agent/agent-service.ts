@@ -19,7 +19,7 @@ export interface AgentService {
   readonly createAgent: (
     name: string,
     description: string,
-    config?: Partial<AgentConfig>
+    config?: Partial<AgentConfig>,
   ) => Effect.Effect<
     Agent,
     StorageError | AgentAlreadyExistsError | AgentConfigurationError | ValidationError
@@ -28,21 +28,21 @@ export interface AgentService {
   readonly listAgents: () => Effect.Effect<readonly Agent[], StorageError>;
   readonly updateAgent: (
     id: string,
-    updates: Partial<Agent>
+    updates: Partial<Agent>,
   ) => Effect.Effect<Agent, StorageError | StorageNotFoundError>;
   readonly deleteAgent: (id: string) => Effect.Effect<void, StorageError | StorageNotFoundError>;
   readonly validateAgentConfig: (
-    config: AgentConfig
+    config: AgentConfig,
   ) => Effect.Effect<void, AgentConfigurationError>;
 }
 
 export class DefaultAgentService implements AgentService {
-  constructor(private readonly storage: StorageService) { }
+  constructor(private readonly storage: StorageService) {}
 
   createAgent(
     name: string,
     description: string,
-    config: Partial<AgentConfig> = {}
+    config: Partial<AgentConfig> = {},
   ): Effect.Effect<
     Agent,
     StorageError | AgentAlreadyExistsError | AgentConfigurationError | ValidationError
@@ -110,7 +110,7 @@ export class DefaultAgentService implements AgentService {
         yield* this.storage.saveAgent(agent);
 
         return agent;
-      }.bind(this)
+      }.bind(this),
     );
   }
 
@@ -124,7 +124,7 @@ export class DefaultAgentService implements AgentService {
 
   updateAgent(
     id: string,
-    updates: Partial<Agent>
+    updates: Partial<Agent>,
   ): Effect.Effect<Agent, StorageError | StorageNotFoundError> {
     return Effect.gen(
       // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
@@ -141,7 +141,7 @@ export class DefaultAgentService implements AgentService {
 
         yield* this.storage.saveAgent(updatedAgent);
         return updatedAgent;
-      }.bind(this)
+      }.bind(this),
     );
   }
 
@@ -163,7 +163,7 @@ export class DefaultAgentService implements AgentService {
             agentId: "unknown",
             field: "timeout",
             message: "Timeout must be between 1000ms and 3600000ms (1 hour)",
-          })
+          }),
         );
       }
 
@@ -175,7 +175,7 @@ export class DefaultAgentService implements AgentService {
               agentId: "unknown",
               field: "retryPolicy.maxRetries",
               message: "Max retries must be between 0 and 10",
-            })
+            }),
           );
         }
 
@@ -185,7 +185,7 @@ export class DefaultAgentService implements AgentService {
               agentId: "unknown",
               field: "retryPolicy.delay",
               message: "Retry delay must be between 100ms and 60000ms",
-            })
+            }),
           );
         }
       }
@@ -201,7 +201,7 @@ function validateAgentName(name: string): Effect.Effect<void, ValidationError> {
         field: "name",
         message: "Agent name cannot be empty",
         value: name,
-      })
+      }),
     );
   }
 
@@ -211,7 +211,7 @@ function validateAgentName(name: string): Effect.Effect<void, ValidationError> {
         field: "name",
         message: "Agent name cannot exceed 100 characters",
         value: name,
-      })
+      }),
     );
   }
 
@@ -221,7 +221,7 @@ function validateAgentName(name: string): Effect.Effect<void, ValidationError> {
         field: "name",
         message: "Agent name can only contain letters, numbers, underscores, and hyphens",
         value: name,
-      })
+      }),
     );
   }
 
@@ -235,7 +235,7 @@ function validateAgentDescription(description: string): Effect.Effect<void, Vali
         field: "description",
         message: "Agent description cannot be empty",
         value: description,
-      })
+      }),
     );
   }
 
@@ -245,7 +245,7 @@ function validateAgentDescription(description: string): Effect.Effect<void, Vali
         field: "description",
         message: "Agent description cannot exceed 500 characters",
         value: description,
-      })
+      }),
     );
   }
 
@@ -257,7 +257,7 @@ function validateTask(task: Task): Effect.Effect<void, AgentConfigurationError> 
     // Validate task using schema
     yield* Effect.try({
       try: () => Schema.decodeUnknownSync(TaskSchema)(task),
-      catch: error =>
+      catch: (error) =>
         new AgentConfigurationError({
           agentId: "unknown",
           field: `task.${task.id}`,
@@ -272,7 +272,7 @@ function validateTask(task: Task): Effect.Effect<void, AgentConfigurationError> 
           agentId: "unknown",
           field: `task.${task.id}.name`,
           message: "Task name cannot be empty",
-        })
+        }),
       );
     }
 
@@ -285,7 +285,7 @@ function validateTask(task: Task): Effect.Effect<void, AgentConfigurationError> 
               agentId: "unknown",
               field: `task.${task.id}.config.command`,
               message: "Command tasks must have a command specified",
-            })
+            }),
           );
         }
         break;
@@ -296,7 +296,7 @@ function validateTask(task: Task): Effect.Effect<void, AgentConfigurationError> 
               agentId: "unknown",
               field: `task.${task.id}.config.script`,
               message: "Script tasks must have a script specified",
-            })
+            }),
           );
         }
         break;
@@ -307,7 +307,7 @@ function validateTask(task: Task): Effect.Effect<void, AgentConfigurationError> 
               agentId: "unknown",
               field: `task.${task.id}.config.url`,
               message: "API tasks must have a URL specified",
-            })
+            }),
           );
         }
         break;
@@ -318,7 +318,7 @@ function validateTask(task: Task): Effect.Effect<void, AgentConfigurationError> 
               agentId: "unknown",
               field: `task.${task.id}.config.filePath`,
               message: "File tasks must have a file path specified",
-            })
+            }),
           );
         }
         break;
@@ -329,7 +329,7 @@ function validateTask(task: Task): Effect.Effect<void, AgentConfigurationError> 
               agentId: "unknown",
               field: `task.${task.id}.config.gmailOperation`,
               message: "Gmail tasks must have an operation specified",
-            })
+            }),
           );
         }
         break;
@@ -345,7 +345,7 @@ export function createAgentServiceLayer(): Layer.Layer<AgentService, never, Stor
     Effect.gen(function* () {
       const storage = yield* StorageServiceTag;
       return new DefaultAgentService(storage);
-    })
+    }),
   );
 }
 
@@ -353,7 +353,7 @@ export function createAgentServiceLayer(): Layer.Layer<AgentService, never, Stor
 export function createAgent(
   name: string,
   description: string,
-  config?: Partial<AgentConfig>
+  config?: Partial<AgentConfig>,
 ): Effect.Effect<
   Agent,
   StorageError | AgentAlreadyExistsError | AgentConfigurationError | ValidationError,
@@ -366,7 +366,7 @@ export function createAgent(
 }
 
 export function getAgentById(
-  id: string
+  id: string,
 ): Effect.Effect<Agent, StorageError | StorageNotFoundError, AgentService> {
   return Effect.gen(function* () {
     const agentService = yield* AgentServiceTag;

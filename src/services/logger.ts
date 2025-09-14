@@ -47,7 +47,7 @@ export function createLoggerLayer(config: AppConfig): Layer.Layer<LoggerService>
 export function logAgentOperation(
   agentId: string,
   operation: string,
-  meta?: Record<string, unknown>
+  meta?: Record<string, unknown>,
 ): Effect.Effect<void, never, LoggerService> {
   return Effect.gen(function* () {
     const logger = yield* LoggerServiceTag;
@@ -62,7 +62,7 @@ export function logAgentOperation(
 export function logTaskExecution(
   taskId: string,
   status: "started" | "completed" | "failed",
-  meta?: Record<string, unknown>
+  meta?: Record<string, unknown>,
 ): Effect.Effect<void, never, LoggerService> {
   return Effect.gen(function* () {
     const logger = yield* LoggerServiceTag;
@@ -77,7 +77,7 @@ export function logTaskExecution(
 export function logAutomationEvent(
   automationId: string,
   event: string,
-  meta?: Record<string, unknown>
+  meta?: Record<string, unknown>,
 ): Effect.Effect<void, never, LoggerService> {
   return Effect.gen(function* () {
     const logger = yield* LoggerServiceTag;

@@ -9,7 +9,7 @@ export class LLMAuthenticationError extends Error {
   readonly _tag = "LLMAuthenticationError";
   constructor(
     public readonly provider: string,
-    message: string
+    message: string,
   ) {
     super(message);
     this.name = "LLMAuthenticationError";
@@ -20,7 +20,7 @@ export class LLMRequestError extends Error {
   readonly _tag = "LLMRequestError";
   constructor(
     public readonly provider: string,
-    message: string
+    message: string,
   ) {
     super(message);
     this.name = "LLMRequestError";
@@ -31,7 +31,7 @@ export class LLMRateLimitError extends Error {
   readonly _tag = "LLMRateLimitError";
   constructor(
     public readonly provider: string,
-    message: string
+    message: string,
   ) {
     super(message);
     this.name = "LLMRateLimitError";
@@ -42,7 +42,7 @@ export class LLMConfigurationError extends Error {
   readonly _tag = "LLMConfigurationError";
   constructor(
     public readonly provider: string,
-    message: string
+    message: string,
   ) {
     super(message);
     this.name = "LLMConfigurationError";
@@ -71,7 +71,7 @@ export interface ChatMessage {
   tool_calls?: ReadonlyArray<{
     id: string;
     type: "function";
-    function: { name: string; arguments: string; };
+    function: { name: string; arguments: string };
   }>;
 }
 
@@ -121,7 +121,7 @@ export interface ChatCompletionOptions {
   temperature?: number;
   maxTokens?: number;
   tools?: ToolDefinition[];
-  toolChoice?: "auto" | "none" | { type: "function"; function: { name: string; }; };
+  toolChoice?: "auto" | "none" | { type: "function"; function: { name: string } };
   stream?: boolean;
 }
 
@@ -135,7 +135,7 @@ export interface LLMProvider {
   readonly supportsVision: boolean;
   readonly authenticate: () => Effect.Effect<void, LLMAuthenticationError>;
   readonly createChatCompletion: (
-    options: ChatCompletionOptions
+    options: ChatCompletionOptions,
   ) => Effect.Effect<ChatCompletionResponse, LLMError>;
 }
 
@@ -145,7 +145,7 @@ export interface LLMService {
   readonly listProviders: () => Effect.Effect<readonly string[], never>;
   readonly createChatCompletion: (
     providerName: string,
-    options: ChatCompletionOptions
+    options: ChatCompletionOptions,
   ) => Effect.Effect<ChatCompletionResponse, LLMError>;
 }
 

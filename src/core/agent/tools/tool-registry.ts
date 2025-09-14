@@ -24,36 +24,36 @@ export interface Tool<R = never> {
   readonly parameters: Record<string, unknown>;
   readonly execute: (
     args: Record<string, unknown>,
-    context: ToolExecutionContext
+    context: ToolExecutionContext,
   ) => Effect.Effect<ToolExecutionResult, Error, R>;
 }
 
 export interface ToolRegistry {
-  readonly registerTool: (tool: Tool<any>) => Effect.Effect<void, never>;
-  readonly getTool: (name: string) => Effect.Effect<Tool<any>, Error>;
+  readonly registerTool: (tool: Tool<unknown>) => Effect.Effect<void, never>;
+  readonly getTool: (name: string) => Effect.Effect<Tool<unknown>, Error>;
   readonly listTools: () => Effect.Effect<readonly string[], never>;
   readonly getToolDefinitions: () => Effect.Effect<readonly ToolDefinition[], never>;
   readonly executeTool: (
     name: string,
     args: Record<string, unknown>,
-    context: ToolExecutionContext
-  ) => Effect.Effect<ToolExecutionResult, Error, ToolRegistry | any>;
+    context: ToolExecutionContext,
+  ) => Effect.Effect<ToolExecutionResult, Error, ToolRegistry>;
 }
 
 class DefaultToolRegistry implements ToolRegistry {
-  private tools: Map<string, Tool<any>>;
+  private tools: Map<string, Tool<unknown>>;
 
   constructor() {
-    this.tools = new Map<string, Tool<any>>();
+    this.tools = new Map<string, Tool<unknown>>();
   }
 
-  registerTool(tool: Tool<any>): Effect.Effect<void, never> {
+  registerTool(tool: Tool<unknown>): Effect.Effect<void, never> {
     return Effect.sync(() => {
       this.tools.set(tool.name, tool);
     });
   }
 
-  getTool(name: string): Effect.Effect<Tool<any>, Error> {
+  getTool(name: string): Effect.Effect<Tool<unknown>, Error> {
     return Effect.try({
       try: () => {
         const tool = this.tools.get(name);
@@ -74,7 +74,7 @@ class DefaultToolRegistry implements ToolRegistry {
     return Effect.sync(() => {
       const definitions: ToolDefinition[] = [];
 
-      this.tools.forEach(tool => {
+      this.tools.forEach((tool) => {
         definitions.push({
           type: "function",
           function: {
@@ -92,17 +92,39 @@ class DefaultToolRegistry implements ToolRegistry {
   executeTool(
     name: string,
     args: Record<string, unknown>,
-    context: ToolExecutionContext
-  ): Effect.Effect<ToolExecutionResult, Error, ToolRegistry | any> {
-    return this.getTool(name).pipe(
-      Effect.flatMap(tool =>
-        (
-          tool.execute as (
+    context: ToolExecutionContext,
+  ): Effect.Effect<ToolExecutionResult, Error, ToolRegistry> {
+    return Effect.gen(
+      function* (this: DefaultToolRegistry) {
+        const start = Date.now();
+        const tool = yield* this.getTool(name);
+        try {
+          const exec = tool.execute as (
             a: Record<string, unknown>,
-            c: ToolExecutionContext
-          ) => Effect.Effect<ToolExecutionResult, Error, any>
-        )(args, context)
-      )
+            c: ToolExecutionContext,
+          ) => Effect.Effect<ToolExecutionResult, Error, never>;
+          const result = yield* exec(args, context);
+          const durationMs = Date.now() - start;
+          // Best-effort audit log; do not fail the call if logging fails
+          yield* Effect.logInfo("tool.execute.success", {
+            toolName: name,
+            agentId: context.agentId,
+            conversationId: context.conversationId,
+            durationMs,
+          }).pipe(Effect.catchAll(() => Effect.void));
+          return result;
+        } catch (err) {
+          const durationMs = Date.now() - start;
+          yield* Effect.logError("tool.execute.error", {
+            toolName: name,
+            agentId: context.agentId,
+            conversationId: context.conversationId,
+            durationMs,
+            error: err instanceof Error ? err.message : String(err),
+          }).pipe(Effect.catchAll(() => Effect.void));
+          throw err as Error;
+        }
+      }.bind(this),
     );
   }
 }
@@ -116,7 +138,7 @@ export function createToolRegistryLayer(): Layer.Layer<ToolRegistry> {
 }
 
 // Helper functions for common tool registry operations
-export function registerTool(tool: Tool<any>): Effect.Effect<void, never, ToolRegistry> {
+export function registerTool(tool: Tool<unknown>): Effect.Effect<void, never, ToolRegistry> {
   return Effect.gen(function* () {
     const registry = yield* ToolRegistryTag;
     return yield* registry.registerTool(tool);
@@ -126,8 +148,8 @@ export function registerTool(tool: Tool<any>): Effect.Effect<void, never, ToolRe
 export function executeTool(
   name: string,
   args: Record<string, unknown>,
-  context: ToolExecutionContext
-): Effect.Effect<ToolExecutionResult, Error, ToolRegistry | any> {
+  context: ToolExecutionContext,
+): Effect.Effect<ToolExecutionResult, Error, ToolRegistry> {
   return Effect.gen(function* () {
     const registry = yield* ToolRegistryTag;
     return yield* registry.executeTool(name, args, context);

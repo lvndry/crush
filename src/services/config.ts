@@ -29,7 +29,7 @@ export class ConfigServiceImpl implements ConfigService {
 
   get<A>(key: string): Effect.Effect<A, never> {
     return Effect.sync(
-      () => deepGet(this.currentConfig as unknown as Record<string, unknown>, key) as A
+      () => deepGet(this.currentConfig as unknown as Record<string, unknown>, key) as A,
     );
   }
 
@@ -42,13 +42,13 @@ export class ConfigServiceImpl implements ConfigService {
 
   getOrFail<A>(key: string): Effect.Effect<A, never> {
     return Effect.sync(
-      () => deepGet(this.currentConfig as unknown as Record<string, unknown>, key) as A
+      () => deepGet(this.currentConfig as unknown as Record<string, unknown>, key) as A,
     );
   }
 
   has(key: string): Effect.Effect<boolean, never> {
     return Effect.sync(() =>
-      deepHas(this.currentConfig as unknown as Record<string, unknown>, key)
+      deepHas(this.currentConfig as unknown as Record<string, unknown>, key),
     );
   }
 
@@ -72,17 +72,17 @@ export function createConfigLayer(): Layer.Layer<ConfigService, never, FileSyste
       const fs = yield* FileSystem.FileSystem;
       const loaded = yield* loadConfigFile(fs);
       const config = applyEnvOverrides(
-        mergeConfig(defaultConfig(), loaded.fileConfig ?? undefined)
+        mergeConfig(defaultConfig(), loaded.fileConfig ?? undefined),
       );
       return new ConfigServiceImpl(config);
-    })
+    }),
   );
 }
 
 // Helper functions for common configuration operations
 export function getConfigValue<T>(
   key: string,
-  defaultValue: T
+  defaultValue: T,
 ): Effect.Effect<T, never, ConfigService> {
   return Effect.gen(function* () {
     const config = yield* AgentConfigService;
@@ -186,13 +186,13 @@ function applyEnvOverrides(cfg: AppConfig): AppConfig {
   const secRateLimit =
     secRateRequests !== undefined || secRateWindow !== undefined
       ? {
-        rateLimit: {
-          requests:
-            secRateRequests ?? (cfg.security.rateLimit ? cfg.security.rateLimit.requests : 100),
-          window:
-            secRateWindow ?? (cfg.security.rateLimit ? cfg.security.rateLimit.window : 60000),
-        },
-      }
+          rateLimit: {
+            requests:
+              secRateRequests ?? (cfg.security.rateLimit ? cfg.security.rateLimit.requests : 100),
+            window:
+              secRateWindow ?? (cfg.security.rateLimit ? cfg.security.rateLimit.window : 60000),
+          },
+        }
       : cfg.security.rateLimit
         ? { rateLimit: cfg.security.rateLimit }
         : {};
@@ -204,11 +204,11 @@ function applyEnvOverrides(cfg: AppConfig): AppConfig {
         : {}),
     ...(envOrigins
       ? {
-        allowedOrigins: envOrigins
-          .split(",")
-          .map(s => s.trim())
-          .filter(Boolean),
-      }
+          allowedOrigins: envOrigins
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean),
+        }
       : cfg.security.allowedOrigins
         ? { allowedOrigins: cfg.security.allowedOrigins }
         : {}),

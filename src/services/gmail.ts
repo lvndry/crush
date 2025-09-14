@@ -49,10 +49,10 @@ export interface GmailService {
   readonly authenticate: () => Effect.Effect<void, GmailAuthenticationError>;
   readonly listEmails: (
     maxResults?: number,
-    query?: string
+    query?: string,
   ) => Effect.Effect<GmailEmail[], GmailOperationError | GmailAuthenticationError>;
   readonly getEmail: (
-    emailId: string
+    emailId: string,
   ) => Effect.Effect<GmailEmail, GmailOperationError | GmailAuthenticationError>;
   readonly sendEmail: (
     to: string[],
@@ -66,11 +66,11 @@ export interface GmailService {
         content: string | Buffer;
         contentType?: string;
       }>;
-    }
+    },
   ) => Effect.Effect<void, GmailOperationError | GmailAuthenticationError>;
   readonly searchEmails: (
     query: string,
-    maxResults?: number
+    maxResults?: number,
   ) => Effect.Effect<GmailEmail[], GmailOperationError | GmailAuthenticationError>;
 }
 
@@ -88,8 +88,8 @@ export class GmailServiceResource implements GmailService {
     private readonly fs: FileSystem.FileSystem,
     private readonly tokenFilePath: string,
     private oauthClient: InstanceType<typeof google.auth.OAuth2>,
-    private gmail: gmail_v1.Gmail
-  ) { }
+    private gmail: gmail_v1.Gmail,
+  ) {}
 
   authenticate(): Effect.Effect<void, GmailAuthenticationError> {
     return Effect.gen(
@@ -99,13 +99,13 @@ export class GmailServiceResource implements GmailService {
           yield* this.performOAuthFlow();
         }
         return void 0;
-      }.bind(this)
+      }.bind(this),
     );
   }
 
   listEmails(
     maxResults: number = 10,
-    query?: string
+    query?: string,
   ): Effect.Effect<GmailEmail[], GmailOperationError | GmailAuthenticationError> {
     return Effect.gen(
       function* (this: GmailServiceResource) {
@@ -134,15 +134,15 @@ export class GmailServiceResource implements GmailService {
           return emails;
         } catch (err) {
           throw new GmailOperationError(
-            `Failed to list emails: ${err instanceof Error ? err.message : String(err)}`
+            `Failed to list emails: ${err instanceof Error ? err.message : String(err)}`,
           );
         }
-      }.bind(this)
+      }.bind(this),
     );
   }
 
   getEmail(
-    emailId: string
+    emailId: string,
   ): Effect.Effect<GmailEmail, GmailOperationError | GmailAuthenticationError> {
     return Effect.gen(
       function* (this: GmailServiceResource) {
@@ -158,10 +158,10 @@ export class GmailServiceResource implements GmailService {
           return email;
         } catch (err) {
           throw new GmailOperationError(
-            `Failed to get email: ${err instanceof Error ? err.message : String(err)}`
+            `Failed to get email: ${err instanceof Error ? err.message : String(err)}`,
           );
         }
-      }.bind(this)
+      }.bind(this),
     );
   }
 
@@ -172,8 +172,8 @@ export class GmailServiceResource implements GmailService {
     options?: {
       cc?: string[];
       bcc?: string[];
-      attachments?: Array<{ filename: string; content: string | Buffer; contentType?: string; }>;
-    }
+      attachments?: Array<{ filename: string; content: string | Buffer; contentType?: string }>;
+    },
   ): Effect.Effect<void, GmailOperationError | GmailAuthenticationError> {
     return Effect.gen(
       function* (this: GmailServiceResource) {
@@ -188,21 +188,21 @@ export class GmailServiceResource implements GmailService {
           });
           // Attachments not implemented in this first pass
           yield* Effect.promise(() =>
-            this.gmail.users.messages.send({ userId: "me", requestBody: { raw } })
+            this.gmail.users.messages.send({ userId: "me", requestBody: { raw } }),
           );
           return void 0;
         } catch (err) {
           throw new GmailOperationError(
-            `Failed to send email: ${err instanceof Error ? err.message : String(err)}`
+            `Failed to send email: ${err instanceof Error ? err.message : String(err)}`,
           );
         }
-      }.bind(this)
+      }.bind(this),
     );
   }
 
   searchEmails(
     query: string,
-    maxResults: number = 10
+    maxResults: number = 10,
   ): Effect.Effect<GmailEmail[], GmailOperationError | GmailAuthenticationError> {
     return this.listEmails(maxResults, query);
   }
@@ -215,7 +215,7 @@ export class GmailServiceResource implements GmailService {
           yield* this.performOAuthFlow();
         }
         return void 0;
-      }.bind(this)
+      }.bind(this),
     );
   }
 
@@ -224,7 +224,7 @@ export class GmailServiceResource implements GmailService {
       function* (this: GmailServiceResource) {
         const token = yield* this.fs.readFileString(this.tokenFilePath).pipe(
           Effect.mapError(() => undefined),
-          Effect.catchAll(() => Effect.succeed(undefined as unknown as string))
+          Effect.catchAll(() => Effect.succeed(undefined as unknown as string)),
         );
         if (!token) return false;
         try {
@@ -234,7 +234,7 @@ export class GmailServiceResource implements GmailService {
         } catch {
           return false;
         }
-      }.bind(this)
+      }.bind(this),
     );
   }
 
@@ -271,7 +271,7 @@ export class GmailServiceResource implements GmailService {
         });
 
         // Start local server to capture the OAuth code
-        const code = yield* Effect.async<string, GmailAuthenticationError>(resume => {
+        const code = yield* Effect.async<string, GmailAuthenticationError>((resume) => {
           const server = http.createServer((req, res) => {
             if (!req.url) return;
             const url = new URL(req.url, `http://localhost:${port}`);
@@ -280,7 +280,7 @@ export class GmailServiceResource implements GmailService {
               if (codeParam) {
                 res.writeHead(200, { "Content-Type": "text/html" });
                 res.end(
-                  "<html><body><h1>Authentication successful</h1>You can close this window.</body></html>"
+                  "<html><body><h1>Authentication successful</h1>You can close this window.</body></html>",
                 );
                 server.close(() => resume(Effect.succeed(codeParam)));
               } else {
@@ -309,10 +309,10 @@ export class GmailServiceResource implements GmailService {
           yield* this.persistToken(tokenResp.tokens);
         } catch (err) {
           throw new GmailAuthenticationError(
-            `OAuth flow failed: ${err instanceof Error ? err.message : String(err)}`
+            `OAuth flow failed: ${err instanceof Error ? err.message : String(err)}`,
           );
         }
-      }.bind(this)
+      }.bind(this),
     );
   }
 
@@ -328,19 +328,19 @@ export class GmailServiceResource implements GmailService {
           .writeFileString(this.tokenFilePath, content)
           .pipe(
             Effect.mapError(
-              err =>
+              (err) =>
                 new GmailAuthenticationError(
-                  `Failed to persist token: ${String((err as Error).message ?? err)}`
-                )
-            )
+                  `Failed to persist token: ${String((err as Error).message ?? err)}`,
+                ),
+            ),
           );
-      }.bind(this)
+      }.bind(this),
     );
   }
 
   private parseMessageToEmail(
     message: gmail_v1.Schema$Message,
-    includeBody: boolean = false
+    includeBody: boolean = false,
   ): GmailEmail {
     const headers = (message.payload?.headers ?? []).reduce<Record<string, string>>((acc, h) => {
       if (h.name && h.value) acc[h.name.toLowerCase()] = h.value;
@@ -426,7 +426,7 @@ export function createGmailServiceLayer(): Layer.Layer<GmailService, never, File
       const clientSecret = process.env["GOOGLE_CLIENT_SECRET"];
       if (!clientId || !clientSecret) {
         throw new GmailAuthenticationError(
-          "Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET in environment"
+          "Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET in environment",
         );
       }
 
@@ -441,10 +441,10 @@ export function createGmailServiceLayer(): Layer.Layer<GmailService, never, File
         fs,
         tokenFilePath,
         oauth2Client,
-        gmail
+        gmail,
       );
       return service;
-    })
+    }),
   );
 }
 
@@ -458,7 +458,7 @@ export function authenticateGmail(): Effect.Effect<void, GmailAuthenticationErro
 
 export function listGmailEmails(
   maxResults?: number,
-  query?: string
+  query?: string,
 ): Effect.Effect<GmailEmail[], GmailOperationError | GmailAuthenticationError, GmailService> {
   return Effect.gen(function* () {
     const gmailService = yield* GmailServiceTag;
@@ -467,7 +467,7 @@ export function listGmailEmails(
 }
 
 export function getGmailEmail(
-  emailId: string
+  emailId: string,
 ): Effect.Effect<GmailEmail, GmailOperationError | GmailAuthenticationError, GmailService> {
   return Effect.gen(function* () {
     const gmailService = yield* GmailServiceTag;
@@ -487,7 +487,7 @@ export function sendGmailEmail(
       content: string | Buffer;
       contentType?: string;
     }>;
-  }
+  },
 ): Effect.Effect<void, GmailOperationError | GmailAuthenticationError, GmailService> {
   return Effect.gen(function* () {
     const gmailService = yield* GmailServiceTag;
@@ -497,7 +497,7 @@ export function sendGmailEmail(
 
 export function searchGmailEmails(
   query: string,
-  maxResults?: number
+  maxResults?: number,
 ): Effect.Effect<GmailEmail[], GmailOperationError | GmailAuthenticationError, GmailService> {
   return Effect.gen(function* () {
     const gmailService = yield* GmailServiceTag;

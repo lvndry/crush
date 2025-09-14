@@ -37,7 +37,7 @@ class DefaultLiteLLMService implements LLMService {
 
     // Define supported models for each provider
     this.providerModels = {
-      openai: ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"],
+      openai: ["gpt-5", "gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"],
       anthropic: ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"],
       google: ["gemini-pro", "gemini-1.5-pro"],
       mistral: ["mistral-small", "mistral-medium", "mistral-large"],
@@ -70,10 +70,10 @@ class DefaultLiteLLMService implements LLMService {
               catch: (error: unknown) =>
                 new LLMAuthenticationError(
                   providerName,
-                  error instanceof Error ? error.message : String(error)
+                  error instanceof Error ? error.message : String(error),
                 ),
             }),
-          createChatCompletion: options => this.createChatCompletion(providerName, options),
+          createChatCompletion: (options) => this.createChatCompletion(providerName, options),
         };
 
         return provider;
@@ -81,20 +81,20 @@ class DefaultLiteLLMService implements LLMService {
       catch: (error: unknown) =>
         new LLMConfigurationError(
           providerName,
-          `Failed to get provider: ${error instanceof Error ? error.message : String(error)}`
+          `Failed to get provider: ${error instanceof Error ? error.message : String(error)}`,
         ),
     });
   }
 
   listProviders(): Effect.Effect<readonly string[], never> {
     const configuredProviders = Object.keys(this.config.apiKeys);
-    const intersect = configuredProviders.filter(p => this.providerModels[p]);
+    const intersect = configuredProviders.filter((p) => this.providerModels[p]);
     return Effect.succeed(intersect);
   }
 
   createChatCompletion(
     providerName: string,
-    options: ChatCompletionOptions
+    options: ChatCompletionOptions,
   ): Effect.Effect<ChatCompletionResponse, LLMError> {
     return Effect.tryPromise({
       try: async () => {
@@ -104,31 +104,86 @@ class DefaultLiteLLMService implements LLMService {
         // Format model name for LiteLLM (e.g., "openai/gpt-4")
         const formattedModel = `${providerName}/${options.model}`;
 
-        // Convert our message format to LiteLLM-compatible messages
-        const convertedMessages: ReadonlyArray<{
-          role: "system" | "user" | "assistant";
-          content: string | null;
-        }> = options.messages.map(msg => {
-          if (msg.role === "system" || msg.role === "user" || msg.role === "assistant") {
-            return { role: msg.role, content: msg.content } as const;
-          }
-          // Fold unsupported roles (e.g., tool/function) into assistant content
-          return { role: "assistant", content: msg.content } as const;
-        });
+        // Convert our message format to LiteLLM/OpenAI-compatible messages, including tools
+        const convertedMessages: ReadonlyArray<Record<string, unknown>> = options.messages.map(
+          (m) => {
+            if (
+              m.role === "system" ||
+              m.role === "user" ||
+              m.role === "assistant" ||
+              m.role === "tool"
+            ) {
+              const msg: Record<string, unknown> = { role: m.role, content: m.content };
+              if (m.name) msg["name"] = m.name;
+              // Attach tool_calls to assistant messages when present
+              if (m.role === "assistant") {
+                const raw = (m as { tool_calls?: unknown }).tool_calls;
+                if (Array.isArray(raw)) {
+                  const mapped: Array<{
+                    id: string;
+                    type: "function";
+                    function: { name: string; arguments: string };
+                  }> = [];
+                  for (const t of raw) {
+                    if (
+                      t &&
+                      typeof t === "object" &&
+                      typeof (t as Record<string, unknown>)["id"] === "string" &&
+                      (t as Record<string, unknown>)["type"] === "function" &&
+                      typeof (t as Record<string, unknown>)["function"] === "object"
+                    ) {
+                      const fn = (t as Record<string, unknown>)["function"] as Record<
+                        string,
+                        unknown
+                      >;
+                      if (typeof fn["name"] === "string" && typeof fn["arguments"] === "string") {
+                        mapped.push({
+                          id: String((t as Record<string, unknown>)["id"]),
+                          type: "function",
+                          function: {
+                            name: String(fn["name"]),
+                            arguments: String(fn["arguments"]),
+                          },
+                        });
+                      }
+                    }
+                  }
+                  if (mapped.length > 0) {
+                    msg["tool_calls"] = mapped;
+                  }
+                }
+              }
+              // Attach tool_call_id to tool messages when present
+              if (m.role === "tool" && m.tool_call_id) {
+                msg["tool_call_id"] = m.tool_call_id;
+              }
+              return msg;
+            }
+            // Fold unsupported roles (e.g., function) into assistant content
+            return { role: "assistant", content: m.content } as const;
+          },
+        );
 
-        // Convert our options format to LiteLLM format (non-streaming)
-        const liteLLMOptions = {
+        // Convert our options format to LiteLLM/OpenAI format (non-streaming)
+        const liteLLMOptions: Record<string, unknown> = {
           model: formattedModel,
           messages: convertedMessages,
           temperature: options.temperature ?? null,
           max_tokens: options.maxTokens ?? null,
           // Explicitly set non-streaming to satisfy types
           stream: false as const,
-        } as const;
+        };
+
+        if (options.tools && options.tools.length > 0) {
+          liteLLMOptions["tools"] = options.tools;
+        }
+        if (options.toolChoice) {
+          liteLLMOptions["tool_choice"] = options.toolChoice as unknown as Record<string, unknown>;
+        }
 
         // Call LiteLLM (treat response as unknown and narrow safely)
         const responseUnknown: unknown = await litellm.completion(
-          liteLLMOptions as unknown as Parameters<typeof litellm.completion>[0]
+          liteLLMOptions as unknown as Parameters<typeof litellm.completion>[0],
         );
 
         function isRecord(value: unknown): value is Record<string, unknown> {
@@ -165,7 +220,7 @@ class DefaultLiteLLMService implements LLMService {
             const mapped: Array<{
               id: string;
               type: "function";
-              function: { name: string; arguments: string; };
+              function: { name: string; arguments: string };
             }> = [];
             for (const t of tc) {
               if (isRecord(t) && typeof t["id"] === "string" && isRecord(t["function"])) {
@@ -266,7 +321,7 @@ function loadLiteLLMConfig(): Effect.Effect<LiteLLMConfig, LLMConfigurationError
       if (providers.length === 0) {
         throw new LLMConfigurationError(
           "unknown",
-          "No API keys found. Please set environment variables (e.g., OPENAI_API_KEY)."
+          "No API keys found. Please set environment variables (e.g., OPENAI_API_KEY).",
         );
       }
 
@@ -280,7 +335,7 @@ function loadLiteLLMConfig(): Effect.Effect<LiteLLMConfig, LLMConfigurationError
     catch: (error: unknown) =>
       new LLMConfigurationError(
         "unknown",
-        `Failed to load LLM configuration: ${error instanceof Error ? error.message : String(error)}`
+        `Failed to load LLM configuration: ${error instanceof Error ? error.message : String(error)}`,
       ),
   });
 }
@@ -292,6 +347,6 @@ export function createLiteLLMServiceLayer(): Layer.Layer<LLMService, LLMConfigur
     Effect.gen(function* () {
       const config = yield* loadLiteLLMConfig();
       return new DefaultLiteLLMService(config);
-    })
+    }),
   );
 }

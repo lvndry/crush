@@ -11,7 +11,7 @@ export class GmailTaskError extends Error {
   constructor(
     public readonly taskId: string,
     message: string,
-    public override readonly cause?: unknown
+    public override readonly cause?: unknown,
   ) {
     super(message);
     this.name = "GmailTaskError";
@@ -31,7 +31,7 @@ export class GmailTaskError extends Error {
  * Execute a Gmail task
  */
 export function executeGmailTask(
-  task: Task
+  task: Task,
 ): Effect.Effect<TaskResult, GmailTaskError, GmailService> {
   return Effect.gen(function* () {
     const startTime = Date.now();
@@ -47,17 +47,17 @@ export function executeGmailTask(
           const query = (task.config.gmailQuery as string) || "";
 
           const emails = yield* gmailService.listEmails(maxResults, query).pipe(
-            Effect.catchAll(error => {
+            Effect.catchAll((error) => {
               if (error._tag === "GmailAuthenticationError") {
                 return Effect.fail(
-                  new GmailTaskError(task.id, `Authentication error: ${error.message}`, error)
+                  new GmailTaskError(task.id, `Authentication error: ${error.message}`, error),
                 );
               } else {
                 return Effect.fail(
-                  new GmailTaskError(task.id, `Operation error: ${error.message}`, error)
+                  new GmailTaskError(task.id, `Operation error: ${error.message}`, error),
                 );
               }
-            })
+            }),
           );
 
           // Format the result
@@ -90,17 +90,17 @@ export function executeGmailTask(
           }
 
           const email = yield* gmailService.getEmail(emailId).pipe(
-            Effect.catchAll(error => {
+            Effect.catchAll((error) => {
               if (error._tag === "GmailAuthenticationError") {
                 return Effect.fail(
-                  new GmailTaskError(task.id, `Authentication error: ${error.message}`)
+                  new GmailTaskError(task.id, `Authentication error: ${error.message}`),
                 );
               } else {
                 return Effect.fail(
-                  new GmailTaskError(task.id, `Operation error: ${error.message}`)
+                  new GmailTaskError(task.id, `Operation error: ${error.message}`),
                 );
               }
-            })
+            }),
           );
 
           return {
@@ -134,17 +134,17 @@ export function executeGmailTask(
           }
 
           yield* gmailService.sendEmail(to, subject, body, { cc, bcc }).pipe(
-            Effect.catchAll(error => {
+            Effect.catchAll((error) => {
               if (error._tag === "GmailAuthenticationError") {
                 return Effect.fail(
-                  new GmailTaskError(task.id, `Authentication error: ${error.message}`)
+                  new GmailTaskError(task.id, `Authentication error: ${error.message}`),
                 );
               } else {
                 return Effect.fail(
-                  new GmailTaskError(task.id, `Operation error: ${error.message}`)
+                  new GmailTaskError(task.id, `Operation error: ${error.message}`),
                 );
               }
-            })
+            }),
           );
 
           return {
@@ -175,17 +175,17 @@ export function executeGmailTask(
           }
 
           const emails = yield* gmailService.searchEmails(query, maxResults).pipe(
-            Effect.catchAll(error => {
+            Effect.catchAll((error) => {
               if (error._tag === "GmailAuthenticationError") {
                 return Effect.fail(
-                  new GmailTaskError(task.id, `Authentication error: ${error.message}`)
+                  new GmailTaskError(task.id, `Authentication error: ${error.message}`),
                 );
               } else {
                 return Effect.fail(
-                  new GmailTaskError(task.id, `Operation error: ${error.message}`)
+                  new GmailTaskError(task.id, `Operation error: ${error.message}`),
                 );
               }
-            })
+            }),
           );
 
           // Format the result

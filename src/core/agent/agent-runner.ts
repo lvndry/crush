@@ -6,6 +6,7 @@ import {
   type ToolCall,
   type ToolDefinition,
 } from "../../services/llm/types";
+import { type LoggerService } from "../../services/logger";
 import { type Agent } from "../types";
 import { agentPromptBuilder } from "./agent-prompt";
 import {
@@ -38,8 +39,8 @@ export class AgentRunner {
    * Run an agent conversation
    */
   static run(
-    options: AgentRunnerOptions
-  ): Effect.Effect<AgentResponse, Error, LLMService | ToolRegistry> {
+    options: AgentRunnerOptions,
+  ): Effect.Effect<AgentResponse, Error, LLMService | ToolRegistry | LoggerService> {
     return Effect.gen(function* () {
       const { agent, userInput, conversationId, userId, maxIterations = 5 } = options;
 
@@ -104,12 +105,12 @@ export class AgentRunner {
           content: completion.content,
           ...(completion.toolCalls
             ? {
-              tool_calls: completion.toolCalls.map(tc => ({
-                id: tc.id,
-                type: tc.type,
-                function: { name: tc.function.name, arguments: tc.function.arguments },
-              })),
-            }
+                tool_calls: completion.toolCalls.map((tc) => ({
+                  id: tc.id,
+                  type: tc.type,
+                  function: { name: tc.function.name, arguments: tc.function.arguments },
+                })),
+              }
             : {}),
         });
 

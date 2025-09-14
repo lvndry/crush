@@ -97,7 +97,7 @@ You can help with writing code, debugging issues, and explaining programming con
    */
   buildSystemPrompt(
     templateName: string,
-    options: AgentPromptOptions
+    options: AgentPromptOptions,
   ): Effect.Effect<string, Error> {
     return Effect.gen(
       function* (this: AgentPromptBuilder) {
@@ -112,7 +112,7 @@ You can help with writing code, debugging issues, and explaining programming con
         if (options.toolNames && options.toolNames.length > 0) {
           let toolInstructions = "You have access to the following tools:\n\n";
 
-          options.toolNames.forEach(toolName => {
+          options.toolNames.forEach((toolName) => {
             const description =
               options.availableTools?.[toolName] ||
               template.toolDescriptions?.[toolName] ||
@@ -130,7 +130,7 @@ You can help with writing code, debugging issues, and explaining programming con
         }
 
         return systemPrompt;
-      }.bind(this)
+      }.bind(this),
     );
   }
 
@@ -144,7 +144,7 @@ You can help with writing code, debugging issues, and explaining programming con
 
         // Replace placeholders in user prompt
         return template.userPromptTemplate.replace("{userInput}", options.userInput);
-      }.bind(this)
+      }.bind(this),
     );
   }
 
@@ -153,7 +153,7 @@ You can help with writing code, debugging issues, and explaining programming con
    */
   buildAgentMessages(
     templateName: string,
-    options: AgentPromptOptions
+    options: AgentPromptOptions,
   ): Effect.Effect<ChatMessage[], Error> {
     return Effect.gen(
       function* (this: AgentPromptBuilder) {
@@ -165,7 +165,9 @@ You can help with writing code, debugging issues, and explaining programming con
         // Add conversation history if available
         if (options.conversationHistory && options.conversationHistory.length > 0) {
           // Filter out system messages from history
-          const filteredHistory = options.conversationHistory.filter(msg => msg.role !== "system");
+          const filteredHistory = options.conversationHistory.filter(
+            (msg) => msg.role !== "system",
+          );
 
           messages.push(...filteredHistory);
         }
@@ -179,7 +181,7 @@ You can help with writing code, debugging issues, and explaining programming con
         }
 
         return messages;
-      }.bind(this)
+      }.bind(this),
     );
   }
 }

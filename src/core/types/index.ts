@@ -99,12 +99,12 @@ export interface TriggerConfig {
 export interface Condition {
   readonly field: string;
   readonly operator:
-  | "equals"
-  | "not_equals"
-  | "contains"
-  | "not_contains"
-  | "greater_than"
-  | "less_than";
+    | "equals"
+    | "not_equals"
+    | "contains"
+    | "not_contains"
+    | "greater_than"
+    | "less_than";
   readonly value: unknown;
 }
 
@@ -199,7 +199,7 @@ export const AgentSchema = Schema.Struct({
         dependencies: Schema.optional(Schema.Array(Schema.String)),
         retryCount: Schema.optional(Schema.Number),
         maxRetries: Schema.optional(Schema.Number),
-      })
+      }),
     ),
     schedule: Schema.optional(
       Schema.Struct({
@@ -207,7 +207,7 @@ export const AgentSchema = Schema.Struct({
         value: Schema.Union(Schema.String, Schema.Number),
         timezone: Schema.optional(Schema.String),
         enabled: Schema.Boolean,
-      })
+      }),
     ),
     retryPolicy: Schema.optional(
       Schema.Struct({
@@ -215,7 +215,7 @@ export const AgentSchema = Schema.Struct({
         backoff: Schema.Literal("linear", "exponential", "fixed"),
         delay: Schema.Number,
         maxDelay: Schema.optional(Schema.Number),
-      })
+      }),
     ),
     timeout: Schema.optional(Schema.Number),
     environment: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.String })),
@@ -252,7 +252,7 @@ export const AutomationSchema = Schema.Struct({
       type: Schema.Literal("schedule", "file", "webhook", "manual", "event"),
       config: Schema.Record({ key: Schema.String, value: Schema.Unknown }),
       enabled: Schema.Boolean,
-    })
+    }),
   ),
   status: Schema.Literal("active", "inactive", "paused", "error"),
   createdAt: Schema.Date,

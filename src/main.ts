@@ -18,7 +18,7 @@ import { createToolRegistryLayer } from "./core/agent/tools/tool-registry";
 import type { AppConfig } from "./core/types/index";
 import { createConfigLayer } from "./services/config";
 import { createGmailServiceLayer } from "./services/gmail";
-import { createLLMServiceLayer } from "./services/llm/llm-service";
+import { createLiteLLMServiceLayer } from "./services/llm/litellm-service";
 import { createLoggerLayer, LoggerServiceTag } from "./services/logger";
 import { createFileStorageLayer } from "./services/storage";
 
@@ -27,7 +27,6 @@ config();
 /**
  * Main entry point for the Crush CLI
  */
-
 function createAppLayer(config: AppConfig) {
   // Provide FileSystem explicitly to layers that require it
   const fileSystemLayer = NodeFileSystem.layer;
@@ -42,8 +41,8 @@ function createAppLayer(config: AppConfig) {
   // Create Gmail service layer (requires FileSystem)
   const gmailLayer = createGmailServiceLayer().pipe(Layer.provide(fileSystemLayer));
 
-  // Create LLM service layer (production OpenAI) - no FileSystem required
-  const llmLayer = createLLMServiceLayer();
+  // Create LLM service layer (LiteLLM multi-provider) - no FileSystem required
+  const llmLayer = createLiteLLMServiceLayer();
 
   // Create tool registry layer
   const toolRegistryLayer = createToolRegistryLayer();
@@ -186,7 +185,7 @@ function main() {
       .description("Run an agent")
       .option("--watch", "Watch for changes")
       .option("--dry-run", "Show what would be executed without running")
-      .action((agentId: string, options: { watch?: boolean; dryRun?: boolean; }) => {
+      .action((agentId: string, options: { watch?: boolean; dryRun?: boolean }) => {
         void Effect.runPromise(
           runAgentCommand(agentId, options).pipe(
             Effect.catchAll((error) =>
@@ -275,7 +274,7 @@ function main() {
       .command("create <name>")
       .description("Create a new automation")
       .option("-d, --description <description>", "Automation description")
-      .action((name: string, options: { description?: string; }) => {
+      .action((name: string, options: { description?: string }) => {
         void Effect.runPromise(
           Effect.gen(function* () {
             const logger = yield* LoggerServiceTag;
@@ -336,7 +335,7 @@ function main() {
       .description("View logs")
       .option("-f, --follow", "Follow log output")
       .option("-l, --level <level>", "Filter by log level", "info")
-      .action((options: { follow?: boolean; level: string; }) => {
+      .action((options: { follow?: boolean; level: string }) => {
         void Effect.runPromise(
           Effect.gen(function* () {
             const logger = yield* LoggerServiceTag;
