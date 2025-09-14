@@ -686,7 +686,7 @@ export function createAgentCommand(
 
     const config: Partial<AgentConfig> = {};
     if (options.timeout) {
-      (config as any).timeout = options.timeout;
+      config.timeout = options.timeout;
     }
 
     const agent = yield* agentService.createAgent(name, description, config);

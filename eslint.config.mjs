@@ -7,6 +7,24 @@ import prettier from 'eslint-plugin-prettier';
 export default [
   js.configs.recommended,
   {
+    files: ['**/*.js', '**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        Buffer: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        global: 'readonly',
+        module: 'readonly',
+        require: 'readonly',
+        exports: 'readonly'
+      }
+    }
+  },
+  {
     files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
       parser: typescriptParser,
@@ -36,11 +54,12 @@ export default [
       ...typescript.configs['recommended-requiring-type-checking'].rules,
       ...prettierConfig.rules,
       'prettier/prettier': 'warn',
-      '@typescript-eslint/no-unused-vars': 'error',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/explicit-function-return-type': 'warn',
       '@typescript-eslint/no-non-null-assertion': 'warn',
       '@typescript-eslint/no-var-requires': 'error',
+      '@typescript-eslint/ban-ts-comment': 'warn',
       'prefer-const': 'error',
       'no-var': 'error',
       'no-console': 'off'
@@ -49,8 +68,7 @@ export default [
   {
     ignores: [
       'dist/',
-      'node_modules/',
-      '*.js'
+      'node_modules/'
     ]
   }
 ];

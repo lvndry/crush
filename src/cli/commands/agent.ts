@@ -1,13 +1,20 @@
 import { Effect } from "effect";
-import { AgentService, getAgentById, listAllAgents } from "../../core/agent/agent-service.js";
+import {
+  AgentServiceTag,
+  getAgentById,
+  listAllAgents,
+  type AgentService,
+} from "../../core/agent/agent-service";
+import { executeGmailTask } from "../../core/agent/gmail-agent";
 import {
   AgentAlreadyExistsError,
   AgentConfigurationError,
   StorageError,
   StorageNotFoundError,
   ValidationError,
-} from "../../core/types/errors.js";
-import type { AgentConfig } from "../../core/types/index.js";
+} from "../../core/types/errors";
+import type { AgentConfig } from "../../core/types/index";
+import type { GmailEmail, GmailService } from "../../services/gmail";
 
 /**
  * CLI commands for agent management
@@ -29,7 +36,7 @@ export function createAgentCommand(
   AgentService
 > {
   return Effect.gen(function* () {
-    const agentService = yield* AgentService;
+    const agentService = yield* AgentServiceTag;
 
     // Use provided description or default
     const agentDescription = description || options.description || `Agent for ${name}`;
@@ -38,7 +45,7 @@ export function createAgentCommand(
     const config: Partial<AgentConfig> = {};
 
     if (options.timeout) {
-      (config as any).timeout = options.timeout;
+      config.timeout = options.timeout;
     }
 
     if (
@@ -46,7 +53,7 @@ export function createAgentCommand(
       options.retryDelay !== undefined ||
       options.retryBackoff
     ) {
-      (config as any).retryPolicy = {
+      config.retryPolicy = {
         maxRetries: options.maxRetries || 3,
         delay: options.retryDelay || 1000,
         backoff: options.retryBackoff || "exponential",
@@ -106,7 +113,7 @@ export function runAgentCommand(
     watch?: boolean;
     dryRun?: boolean;
   }
-): Effect.Effect<void, StorageError | StorageNotFoundError, AgentService> {
+): Effect.Effect<void, StorageError | StorageNotFoundError, AgentService | GmailService> {
   return Effect.gen(function* () {
     const agent = yield* getAgentById(agentId);
 
@@ -134,9 +141,65 @@ export function runAgentCommand(
     }
 
     console.log();
-    console.log("⚠️  Agent execution is not yet implemented.");
-    console.log("   This is a placeholder for the execution engine.");
-    console.log("   The agent has been validated and is ready for execution.");
+
+    // Check if this agent has Gmail tasks
+    const gmailTasks = agent.config.tasks.filter(task => task.type === "gmail");
+
+    if (gmailTasks.length > 0) {
+      console.log(`🔍 Found ${gmailTasks.length} Gmail task(s) to execute`);
+
+      // Import the Gmail task executor dynamically
+
+      // Execute each Gmail task
+      for (const task of gmailTasks) {
+        console.log(`\n📨 Executing Gmail task: ${task.name}`);
+        console.log(`   Operation: ${task.config.gmailOperation}`);
+
+        const result = yield* executeGmailTask(task).pipe(
+          Effect.catchAll(error =>
+            Effect.succeed({
+              taskId: task.id,
+              status: "failure",
+              error: error instanceof Error ? error.message : String(error),
+              duration: 0,
+              timestamp: new Date(),
+              output: "[]",
+            })
+          )
+        );
+
+        if (result.status === "success") {
+          console.log(`✅ Task completed successfully in ${result.duration}ms`);
+
+          // Display the output based on the operation
+          if (
+            task.config.gmailOperation === "listEmails" ||
+            task.config.gmailOperation === "searchEmails"
+          ) {
+            try {
+              const emails = JSON.parse(result.output || "[]") as GmailEmail[];
+              console.log(`\n📬 Found ${emails.length} email(s):`);
+
+              emails.forEach((email: GmailEmail, index: number) => {
+                console.log(`\n${index + 1}. ${email.subject}`);
+                console.log(`   From: ${email.from}`);
+                console.log(`   Date: ${new Date(email.date).toLocaleString()}`);
+                console.log(`   ${email.snippet}`);
+              });
+            } catch {
+              console.log(`\n${result.output}`);
+            }
+          } else {
+            console.log(`\n${result.output}`);
+          }
+        } else {
+          console.log(`❌ Task failed: ${result.error}`);
+        }
+      }
+    } else {
+      console.log("⚠️  No Gmail tasks found in this agent.");
+      console.log("   Other task types are not yet implemented.");
+    }
   });
 }
 
@@ -144,7 +207,7 @@ export function deleteAgentCommand(
   agentId: string
 ): Effect.Effect<void, StorageError | StorageNotFoundError, AgentService> {
   return Effect.gen(function* () {
-    const agentService = yield* AgentService;
+    const agentService = yield* AgentServiceTag;
 
     // First check if agent exists
     const agent = yield* agentService.getAgent(agentId);
@@ -234,6 +297,17 @@ export function getAgentCommand(
           case "file":
             if (task.config.filePath) {
               console.log(`      File Path: ${task.config.filePath}`);
+            }
+            break;
+          case "gmail":
+            if (task.config.gmailOperation) {
+              console.log(`      Gmail Operation: ${task.config.gmailOperation}`);
+              if (task.config.gmailQuery) {
+                console.log(`      Query: ${task.config.gmailQuery}`);
+              }
+              if (task.config.gmailMaxResults) {
+                console.log(`      Max Results: ${task.config.gmailMaxResults}`);
+              }
             }
             break;
         }

@@ -18,9 +18,13 @@ export interface Agent {
 export interface AgentConfig {
   readonly tasks: readonly Task[];
   readonly schedule?: Schedule;
-  readonly retryPolicy?: RetryPolicy;
-  readonly timeout?: number;
+  retryPolicy?: RetryPolicy;
+  timeout?: number;
   readonly environment?: Record<string, string>;
+  readonly agentType?: string;
+  readonly llmProvider?: string;
+  readonly llmModel?: string;
+  readonly tools?: readonly string[];
 }
 
 export type AgentStatus = "idle" | "running" | "paused" | "error" | "completed";
@@ -37,7 +41,9 @@ export interface Task {
   readonly maxRetries?: number;
 }
 
-export type TaskType = "command" | "script" | "api" | "file" | "webhook" | "custom";
+export type TaskType = "command" | "script" | "api" | "file" | "webhook" | "custom" | "gmail";
+
+export type GmailOperation = "listEmails" | "getEmail" | "sendEmail" | "searchEmails";
 
 export interface TaskConfig {
   readonly command?: string;
@@ -49,6 +55,14 @@ export interface TaskConfig {
   readonly filePath?: string;
   readonly workingDirectory?: string;
   readonly environment?: Record<string, string>;
+  readonly gmailOperation?: GmailOperation;
+  readonly gmailQuery?: string;
+  readonly gmailMaxResults?: number;
+  readonly emailId?: string;
+  readonly to?: string[];
+  readonly subject?: string;
+  readonly cc?: string[];
+  readonly bcc?: string[];
 }
 
 // Automation Types
@@ -85,12 +99,12 @@ export interface TriggerConfig {
 export interface Condition {
   readonly field: string;
   readonly operator:
-    | "equals"
-    | "not_equals"
-    | "contains"
-    | "not_contains"
-    | "greater_than"
-    | "less_than";
+  | "equals"
+  | "not_equals"
+  | "contains"
+  | "not_contains"
+  | "greater_than"
+  | "less_than";
   readonly value: unknown;
 }
 
@@ -180,7 +194,7 @@ export const AgentSchema = Schema.Struct({
         id: Schema.String,
         name: Schema.String,
         description: Schema.String,
-        type: Schema.Literal("command", "script", "api", "file", "webhook", "custom"),
+        type: Schema.Literal("command", "script", "api", "file", "webhook", "custom", "gmail"),
         config: Schema.Record({ key: Schema.String, value: Schema.Unknown }),
         dependencies: Schema.optional(Schema.Array(Schema.String)),
         retryCount: Schema.optional(Schema.Number),
@@ -205,6 +219,11 @@ export const AgentSchema = Schema.Struct({
     ),
     timeout: Schema.optional(Schema.Number),
     environment: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.String })),
+    // LLM agent fields
+    agentType: Schema.optional(Schema.String),
+    llmProvider: Schema.optional(Schema.String),
+    llmModel: Schema.optional(Schema.String),
+    tools: Schema.optional(Schema.Array(Schema.String)),
   }),
   status: Schema.Literal("idle", "running", "paused", "error", "completed"),
   createdAt: Schema.Date,
@@ -215,7 +234,7 @@ export const TaskSchema = Schema.Struct({
   id: Schema.String,
   name: Schema.String,
   description: Schema.String,
-  type: Schema.Literal("command", "script", "api", "file", "webhook", "custom"),
+  type: Schema.Literal("command", "script", "api", "file", "webhook", "custom", "gmail"),
   config: Schema.Record({ key: Schema.String, value: Schema.Unknown }),
   dependencies: Schema.optional(Schema.Array(Schema.String)),
   retryCount: Schema.optional(Schema.Number),

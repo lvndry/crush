@@ -1,5 +1,7 @@
 import { Context, Effect, Layer, Schema } from "effect";
-import { StorageService } from "../../services/storage";
+import shortuuid from "short-uuid";
+import type { StorageService } from "../../services/storage";
+import { StorageServiceTag } from "../../services/storage";
 import {
   AgentAlreadyExistsError,
   AgentConfigurationError,
@@ -35,7 +37,7 @@ export interface AgentService {
 }
 
 export class DefaultAgentService implements AgentService {
-  constructor(private readonly storage: StorageService) {}
+  constructor(private readonly storage: StorageService) { }
 
   createAgent(
     name: string,
@@ -46,13 +48,14 @@ export class DefaultAgentService implements AgentService {
     StorageError | AgentAlreadyExistsError | AgentConfigurationError | ValidationError
   > {
     return Effect.gen(
+      // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
       function* (this: DefaultAgentService) {
         // Validate input parameters
         yield* validateAgentName(name);
         yield* validateAgentDescription(description);
 
         // Generate unique agent ID
-        const id = crypto.randomUUID();
+        const id = shortuuid.generate();
 
         // Create default agent configuration
         const defaultConfig: AgentConfig = {
@@ -124,6 +127,7 @@ export class DefaultAgentService implements AgentService {
     updates: Partial<Agent>
   ): Effect.Effect<Agent, StorageError | StorageNotFoundError> {
     return Effect.gen(
+      // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
       function* (this: DefaultAgentService) {
         const existingAgent = yield* this.storage.getAgent(id);
 
@@ -257,7 +261,7 @@ function validateTask(task: Task): Effect.Effect<void, AgentConfigurationError> 
         new AgentConfigurationError({
           agentId: "unknown",
           field: `task.${task.id}`,
-          message: `Invalid task structure: ${error}`,
+          message: `Invalid task structure: ${String(error)}`,
         }),
     });
 
@@ -318,17 +322,28 @@ function validateTask(task: Task): Effect.Effect<void, AgentConfigurationError> 
           );
         }
         break;
+      case "gmail":
+        if (!task.config.gmailOperation) {
+          return yield* Effect.fail(
+            new AgentConfigurationError({
+              agentId: "unknown",
+              field: `task.${task.id}.config.gmailOperation`,
+              message: "Gmail tasks must have an operation specified",
+            })
+          );
+        }
+        break;
     }
   });
 }
 
-export const AgentService = Context.GenericTag<AgentService>("AgentService");
+export const AgentServiceTag = Context.GenericTag<AgentService>("AgentService");
 
 export function createAgentServiceLayer(): Layer.Layer<AgentService, never, StorageService> {
   return Layer.effect(
-    AgentService,
+    AgentServiceTag,
     Effect.gen(function* () {
-      const storage = yield* StorageService;
+      const storage = yield* StorageServiceTag;
       return new DefaultAgentService(storage);
     })
   );
@@ -345,7 +360,7 @@ export function createAgent(
   AgentService
 > {
   return Effect.gen(function* () {
-    const agentService = yield* AgentService;
+    const agentService = yield* AgentServiceTag;
     return yield* agentService.createAgent(name, description, config);
   });
 }
@@ -354,14 +369,14 @@ export function getAgentById(
   id: string
 ): Effect.Effect<Agent, StorageError | StorageNotFoundError, AgentService> {
   return Effect.gen(function* () {
-    const agentService = yield* AgentService;
+    const agentService = yield* AgentServiceTag;
     return yield* agentService.getAgent(id);
   });
 }
 
 export function listAllAgents(): Effect.Effect<readonly Agent[], StorageError, AgentService> {
   return Effect.gen(function* () {
-    const agentService = yield* AgentService;
+    const agentService = yield* AgentServiceTag;
     return yield* agentService.listAgents();
   });
 }
