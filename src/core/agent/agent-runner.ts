@@ -5,9 +5,8 @@ import {
   type ChatMessage,
   type LLMService,
   type ToolCall,
-  type ToolDefinition,
 } from "../../services/llm/types";
-import { type LoggerService } from "../../services/logger";
+import { LoggerServiceTag, type LoggerService } from "../../services/logger";
 import { type Agent } from "../types";
 import { agentPromptBuilder } from "./agent-prompt";
 import {
@@ -53,6 +52,7 @@ export class AgentRunner {
       const llmService = yield* LLMServiceTag;
       const toolRegistry = yield* ToolRegistryTag;
       const configService = yield* AgentConfigService;
+      const logger = yield* LoggerServiceTag;
       const appConfig = yield* configService.appConfig;
 
       // Generate a conversation ID if not provided
@@ -64,20 +64,30 @@ export class AgentRunner {
       // Determine the agent type from the agent config
       const agentType = agent.config.agentType || "default";
 
-      // Get available tools
-      const toolNames = yield* toolRegistry.listTools();
+      // Get available tools for this specific agent
+      const allToolNames = yield* toolRegistry.listTools();
+      const agentToolNames = agent.config.tools || [];
 
-      // Build messages for the agent
+      // Validate that all agent tools exist in the registry
+      const invalidTools = agentToolNames.filter((toolName) => !allToolNames.includes(toolName));
+      if (invalidTools.length > 0) {
+        return yield* Effect.fail(
+          new Error(`Agent ${agent.id} references non-existent tools: ${invalidTools.join(", ")}`),
+        );
+      }
+
+      // Build messages for the agent with only its specified tools
       const messages = yield* agentPromptBuilder.buildAgentMessages(agentType, {
         agentName: agent.name,
         agentDescription: agent.description,
         userInput,
         conversationHistory: history,
-        toolNames: toolNames as string[],
+        toolNames: agentToolNames,
       });
 
-      // Get tool definitions
-      const tools = yield* toolRegistry.getToolDefinitions();
+      // Get tool definitions for only the agent's specified tools
+      const allTools = yield* toolRegistry.getToolDefinitions();
+      const tools = allTools.filter((tool) => agentToolNames.includes(tool.function.name));
 
       // Create execution context
       const context: ToolExecutionContext = {
@@ -94,15 +104,15 @@ export class AgentRunner {
       };
 
       // Determine the LLM provider and model to use
-      const provider = agent.config.llmProvider || appConfig.llm?.defaultProvider || "openai";
-      const model = agent.config.llmModel || "gpt-4";
+      const provider = agent.config.llmProvider;
+      const model = agent.config.llmModel;
 
       for (let i = 0; i < maxIterations; i++) {
         // Call the LLM
         const completion = yield* llmService.createChatCompletion(provider, {
           model,
           messages: currentMessages,
-          tools: tools as ToolDefinition[],
+          tools,
           toolChoice: "auto",
         });
 
@@ -120,6 +130,21 @@ export class AgentRunner {
               }
             : {}),
         });
+
+        // Log assistant response if log level is debug
+        if (appConfig.logging.level === "debug") {
+          yield* logger.debug("Assistant response received", {
+            agentId: agent.id,
+            conversationId: actualConversationId,
+            iteration: i + 1,
+            content: completion.content,
+            toolCalls: completion.toolCalls?.map((tc) => ({
+              id: tc.id,
+              name: tc.function.name,
+              arguments: tc.function.arguments,
+            })),
+          });
+        }
 
         // Check if the model wants to call a tool
         if (completion.toolCalls && completion.toolCalls.length > 0) {

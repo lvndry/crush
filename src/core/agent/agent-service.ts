@@ -48,13 +48,11 @@ export class DefaultAgentService implements AgentService {
     StorageError | AgentAlreadyExistsError | AgentConfigurationError | ValidationError
   > {
     return Effect.gen(
-      // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
       function* (this: DefaultAgentService) {
         // Validate input parameters
         yield* validateAgentName(name);
         yield* validateAgentDescription(description);
 
-        // Generate unique agent ID
         const id = shortuuid.generate();
 
         // Create default agent configuration
@@ -62,6 +60,8 @@ export class DefaultAgentService implements AgentService {
           tasks: [],
           timeout: 30000,
           environment: {},
+          llmProvider: "openai",
+          llmModel: "gpt-4",
         };
 
         // Merge with provided config
@@ -116,7 +116,6 @@ export class DefaultAgentService implements AgentService {
     updates: Partial<Agent>,
   ): Effect.Effect<Agent, StorageError | StorageNotFoundError> {
     return Effect.gen(
-      // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
       function* (this: DefaultAgentService) {
         const existingAgent = yield* this.storage.getAgent(id);
 

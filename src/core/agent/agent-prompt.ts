@@ -18,7 +18,7 @@ export interface AgentPromptOptions {
   readonly agentDescription: string;
   readonly userInput: string;
   readonly conversationHistory?: ChatMessage[];
-  readonly toolNames?: string[];
+  readonly toolNames?: readonly string[];
   readonly availableTools?: Record<string, string>;
 }
 

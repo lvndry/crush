@@ -50,6 +50,15 @@ export function createAIAgentCommand(): Effect.Effect<
     const llmService = yield* LLMServiceTag;
     const providers = yield* llmService.listProviders();
 
+    if (providers.length === 0) {
+      return yield* Effect.fail(
+        new LLMConfigurationError(
+          "no_providers",
+          "No LLM providers configured. Set an API key for at least one provider in the config.",
+        ),
+      );
+    }
+
     // Get available agent types
     const agentTypes = yield* agentPromptBuilder.listTemplates();
 

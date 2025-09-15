@@ -22,8 +22,8 @@ export interface AgentConfig {
   timeout?: number;
   readonly environment?: Record<string, string>;
   readonly agentType?: string;
-  readonly llmProvider?: string;
-  readonly llmModel?: string;
+  readonly llmProvider: string;
+  readonly llmModel: string;
   readonly tools?: readonly string[];
 }
 

@@ -191,8 +191,8 @@ export function logToolExecutionSuccess(
     const toolEmoji = getToolEmoji(toolName);
     const duration = formatDuration(durationMs);
     const message = resultSummary
-      ? `${toolEmoji} ${toolName} ✓ (${duration}) - ${resultSummary}`
-      : `${toolEmoji} ${toolName} ✓ (${duration})`;
+      ? `${toolEmoji} ${toolName} ✅ (${duration}) - ${resultSummary}`
+      : `${toolEmoji} ${toolName} ✅ (${duration})`;
 
     yield* logger.info(message, {
       toolName,
