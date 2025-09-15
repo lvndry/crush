@@ -17,6 +17,7 @@ import { gmailLoginCommand, gmailLogoutCommand, gmailStatusCommand } from "./cli
 import { createAgentServiceLayer } from "./core/agent/agent-service";
 import { createToolRegistrationLayer } from "./core/agent/tools/register-tools";
 import { createToolRegistryLayer } from "./core/agent/tools/tool-registry";
+import { handleError } from "./core/utils/error-handler";
 import { AgentConfigService, createConfigLayer } from "./services/config";
 import { createGmailServiceLayer } from "./services/gmail";
 import { createLiteLLMServiceLayer } from "./services/llm/litellm-service";
@@ -30,9 +31,23 @@ config();
  * Main entry point for the Crush CLI
  */
 
+/**
+ * Create the application layer with all required services
+ *
+ * Composes all service layers including file system, configuration, logging,
+ * storage, Gmail, LLM, tool registry, and agent services. This layer provides
+ * all dependencies needed by the CLI commands.
+ *
+ * @returns A complete Effect layer containing all application services
+ *
+ * @example
+ * ```typescript
+ * const appLayer = createAppLayer();
+ * yield* someCommand().pipe(Effect.provide(appLayer));
+ * ```
+ */
 function createAppLayer() {
   const fileSystemLayer = NodeFileSystem.layer;
-
   const configLayer = createConfigLayer().pipe(Layer.provide(fileSystemLayer));
   const loggerLayer = createLoggerLayer();
 
@@ -54,7 +69,6 @@ function createAppLayer() {
   );
 
   const llmLayer = createLiteLLMServiceLayer().pipe(Layer.provide(configLayer));
-
   const toolRegistryLayer = createToolRegistryLayer();
 
   const toolRegistrationLayer = createToolRegistrationLayer().pipe(
@@ -63,6 +77,7 @@ function createAppLayer() {
 
   const agentLayer = createAgentServiceLayer().pipe(Layer.provide(storageLayer));
 
+  // Create a complete layer by providing all dependencies
   return Layer.mergeAll(
     fileSystemLayer,
     configLayer,
@@ -76,6 +91,26 @@ function createAppLayer() {
   );
 }
 
+/**
+ * Main CLI application entry point
+ *
+ * Sets up the Commander.js CLI program with all available commands including:
+ * - Agent management (create, list, run, get, delete, chat)
+ * - Automation management (list, create, run, delete)
+ * - Configuration management (get, set, list, validate)
+ * - Authentication (Gmail login, logout, status)
+ * - Logs viewing
+ *
+ * Each command is wrapped with proper error handling using the enhanced error handler
+ * that provides actionable suggestions and recovery steps.
+ *
+ * @returns An Effect that sets up and parses the CLI program
+ *
+ * @example
+ * ```typescript
+ * Effect.runPromise(main()).catch(console.error);
+ * ```
+ */
 function main() {
   return Effect.sync(() => {
     const program = new Command();
@@ -98,11 +133,7 @@ function main() {
         void Effect.runPromise(
           listAgentsCommand().pipe(
             Effect.provide(createAppLayer()),
-            Effect.catchAll((error) =>
-              Effect.sync(() => {
-                console.error("❌ Error listing agents:", error);
-              }),
-            ),
+            Effect.catchAll((error) => handleError(error)),
           ),
         );
       });
@@ -114,11 +145,7 @@ function main() {
         void Effect.runPromise(
           createAIAgentCommand().pipe(
             Effect.provide(createAppLayer()),
-            Effect.catchAll((error) =>
-              Effect.sync(() => {
-                console.error("❌ Error creating AI agent:", error);
-              }),
-            ),
+            Effect.catchAll((error) => handleError(error)),
           ),
         );
       });
@@ -151,11 +178,7 @@ function main() {
           void Effect.runPromise(
             createAgentCommand(name, options.description || "", options).pipe(
               Effect.provide(createAppLayer()),
-              Effect.catchAll((error) =>
-                Effect.sync(() => {
-                  console.error("❌ Error creating agent:", error);
-                }),
-              ),
+              Effect.catchAll((error) => handleError(error)),
             ),
           );
         },
@@ -170,11 +193,7 @@ function main() {
         void Effect.runPromise(
           runAgentCommand(agentId, options).pipe(
             Effect.provide(createAppLayer()),
-            Effect.catchAll((error) =>
-              Effect.sync(() => {
-                console.error("❌ Error running agent:", error);
-              }),
-            ),
+            Effect.catchAll((error) => handleError(error)),
           ),
         );
       });
@@ -186,11 +205,7 @@ function main() {
         void Effect.runPromise(
           getAgentCommand(agentId).pipe(
             Effect.provide(createAppLayer()),
-            Effect.catchAll((error) =>
-              Effect.sync(() => {
-                console.error("❌ Error getting agent:", error);
-              }),
-            ),
+            Effect.catchAll((error) => handleError(error)),
           ),
         );
       });
@@ -202,11 +217,7 @@ function main() {
         void Effect.runPromise(
           deleteAgentCommand(agentId).pipe(
             Effect.provide(createAppLayer()),
-            Effect.catchAll((error) =>
-              Effect.sync(() => {
-                console.error("❌ Error deleting agent:", error);
-              }),
-            ),
+            Effect.catchAll((error) => handleError(error)),
           ),
         );
       });
@@ -218,11 +229,7 @@ function main() {
         void Effect.runPromise(
           chatWithAIAgentCommand(agentId).pipe(
             Effect.provide(createAppLayer()),
-            Effect.catchAll((error) =>
-              Effect.sync(() => {
-                console.error("❌ Error chatting with AI agent:", error);
-              }),
-            ),
+            Effect.catchAll((error) => handleError(error)),
           ),
         );
       });
@@ -315,11 +322,7 @@ function main() {
         void Effect.runPromise(
           gmailLoginCommand().pipe(
             Effect.provide(createAppLayer()),
-            Effect.catchAll((error) =>
-              Effect.sync(() => {
-                console.error("❌ Error during Gmail login:", error);
-              }),
-            ),
+            Effect.catchAll((error) => handleError(error)),
           ),
         );
       });
@@ -331,11 +334,7 @@ function main() {
         void Effect.runPromise(
           gmailLogoutCommand().pipe(
             Effect.provide(createAppLayer()),
-            Effect.catchAll((error) =>
-              Effect.sync(() => {
-                console.error("❌ Error during Gmail logout:", error);
-              }),
-            ),
+            Effect.catchAll((error) => handleError(error)),
           ),
         );
       });
@@ -347,11 +346,7 @@ function main() {
         void Effect.runPromise(
           gmailStatusCommand().pipe(
             Effect.provide(createAppLayer()),
-            Effect.catchAll((error) =>
-              Effect.sync(() => {
-                console.error("❌ Error checking Gmail status:", error);
-              }),
-            ),
+            Effect.catchAll((error) => handleError(error)),
           ),
         );
       });

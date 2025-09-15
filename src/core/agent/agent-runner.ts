@@ -78,25 +78,9 @@ export class AgentRunner {
       const allToolNames = yield* toolRegistry.listTools();
       const agentToolNames = agent.config.tools || [];
 
-      // Auto-expand execute-* counterparts for approval flows when their parent tool is allowed
-      function mapToExecuteTool(name: string): string | undefined {
-        switch (name) {
-          case "trashEmail":
-            return "executeTrashEmail";
-          case "deleteEmail":
-            return "executeDeleteEmail";
-          case "deleteLabel":
-            return "executeDeleteLabel";
-          default:
-            return undefined;
-        }
-      }
-
+      // The approval system in base-tool.ts automatically handles execute-* tool mapping
+      // No need for manual mapping here as the tool registry handles this internally
       const expandedToolNamesSet = new Set<string>(agentToolNames);
-      for (const t of agentToolNames) {
-        const exec = mapToExecuteTool(t);
-        if (exec) expandedToolNamesSet.add(exec);
-      }
       const expandedToolNames = Array.from(expandedToolNamesSet);
 
       // Validate that all agent tools exist in the registry

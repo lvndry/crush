@@ -53,6 +53,32 @@ export interface BaseToolConfig<R, Args extends Record<string, unknown>> {
   ) => Effect.Effect<ToolExecutionResult, Error, R>;
 }
 
+/**
+ * Define a new tool with validation and approval capabilities
+ *
+ * Creates a tool from the provided configuration, including optional validation
+ * and approval requirements. The tool can be configured to require user approval
+ * for destructive operations and includes comprehensive argument validation.
+ *
+ * @param config - The tool configuration including name, description, parameters, validation, and approval settings
+ * @returns A Tool object that can be registered and executed
+ *
+ * @example
+ * ```typescript
+ * const emailTool = defineTool({
+ *   name: "send_email",
+ *   description: "Send an email to a recipient",
+ *   parameters: {
+ *     to: { type: "string", description: "Recipient email address" },
+ *     subject: { type: "string", description: "Email subject" }
+ *   },
+ *   handler: async (args, context) => {
+ *     // Tool implementation
+ *     return { success: true, result: "Email sent" };
+ *   }
+ * });
+ * ```
+ */
 export function defineTool<R, Args extends Record<string, unknown>>(
   config: BaseToolConfig<R, Args>,
 ): Tool<R> {

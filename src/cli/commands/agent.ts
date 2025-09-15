@@ -20,6 +20,32 @@ import type { GmailEmail, GmailService } from "../../services/gmail";
  * CLI commands for agent management
  */
 
+/**
+ * Create a new agent via CLI command
+ *
+ * Creates a new agent with the specified name, description, and configuration options.
+ * The command validates input parameters and displays success information including
+ * the agent ID, configuration details, and timestamps.
+ *
+ * @param name - The unique name for the agent
+ * @param description - A description of what the agent does
+ * @param options - Configuration options including timeout, retry policy settings
+ * @returns An Effect that resolves when the agent is created successfully
+ *
+ * @throws {StorageError} When there's an error saving the agent
+ * @throws {AgentAlreadyExistsError} When an agent with the same name already exists
+ * @throws {AgentConfigurationError} When the configuration is invalid
+ * @throws {ValidationError} When input validation fails
+ *
+ * @example
+ * ```typescript
+ * yield* createAgentCommand(
+ *   "email-processor",
+ *   "Processes incoming emails",
+ *   { timeout: 30000, maxRetries: 3, retryDelay: 1000 }
+ * );
+ * ```
+ */
 export function createAgentCommand(
   name: string,
   description: string,
@@ -83,6 +109,22 @@ export function createAgentCommand(
   });
 }
 
+/**
+ * List all agents via CLI command
+ *
+ * Retrieves and displays all available agents in a formatted table showing
+ * their ID, name, description, status, and creation date.
+ *
+ * @returns An Effect that resolves when the agents are listed successfully
+ *
+ * @throws {StorageError} When there's an error accessing storage
+ *
+ * @example
+ * ```typescript
+ * yield* listAgentsCommand();
+ * // Output: Table showing all agents with their details
+ * ```
+ */
 export function listAgentsCommand(): Effect.Effect<void, StorageError, AgentService> {
   return Effect.gen(function* () {
     const agents = yield* listAllAgents();
@@ -107,6 +149,27 @@ export function listAgentsCommand(): Effect.Effect<void, StorageError, AgentServ
   });
 }
 
+/**
+ * Run an agent via CLI command
+ *
+ * Executes the specified agent, including all its configured tasks. Supports
+ * dry-run mode for testing and watch mode for continuous execution. For Gmail
+ * tasks, it displays formatted email results including subject, sender, date,
+ * and snippet information.
+ *
+ * @param agentId - The unique identifier of the agent to run
+ * @param options - Execution options including watch and dry-run modes
+ * @returns An Effect that resolves when the agent execution completes
+ *
+ * @throws {StorageError} When there's an error accessing storage
+ * @throws {StorageNotFoundError} When the agent with the given ID doesn't exist
+ *
+ * @example
+ * ```typescript
+ * yield* runAgentCommand("agent-123", { dryRun: true });
+ * // Output: Shows what would be executed without actually running
+ * ```
+ */
 export function runAgentCommand(
   agentId: string,
   options: {
@@ -203,6 +266,25 @@ export function runAgentCommand(
   });
 }
 
+/**
+ * Delete an agent via CLI command
+ *
+ * Removes the specified agent from storage after confirming the deletion.
+ * This operation is irreversible and will permanently delete the agent
+ * and all its associated data.
+ *
+ * @param agentId - The unique identifier of the agent to delete
+ * @returns An Effect that resolves when the agent is deleted successfully
+ *
+ * @throws {StorageError} When there's an error accessing storage
+ * @throws {StorageNotFoundError} When the agent with the given ID doesn't exist
+ *
+ * @example
+ * ```typescript
+ * yield* deleteAgentCommand("agent-123");
+ * // Output: Confirmation message and deletion success
+ * ```
+ */
 export function deleteAgentCommand(
   agentId: string,
 ): Effect.Effect<void, StorageError | StorageNotFoundError, AgentService> {
@@ -221,6 +303,24 @@ export function deleteAgentCommand(
   });
 }
 
+/**
+ * Get agent details via CLI command
+ *
+ * Retrieves and displays detailed information about a specific agent including
+ * its configuration, tasks, and metadata in a formatted output.
+ *
+ * @param agentId - The unique identifier of the agent to retrieve
+ * @returns An Effect that resolves when the agent details are displayed
+ *
+ * @throws {StorageError} When there's an error accessing storage
+ * @throws {StorageNotFoundError} When the agent with the given ID doesn't exist
+ *
+ * @example
+ * ```typescript
+ * yield* getAgentCommand("agent-123");
+ * // Output: Detailed agent information including config and tasks
+ * ```
+ */
 export function getAgentCommand(
   agentId: string,
 ): Effect.Effect<void, StorageError | StorageNotFoundError, AgentService> {
