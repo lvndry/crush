@@ -124,11 +124,23 @@ export function createLsTool(): Tool<FileSystem.FileSystem | ShellService> {
 
         function walk(dir: string): Effect.Effect<void, Error, FileSystem.FileSystem> {
           return Effect.gen(function* () {
-            const entries = yield* fs.readDirectory(dir);
+            // Handle permission errors gracefully
+            const entries = yield* fs
+              .readDirectory(dir)
+              .pipe(Effect.catchAll(() => Effect.succeed([])));
+
             for (const name of entries) {
               if (!includeHidden && name.startsWith(".")) continue;
               const full = `${dir}/${name}`;
-              const stat = yield* fs.stat(full);
+
+              // Handle broken symbolic links gracefully
+              const stat = yield* fs.stat(full).pipe(Effect.catchAll(() => Effect.succeed(null)));
+
+              if (!stat) {
+                // Skip broken symbolic links or inaccessible files
+                continue;
+              }
+
               const type = stat.type === "Directory" ? "dir" : "file";
               if (matches(name)) {
                 results.push({ path: full, name, type });
@@ -259,17 +271,28 @@ export function createGrepTool(): Tool<FileSystem.FileSystem | ShellService> {
 
         function walk(path: string): Effect.Effect<void, Error, FileSystem.FileSystem> {
           return Effect.gen(function* () {
-            const stat = yield* fs.stat(path);
+            // Handle broken symbolic links gracefully
+            const stat = yield* fs.stat(path).pipe(Effect.catchAll(() => Effect.succeed(null)));
+
+            if (!stat) {
+              // Skip broken symbolic links or inaccessible files
+              return;
+            }
+
             if (stat.type === "Directory") {
-              const entries = yield* fs.readDirectory(path);
+              // Handle permission errors gracefully
+              const entries = yield* fs
+                .readDirectory(path)
+                .pipe(Effect.catchAll(() => Effect.succeed([])));
+
               for (const name of entries) {
                 const full = `${path}/${name}`;
                 if (recursive) {
                   yield* walk(full);
                   if (matches.length >= maxResults) return;
                 } else {
-                  const st = yield* fs.stat(full);
-                  if (st.type !== "Directory") {
+                  const st = yield* fs.stat(full).pipe(Effect.catchAll(() => Effect.succeed(null)));
+                  if (st && st.type !== "Directory") {
                     yield* scanFile(full);
                     if (matches.length >= maxResults) return;
                   }
@@ -319,7 +342,7 @@ export function createFindTool(): Tool<FileSystem.FileSystem | ShellService> {
     type: "object",
     additionalProperties: false,
     properties: {
-      path: { type: "string", description: "Start directory (defaults to cwd)" },
+      path: { type: "string", description: "Start directory (defaults to smart search)" },
       name: { type: "string", description: "Filter by name (substring or 're:<regex>')" },
       type: {
         type: "string",
@@ -338,6 +361,11 @@ export function createFindTool(): Tool<FileSystem.FileSystem | ShellService> {
         description: "Include dotfiles and dot-directories",
         default: false,
       },
+      smart: {
+        type: "boolean",
+        description: "Use smart hierarchical search (HOME first, then expand)",
+        default: true,
+      },
     },
     required: [],
   } as const;
@@ -351,19 +379,18 @@ export function createFindTool(): Tool<FileSystem.FileSystem | ShellService> {
       maxDepth?: number;
       maxResults?: number;
       includeHidden?: boolean;
+      smart?: boolean;
     }
   >({
     name: "find",
-    description: "Find files and directories with filtering",
+    description:
+      "Find files and directories with smart hierarchical search (searches HOME first, then expands)",
     parameters,
     validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
     handler: (args, context) =>
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
         const shell = yield* ShellServiceTag;
-        const start = args.path
-          ? yield* shell.resolvePath(buildKeyFromContext(context), args.path)
-          : yield* shell.getCwd(buildKeyFromContext(context));
 
         const filter = normalizeFilterPattern(args.name);
         const includeHidden = args.includeHidden === true;
@@ -371,6 +398,7 @@ export function createFindTool(): Tool<FileSystem.FileSystem | ShellService> {
           typeof args.maxResults === "number" && args.maxResults > 0 ? args.maxResults : 5000;
         const maxDepth = typeof args.maxDepth === "number" ? args.maxDepth : 25;
         const typeFilter = args.type ?? "all";
+        const useSmart = args.smart !== false; // Default to true
 
         function matches(name: string): boolean {
           if (!filter.value && !filter.regex) return true;
@@ -385,12 +413,25 @@ export function createFindTool(): Tool<FileSystem.FileSystem | ShellService> {
           depth: number,
         ): Effect.Effect<void, Error, FileSystem.FileSystem> {
           return Effect.gen(function* () {
-            if (depth > maxDepth) return;
-            const entries = yield* fs.readDirectory(dir);
+            if (depth > maxDepth || results.length >= maxResults) return;
+
+            // Handle permission errors gracefully
+            const entries = yield* fs
+              .readDirectory(dir)
+              .pipe(Effect.catchAll(() => Effect.succeed([])));
+
             for (const name of entries) {
               if (!includeHidden && name.startsWith(".")) continue;
               const full = `${dir}/${name}`;
-              const stat = yield* fs.stat(full);
+
+              // Handle broken symbolic links gracefully
+              const stat = yield* fs.stat(full).pipe(Effect.catchAll(() => Effect.succeed(null)));
+
+              if (!stat) {
+                // Skip broken symbolic links or inaccessible files
+                continue;
+              }
+
               const type = stat.type === "Directory" ? "dir" : "file";
               if ((typeFilter === "all" || typeFilter === type) && matches(name)) {
                 results.push({ path: full, name, type });
@@ -404,20 +445,72 @@ export function createFindTool(): Tool<FileSystem.FileSystem | ShellService> {
           });
         }
 
-        try {
-          const st = yield* fs.stat(start);
-          if (st.type !== "Directory") {
-            return { success: false, result: null, error: `Not a directory: ${start}` };
+        // Smart search strategy: search in order of likelihood
+        const searchPaths: string[] = [];
+
+        if (args.path) {
+          // If path is specified, use it directly
+          const start = yield* shell.resolvePath(buildKeyFromContext(context), args.path);
+          searchPaths.push(start);
+        } else if (useSmart) {
+          // Smart search: start with most likely locations
+          const home = process.env["HOME"] || "";
+          const cwd = yield* shell.getCwd(buildKeyFromContext(context));
+
+          // 1. Current working directory (most likely)
+          if (cwd && cwd !== home) {
+            searchPaths.push(cwd);
           }
-          yield* walk(start, 0);
-          return { success: true, result: results };
-        } catch (error) {
-          return {
-            success: false,
-            result: null,
-            error: `find failed: ${error instanceof Error ? error.message : String(error)}`,
-          };
+
+          // 2. Home directory (very likely)
+          if (home) {
+            searchPaths.push(home);
+          }
+
+          // 3. Common development directories in home
+          if (home) {
+            const commonDirs = [
+              `${home}/Documents`,
+              `${home}/Desktop`,
+              `${home}/Downloads`,
+              `${home}/Projects`,
+              `${home}/Code`,
+              `${home}/Development`,
+              `${home}/github`,
+              `${home}/git`,
+            ];
+            searchPaths.push(...commonDirs);
+          }
+
+          // 4. System-wide common locations (only if we haven't found enough results)
+          searchPaths.push("/usr/local", "/opt", "/Applications");
+        } else {
+          // Traditional search: start from current directory
+          const start = yield* shell.getCwd(buildKeyFromContext(context));
+          searchPaths.push(start);
         }
+
+        // Search each path in order
+        for (const searchPath of searchPaths) {
+          if (results.length >= maxResults) break;
+
+          try {
+            const st = yield* fs.stat(searchPath);
+            if (st.type === "Directory") {
+              yield* walk(searchPath, 0);
+            }
+          } catch {
+            // Skip inaccessible paths
+            continue;
+          }
+
+          // If we found results in early paths and using smart search, we can stop early
+          if (useSmart && results.length > 0 && searchPath.includes(process.env["HOME"] || "")) {
+            break;
+          }
+        }
+
+        return { success: true, result: results };
       }),
   });
 }
@@ -622,6 +715,59 @@ export function createExecuteRmTool(): Tool<FileSystem.FileSystem | ShellService
             error: `rm failed: ${error instanceof Error ? error.message : String(error)}`,
           };
         }
+      }),
+  });
+}
+
+// finddir - search for directories by name
+export function createFindDirTool(): Tool<FileSystem.FileSystem | ShellService> {
+  const parameters = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      name: {
+        type: "string",
+        description: "Directory name to search for (partial matches supported)",
+      },
+      path: {
+        type: "string",
+        description: "Starting path for search (defaults to current working directory)",
+      },
+      maxDepth: { type: "number", description: "Maximum search depth (default: 3)", default: 3 },
+    },
+    required: ["name"],
+  } as const;
+
+  return defineTool<
+    FileSystem.FileSystem | ShellService,
+    { name: string; path?: string; maxDepth?: number }
+  >({
+    name: "finddir",
+    description: "Search for directories by name with partial matching",
+    parameters,
+    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    handler: (args, context) =>
+      Effect.gen(function* () {
+        const shell = yield* ShellServiceTag;
+        const startPath = args.path
+          ? yield* shell.resolvePath(buildKeyFromContext(context), args.path)
+          : yield* shell.getCwd(buildKeyFromContext(context));
+
+        const found = yield* shell.findDirectory(
+          buildKeyFromContext(context),
+          args.name,
+          args.maxDepth || 3,
+        );
+
+        return {
+          success: true,
+          result: {
+            searchTerm: args.name,
+            startPath,
+            found: found,
+            count: found.length,
+          },
+        };
       }),
   });
 }

@@ -1,0 +1,272 @@
+import { NodeFileSystem } from "@effect/platform-node";
+import { describe, expect, it } from "bun:test";
+import { Effect, Layer } from "effect";
+import { createShellServiceLayer, ShellServiceTag } from "./shell";
+
+describe("ShellService", () => {
+  const createTestLayer = () => {
+    const shellLayer = createShellServiceLayer();
+    return Layer.provide(shellLayer, NodeFileSystem.layer);
+  };
+
+  describe("getCwd", () => {
+    it("should default to HOME directory when no working directory is set", async () => {
+      const testEffect = Effect.gen(function* () {
+        const shell = yield* ShellServiceTag;
+        const cwd = yield* shell.getCwd({ agentId: "test-agent" });
+        return cwd;
+      });
+
+      const result = await Effect.runPromise(
+        testEffect.pipe(Effect.provide(createTestLayer())) as any,
+      );
+
+      expect(result).toBe(process.env["HOME"] ?? "");
+    });
+
+    it("should return set working directory for specific agent", async () => {
+      const testEffect = Effect.gen(function* () {
+        const shell = yield* ShellServiceTag;
+        const testPath = "/tmp/test-dir";
+
+        // First set a working directory
+        yield* shell.setCwd({ agentId: "test-agent" }, testPath);
+
+        // Then get it back
+        const cwd = yield* shell.getCwd({ agentId: "test-agent" });
+        return cwd;
+      });
+
+      const result = await Effect.runPromise(
+        testEffect.pipe(Effect.provide(createTestLayer())) as any,
+      );
+
+      expect(result).toBe("/tmp/test-dir");
+    });
+  });
+
+  describe("resolvePath", () => {
+    it("should handle absolute paths correctly", async () => {
+      const testEffect = Effect.gen(function* () {
+        const shell = yield* ShellServiceTag;
+        const resolved = yield* shell.resolvePath({ agentId: "test" }, "/usr/bin");
+        return resolved;
+      });
+
+      const result = await Effect.runPromise(
+        testEffect.pipe(Effect.provide(createTestLayer())) as any,
+      );
+
+      expect(result).toBe("/usr/bin");
+    });
+
+    it("should resolve relative paths from working directory", async () => {
+      const testEffect = Effect.gen(function* () {
+        const shell = yield* ShellServiceTag;
+        const resolved = yield* shell.resolvePath({ agentId: "test" }, "Documents");
+        return resolved;
+      });
+
+      const result = await Effect.runPromise(
+        testEffect.pipe(Effect.provide(createTestLayer())) as any,
+      );
+
+      expect(result).toBe(`${process.env["HOME"] ?? ""}/Documents`);
+    });
+  });
+
+  describe("path normalization", () => {
+    it("should handle backslash-escaped spaces", async () => {
+      const testEffect = Effect.gen(function* () {
+        const shell = yield* ShellServiceTag;
+        const resolved = yield* shell.resolvePath(
+          { agentId: "test" },
+          "/Library/Application\\ Support/",
+        );
+        return resolved;
+      });
+
+      const result = await Effect.runPromise(
+        testEffect.pipe(Effect.provide(createTestLayer())) as any,
+      );
+
+      expect(result).toBe("/Library/Application Support/");
+    });
+
+    it("should handle double-quoted paths", async () => {
+      const testEffect = Effect.gen(function* () {
+        const shell = yield* ShellServiceTag;
+        const resolved = yield* shell.resolvePath(
+          { agentId: "test" },
+          '"/Library/Application Support/"',
+        );
+        return resolved;
+      });
+
+      const result = await Effect.runPromise(
+        testEffect.pipe(Effect.provide(createTestLayer())) as any,
+      );
+
+      expect(result).toBe("/Library/Application Support/");
+    });
+
+    it("should handle single-quoted paths", async () => {
+      const testEffect = Effect.gen(function* () {
+        const shell = yield* ShellServiceTag;
+        const resolved = yield* shell.resolvePath(
+          { agentId: "test" },
+          "'/Library/Application Support/'",
+        );
+        return resolved;
+      });
+
+      const result = await Effect.runPromise(
+        testEffect.pipe(Effect.provide(createTestLayer())) as any,
+      );
+
+      expect(result).toBe("/Library/Application Support/");
+    });
+
+    it("should handle mixed escaping", async () => {
+      const testEffect = Effect.gen(function* () {
+        const shell = yield* ShellServiceTag;
+        const resolved = yield* shell.resolvePath(
+          { agentId: "test" },
+          '"/Library/Application\\ Support/"',
+        );
+        return resolved;
+      });
+
+      const result = await Effect.runPromise(
+        testEffect.pipe(Effect.provide(createTestLayer())) as any,
+      );
+
+      expect(result).toBe("/Library/Application Support/");
+    });
+
+    it("should handle paths with multiple spaces", async () => {
+      const testEffect = Effect.gen(function* () {
+        const shell = yield* ShellServiceTag;
+        const resolved = yield* shell.resolvePath({ agentId: "test" }, '"/My Folder With Spaces/"');
+        return resolved;
+      }).pipe(Effect.catchAll((error) => Effect.succeed(error.message)));
+
+      const result = await Effect.runPromise(
+        testEffect.pipe(Effect.provide(createTestLayer())) as any,
+      );
+
+      // The path doesn't exist, so we should get an error message
+      expect(result).toContain("Path not found");
+    });
+  });
+
+  describe("escapePath", () => {
+    it("should escape paths with spaces", async () => {
+      const testEffect = Effect.gen(function* () {
+        const shell = yield* ShellServiceTag;
+        const escaped = shell.escapePath("/Library/Application Support/");
+        return escaped;
+      });
+
+      const result = await Effect.runPromise(
+        testEffect.pipe(Effect.provide(createTestLayer())) as any,
+      );
+
+      expect(result).toBe('"/Library/Application Support/"');
+    });
+
+    it("should escape paths with special characters", async () => {
+      const testEffect = Effect.gen(function* () {
+        const shell = yield* ShellServiceTag;
+        const escaped = shell.escapePath("/path/with(special)chars/");
+        return escaped;
+      });
+
+      const result = await Effect.runPromise(
+        testEffect.pipe(Effect.provide(createTestLayer())) as any,
+      );
+
+      expect(result).toBe('"/path/with(special)chars/"');
+    });
+
+    it("should not escape simple paths", async () => {
+      const testEffect = Effect.gen(function* () {
+        const shell = yield* ShellServiceTag;
+        const escaped = shell.escapePath("/simple/path/");
+        return escaped;
+      });
+
+      const result = await Effect.runPromise(
+        testEffect.pipe(Effect.provide(createTestLayer())) as any,
+      );
+
+      expect(result).toBe("/simple/path/");
+    });
+
+    it("should handle already quoted paths", async () => {
+      const testEffect = Effect.gen(function* () {
+        const shell = yield* ShellServiceTag;
+        const escaped = shell.escapePath('"/already/quoted/"');
+        return escaped;
+      });
+
+      const result = await Effect.runPromise(
+        testEffect.pipe(Effect.provide(createTestLayer())) as any,
+      );
+
+      expect(result).toBe('"/already/quoted/"');
+    });
+  });
+
+  describe("findDirectory", () => {
+    it("should find directories by name", async () => {
+      const testEffect = Effect.gen(function* () {
+        const shell = yield* ShellServiceTag;
+        const found = yield* shell.findDirectory({ agentId: "test" }, "bin", 1);
+        return found;
+      });
+
+      const result = await Effect.runPromise(
+        testEffect.pipe(Effect.provide(createTestLayer())) as any,
+      );
+
+      // Should find /usr/bin and possibly other bin directories
+      expect((result as string[]).length).toBeGreaterThan(0);
+      expect((result as string[]).some((path: string) => path.includes("/bin"))).toBe(true);
+    });
+
+    it("should return empty array when no directories found", async () => {
+      const testEffect = Effect.gen(function* () {
+        const shell = yield* ShellServiceTag;
+        const found = yield* shell.findDirectory(
+          { agentId: "test" },
+          "nonexistentdirectory12345",
+          1,
+        );
+        return found;
+      });
+
+      const result = await Effect.runPromise(
+        testEffect.pipe(Effect.provide(createTestLayer())) as any,
+      );
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe("error handling", () => {
+    it("should provide helpful error messages for non-existent paths", async () => {
+      const testEffect = Effect.gen(function* () {
+        const shell = yield* ShellServiceTag;
+        yield* shell.resolvePath({ agentId: "test" }, "/absolute/nonexistent/path");
+        return "should not reach here";
+      }).pipe(Effect.catchAll((error) => Effect.succeed(error.message)));
+
+      const result = await Effect.runPromise(
+        testEffect.pipe(Effect.provide(createTestLayer())) as any,
+      );
+
+      expect(result).toContain("Path not found");
+    });
+  });
+});

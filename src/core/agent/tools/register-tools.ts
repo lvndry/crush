@@ -3,6 +3,7 @@ import {
   createCdTool,
   createExecuteMkdirTool,
   createExecuteRmTool,
+  createFindDirTool,
   createFindTool,
   createGrepTool,
   createLsTool,
@@ -112,6 +113,7 @@ export function registerFileTools(): Effect.Effect<void, Error, ToolRegistry> {
     const cd = createCdTool();
     const grep = createGrepTool();
     const find = createFindTool();
+    const finddir = createFindDirTool();
     const mkdir = createMkdirTool();
     const executeMkdir = createExecuteMkdirTool();
     const rm = createRmTool();
@@ -122,6 +124,7 @@ export function registerFileTools(): Effect.Effect<void, Error, ToolRegistry> {
     yield* registry.registerTool(cd);
     yield* registry.registerTool(grep);
     yield* registry.registerTool(find);
+    yield* registry.registerTool(finddir);
     yield* registry.registerTool(mkdir);
     yield* registry.registerTool(executeMkdir);
     yield* registry.registerTool(rm);
