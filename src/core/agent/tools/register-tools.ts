@@ -1,5 +1,16 @@
 import { Effect, Layer } from "effect";
 import {
+  createCdTool,
+  createExecuteMkdirTool,
+  createExecuteRmTool,
+  createFindTool,
+  createGrepTool,
+  createLsTool,
+  createMkdirTool,
+  createPwdTool,
+  createRmTool,
+} from "./fs-tools";
+import {
   createAddLabelsToEmailTool,
   createBatchModifyEmailsTool,
   createCreateLabelTool,
@@ -30,7 +41,7 @@ export function registerAllTools(): Effect.Effect<void, Error, ToolRegistry> {
     yield* registerGmailTools();
 
     // Register other tool categories as needed
-    // yield* registerFileTools();
+    yield* registerFileTools();
     // yield* registerWebTools();
     // etc.
   });
@@ -88,6 +99,33 @@ export function registerGmailTools(): Effect.Effect<void, Error, ToolRegistry> {
     yield* registry.registerTool(addLabelsToEmailTool);
     yield* registry.registerTool(removeLabelsFromEmailTool);
     yield* registry.registerTool(batchModifyEmailsTool);
+  });
+}
+
+// Register filesystem tools
+export function registerFileTools(): Effect.Effect<void, Error, ToolRegistry> {
+  return Effect.gen(function* () {
+    const registry = yield* ToolRegistryTag;
+
+    const pwd = createPwdTool();
+    const ls = createLsTool();
+    const cd = createCdTool();
+    const grep = createGrepTool();
+    const find = createFindTool();
+    const mkdir = createMkdirTool();
+    const executeMkdir = createExecuteMkdirTool();
+    const rm = createRmTool();
+    const executeRm = createExecuteRmTool();
+
+    yield* registry.registerTool(pwd);
+    yield* registry.registerTool(ls);
+    yield* registry.registerTool(cd);
+    yield* registry.registerTool(grep);
+    yield* registry.registerTool(find);
+    yield* registry.registerTool(mkdir);
+    yield* registry.registerTool(executeMkdir);
+    yield* registry.registerTool(rm);
+    yield* registry.registerTool(executeRm);
   });
 }
 

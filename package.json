@@ -17,6 +17,7 @@
     "format": "bunx prettier --write src/**/*.ts",
     "test": "bun test",
     "test:watch": "bun test --watch",
+    "test:type-check": "bunx tsc --project tsconfig.test.json",
     "clean": "rm -rf dist",
     "prebuild": "bun run clean",
     "prepublishOnly": "bun run build"
@@ -50,6 +51,7 @@
     "short-uuid": "^5.0.1"
   },
   "devDependencies": {
+    "@types/bun": "^1.2.22",
     "@types/node": "^24.3.3",
     "@typescript-eslint/eslint-plugin": "^8.43.0",
     "@typescript-eslint/parser": "^8.43.0",

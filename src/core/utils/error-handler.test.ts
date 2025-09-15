@@ -5,8 +5,8 @@ import {
   AgentNotFoundError,
   ConfigurationError,
   ValidationError,
-} from "../../types/errors";
-import { formatError, handleError } from "../error-handler";
+} from "../types/errors";
+import { formatError, handleError } from "./error-handler";
 
 describe("Error Handler", () => {
   it("should format AgentNotFoundError with actionable suggestions", () => {
@@ -43,7 +43,8 @@ describe("Error Handler", () => {
       field: "name",
       message: "Agent name can only contain letters, numbers, underscores, and hyphens",
       value: "invalid@name",
-      suggestion: "Use only letters (a-z, A-Z), numbers (0-9), underscores (_), and hyphens (-). Example: 'my-agent-1'",
+      suggestion:
+        "Use only letters (a-z, A-Z), numbers (0-9), underscores (_), and hyphens (-). Example: 'my-agent-1'",
     });
 
     const formatted = formatError(error);
