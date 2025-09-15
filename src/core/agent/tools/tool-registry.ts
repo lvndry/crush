@@ -28,6 +28,8 @@ export interface Tool<R = never> {
   readonly name: string;
   readonly description: string;
   readonly parameters: Record<string, unknown>;
+  /** If true, this tool is hidden from UI listings (but still usable programmatically). */
+  readonly hidden: boolean;
   readonly execute: (
     args: Record<string, unknown>,
     context: ToolExecutionContext,
@@ -73,7 +75,13 @@ class DefaultToolRegistry implements ToolRegistry {
   }
 
   listTools(): Effect.Effect<readonly string[], never> {
-    return Effect.sync(() => Array.from(this.tools.keys()));
+    return Effect.sync(() => {
+      const names: string[] = [];
+      this.tools.forEach((tool) => {
+        if (!tool.hidden) names.push(tool.name);
+      });
+      return names;
+    });
   }
 
   getToolDefinitions(): Effect.Effect<readonly ToolDefinition[], never> {
@@ -118,17 +126,28 @@ class DefaultToolRegistry implements ToolRegistry {
           const result = yield* exec(args, context);
           const durationMs = Date.now() - start;
 
-          // Create a summary of the result for better logging
-          const resultSummary = createResultSummary(name, result);
+          if (result.success) {
+            // Create a summary of the result for better logging
+            const resultSummary = createResultSummary(name, result);
 
-          // Log successful execution with improved formatting
-          yield* logToolExecutionSuccess(
-            name,
-            context.agentId,
-            durationMs,
-            context.conversationId,
-            resultSummary,
-          ).pipe(Effect.catchAll(() => Effect.void));
+            // Log successful execution with improved formatting
+            yield* logToolExecutionSuccess(
+              name,
+              context.agentId,
+              durationMs,
+              context.conversationId,
+              resultSummary,
+            ).pipe(Effect.catchAll(() => Effect.void));
+          } else {
+            const errorMessage = result.error || "Tool returned success=false";
+            yield* logToolExecutionError(
+              name,
+              context.agentId,
+              durationMs,
+              errorMessage,
+              context.conversationId,
+            ).pipe(Effect.catchAll(() => Effect.void));
+          }
 
           return result;
         } catch (err) {
@@ -189,8 +208,11 @@ function createResultSummary(toolName: string, result: ToolExecutionResult): str
     case "markAsUnread":
       return "Status updated";
 
+    case "trashEmail":
+      return "Email moved to trash";
+
     case "deleteEmail":
-      return "Email deleted";
+      return "Email deleted permanently";
 
     case "createLabel":
       if (data && typeof data === "object" && "id" in data) {

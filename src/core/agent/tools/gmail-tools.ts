@@ -513,10 +513,215 @@ export function createDeleteLabelTool(): Tool<GmailService> {
     },
     required: ["labelId"],
   } as const;
-
   return defineTool<GmailService, { labelId: string }>({
     name: "deleteLabel",
     description: "Delete a Gmail label (only user-created labels can be deleted)",
+    parameters,
+    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    approval: {
+      message: (args, _context) => {
+        const a = args as { labelId: string };
+        return Effect.succeed(
+          `About to permanently delete label '${a.labelId}'. This action cannot be undone.\n\nIf the user confirms, call executeDeleteLabel with the same labelId.`,
+        );
+      },
+      execute: {
+        toolName: "executeDeleteLabel",
+        buildArgs: (args) => ({ labelId: (args as { labelId: string }).labelId }),
+      },
+    },
+    handler: (validatedArgs) =>
+      Effect.gen(function* () {
+        const gmailService = yield* GmailServiceTag;
+        yield* gmailService.deleteLabel(validatedArgs.labelId);
+        return { success: true, result: `Label ${validatedArgs.labelId} deleted successfully` };
+      }),
+  });
+}
+
+// Trash email tool (requires approval)
+export function createTrashEmailTool(): Tool<GmailService> {
+  const parameters = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      emailId: {
+        type: "string",
+        description: "ID of the email to move to trash",
+        minLength: 1,
+        examples: ["185d3b2f0f0c1a2b"],
+      },
+    },
+    required: ["emailId"],
+  } as const;
+
+  return defineTool<GmailService, { emailId: string }>({
+    name: "trashEmail",
+    description: "Move an email to trash (recoverable). Use this for safer email removal.",
+    parameters,
+    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    approval: {
+      message: (args, _context) =>
+        Effect.gen(function* () {
+          const a = args as { emailId: string };
+          const gmailService = yield* GmailServiceTag;
+
+          try {
+            const email = yield* gmailService.getEmail(a.emailId);
+            const preview = createEmailPreviewMessage(email);
+            return `${preview}\n\n🗑️  About to move this email to trash. It can be recovered later.\n\nIf the user confirms, call executeTrashEmail with the same emailId.`;
+          } catch (error) {
+            // If we can't fetch email details, fall back to basic message
+            return `About to move email '${a.emailId}' to trash. It can be recovered later.\n(Note: Could not fetch email details: ${error instanceof Error ? error.message : String(error)})`;
+          }
+        }),
+      execute: {
+        toolName: "executeTrashEmail",
+        buildArgs: (args) => ({ emailId: (args as { emailId: string }).emailId }),
+      },
+    },
+    handler: (validatedArgs) =>
+      Effect.gen(function* () {
+        const gmailService = yield* GmailServiceTag;
+        yield* gmailService.trashEmail(validatedArgs.emailId);
+        return { success: true, result: `Email ${validatedArgs.emailId} moved to trash` };
+      }),
+  });
+}
+
+// Delete email tool (requires approval)
+export function createDeleteEmailTool(): Tool<GmailService> {
+  const parameters = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      emailId: {
+        type: "string",
+        description: "ID of the email to delete permanently",
+        minLength: 1,
+        examples: ["185d3b2f0f0c1a2b"],
+      },
+    },
+    required: ["emailId"],
+  } as const;
+
+  return defineTool<GmailService, { emailId: string }>({
+    name: "deleteEmail",
+    description:
+      "Permanently delete an email. This action cannot be undone. Consider using trashEmail for safer removal.",
+    parameters,
+    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    approval: {
+      message: (args, _context) =>
+        Effect.gen(function* () {
+          const a = args as { emailId: string };
+          const gmailService = yield* GmailServiceTag;
+
+          try {
+            const email = yield* gmailService.getEmail(a.emailId);
+            const preview = createEmailPreviewMessage(email);
+            return `${preview}\n\n⚠️  About to PERMANENTLY DELETE this email. This cannot be undone!\n\nIf the user confirms, call executeDeleteEmail with the same emailId.`;
+          } catch (error) {
+            // If we can't fetch email details, fall back to basic message
+            return `About to permanently delete email '${a.emailId}'. This cannot be undone!\n(Note: Could not fetch email details: ${error instanceof Error ? error.message : String(error)})`;
+          }
+        }),
+      execute: {
+        toolName: "executeDeleteEmail",
+        buildArgs: (args) => ({ emailId: (args as { emailId: string }).emailId }),
+      },
+    },
+    handler: (validatedArgs) =>
+      Effect.gen(function* () {
+        const gmailService = yield* GmailServiceTag;
+        yield* gmailService.deleteEmail(validatedArgs.emailId);
+        return { success: true, result: `Email ${validatedArgs.emailId} deleted permanently` };
+      }),
+  });
+}
+
+// Execute trash email tool (internal - called after approval)
+export function createExecuteTrashEmailTool(): Tool<GmailService> {
+  const parameters = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      emailId: {
+        type: "string",
+        description: "ID of the email to move to trash",
+        minLength: 1,
+        examples: ["185d3b2f0f0c1a2b"],
+      },
+    },
+    required: ["emailId"],
+  } as const;
+
+  return defineTool<GmailService, { emailId: string }>({
+    name: "executeTrashEmail",
+    description: "Execute the trash email action after user approval",
+    hidden: true,
+    parameters,
+    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    handler: (validatedArgs) =>
+      Effect.gen(function* () {
+        const gmailService = yield* GmailServiceTag;
+        yield* gmailService.trashEmail(validatedArgs.emailId);
+        return { success: true, result: `Email ${validatedArgs.emailId} moved to trash` };
+      }),
+  });
+}
+
+// Execute delete email tool (internal - called after approval)
+export function createExecuteDeleteEmailTool(): Tool<GmailService> {
+  const parameters = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      emailId: {
+        type: "string",
+        description: "ID of the email to delete permanently",
+        minLength: 1,
+        examples: ["185d3b2f0f0c1a2b"],
+      },
+    },
+    required: ["emailId"],
+  } as const;
+
+  return defineTool<GmailService, { emailId: string }>({
+    name: "executeDeleteEmail",
+    description: "Execute the delete email action after user approval",
+    hidden: true,
+    parameters,
+    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    handler: (validatedArgs) =>
+      Effect.gen(function* () {
+        const gmailService = yield* GmailServiceTag;
+        yield* gmailService.deleteEmail(validatedArgs.emailId);
+        return { success: true, result: `Email ${validatedArgs.emailId} deleted permanently` };
+      }),
+  });
+}
+
+// Execute delete label tool (internal - called after approval)
+export function createExecuteDeleteLabelTool(): Tool<GmailService> {
+  const parameters = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      labelId: {
+        type: "string",
+        description: "ID of the label to delete",
+        minLength: 1,
+        examples: ["Label_1", "Label_2"],
+      },
+    },
+    required: ["labelId"],
+  } as const;
+
+  return defineTool<GmailService, { labelId: string }>({
+    name: "executeDeleteLabel",
+    description: "Execute the delete label action after user approval",
+    hidden: true,
     parameters,
     validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
     handler: (validatedArgs) =>
@@ -666,6 +871,30 @@ export function createBatchModifyEmailsTool(): Tool<GmailService> {
         };
       }),
   });
+}
+
+// Helper function to create email preview for approval messages
+function createEmailPreviewMessage(email: GmailEmail): string {
+  const now = new Date();
+  const emailDate = new Date(email.date);
+  const daysInInbox = Math.floor((now.getTime() - emailDate.getTime()) / (1000 * 60 * 60 * 24));
+
+  const isImportant = email.labels?.includes("IMPORTANT") || false;
+  const labels =
+    email.labels?.filter(
+      (label) => !["INBOX", "UNREAD", "STARRED", "SENT", "DRAFT", "SPAM", "TRASH"].includes(label),
+    ) || [];
+
+  const labelsText = labels.length > 0 ? `\nLabels: ${labels.join(", ")}` : "";
+  const importantText = isImportant ? "\n⚠️  IMPORTANT" : "";
+  const daysText =
+    daysInInbox === 0 ? "Today" : daysInInbox === 1 ? "1 day ago" : `${daysInInbox} days ago`;
+
+  return `📧 Email Preview:
+Subject: ${email.subject}
+From: ${email.from}
+Date: ${daysText} (${emailDate.toLocaleDateString()})${importantText}${labelsText}
+Snippet: ${email.snippet.substring(0, 100)}${email.snippet.length > 100 ? "..." : ""}`;
 }
 
 // Helper functions for formatting email data

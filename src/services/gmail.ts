@@ -148,6 +148,14 @@ export interface GmailService {
       removeLabelIds?: string[];
     },
   ) => Effect.Effect<void, GmailOperationError | GmailAuthenticationError>;
+
+  // Destructive email operations
+  readonly trashEmail: (
+    emailId: string,
+  ) => Effect.Effect<void, GmailOperationError | GmailAuthenticationError>;
+  readonly deleteEmail: (
+    emailId: string,
+  ) => Effect.Effect<void, GmailOperationError | GmailAuthenticationError>;
 }
 
 interface GoogleOAuthToken {
@@ -464,6 +472,48 @@ export class GmailServiceResource implements GmailService {
           const status = getHttpStatusFromError(err);
           throw new GmailOperationError(
             `Failed to batch modify emails: ${err instanceof Error ? err.message : String(err)}`,
+            status,
+          );
+        }
+      }.bind(this),
+    );
+  }
+
+  trashEmail(emailId: string): Effect.Effect<void, GmailOperationError | GmailAuthenticationError> {
+    return Effect.gen(
+      function* (this: GmailServiceResource) {
+        yield* this.ensureAuthenticated();
+        try {
+          yield* Effect.promise(() =>
+            this.gmail.users.messages.trash({ userId: "me", id: emailId }),
+          );
+          return void 0;
+        } catch (err) {
+          const status = getHttpStatusFromError(err);
+          throw new GmailOperationError(
+            `Failed to trash email: ${err instanceof Error ? err.message : String(err)}`,
+            status,
+          );
+        }
+      }.bind(this),
+    );
+  }
+
+  deleteEmail(
+    emailId: string,
+  ): Effect.Effect<void, GmailOperationError | GmailAuthenticationError> {
+    return Effect.gen(
+      function* (this: GmailServiceResource) {
+        yield* this.ensureAuthenticated();
+        try {
+          yield* Effect.promise(() =>
+            this.gmail.users.messages.delete({ userId: "me", id: emailId }),
+          );
+          return void 0;
+        } catch (err) {
+          const status = getHttpStatusFromError(err);
+          throw new GmailOperationError(
+            `Failed to delete email: ${err instanceof Error ? err.message : String(err)}`,
             status,
           );
         }
@@ -883,5 +933,23 @@ export function batchModifyGmailEmails(
   return Effect.gen(function* () {
     const gmailService = yield* GmailServiceTag;
     return yield* gmailService.batchModifyEmails(emailIds, options);
+  });
+}
+
+export function trashGmailEmail(
+  emailId: string,
+): Effect.Effect<void, GmailOperationError | GmailAuthenticationError, GmailService> {
+  return Effect.gen(function* () {
+    const gmailService = yield* GmailServiceTag;
+    return yield* gmailService.trashEmail(emailId);
+  });
+}
+
+export function deleteGmailEmail(
+  emailId: string,
+): Effect.Effect<void, GmailOperationError | GmailAuthenticationError, GmailService> {
+  return Effect.gen(function* () {
+    const gmailService = yield* GmailServiceTag;
+    return yield* gmailService.deleteEmail(emailId);
   });
 }

@@ -334,6 +334,7 @@
 - Right authentification info are stored and shared by all agents. But maybe we'd like to have one auth per agent. For example one agent connected to gmail account 1 and an other for gmail account 2 ?
 - Might want to load the configuration from a .mjs instead of a .json
 - Might want to seperate config from secrets
+- MEMORY -> keep memory about my workflow preferences, favorite folders, ...
 
 ### Use Cases/Workflows/Ideas I'ld like to see
 

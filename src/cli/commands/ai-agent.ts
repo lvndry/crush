@@ -14,6 +14,7 @@ import {
 } from "../../core/types/errors";
 import type { Agent, AgentConfig } from "../../core/types/index";
 import type { ConfigService } from "../../services/config";
+import type { ChatMessage } from "../../services/llm/types";
 import { LLMConfigurationError, LLMServiceTag, type LLMService } from "../../services/llm/types";
 import { LoggerServiceTag, type LoggerService } from "../../services/logger";
 
@@ -185,7 +186,7 @@ async function promptForAgentInfo(
       name: "tools",
       message: "Which tools should this agent have access to?",
       choices: tools,
-      default: ["listEmails", "searchEmails"],
+      default: [],
     },
   ];
 
@@ -240,6 +241,7 @@ function startChatLoop(
   return Effect.gen(function* () {
     let chatActive = true;
     let conversationId: string | undefined;
+    let conversationHistory: ChatMessage[] = [];
 
     while (chatActive) {
       // Prompt for user input
@@ -275,6 +277,7 @@ function startChatLoop(
           agent,
           userInput: userMessage,
           conversationId: conversationId || "",
+          conversationHistory,
         };
 
         // Run the agent
@@ -282,6 +285,11 @@ function startChatLoop(
 
         // Store the conversation ID for continuity
         conversationId = response.conversationId;
+
+        // Persist conversation history for next turn
+        if (response.messages) {
+          conversationHistory = response.messages;
+        }
 
         // Display the response
         console.log();

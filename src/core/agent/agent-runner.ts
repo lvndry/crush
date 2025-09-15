@@ -25,6 +25,11 @@ export interface AgentRunnerOptions {
   readonly conversationId?: string;
   readonly userId?: string;
   readonly maxIterations?: number;
+  /**
+   * Full conversation history to date, including prior assistant, user, and tool messages.
+   * Use this to preserve context across turns (e.g., approval flows).
+   */
+  readonly conversationHistory?: ChatMessage[];
 }
 
 export interface AgentResponse {
@@ -32,6 +37,11 @@ export interface AgentResponse {
   readonly conversationId: string;
   readonly toolCalls?: ToolCall[];
   readonly toolResults?: Record<string, unknown>;
+  /**
+   * The full message list used for this turn, including system, user, assistant, and tool messages.
+   * Pass this back on the next turn to retain context across approvals and multi-step tasks.
+   */
+  readonly messages?: ChatMessage[] | undefined;
 }
 
 export class AgentRunner {
@@ -58,8 +68,8 @@ export class AgentRunner {
       // Generate a conversation ID if not provided
       const actualConversationId = conversationId || `conv-${Date.now()}`;
 
-      // For now, start with empty history; persistence can be added via a dedicated service layer
-      const history: ChatMessage[] = [];
+      // Use provided history if available to preserve context across turns
+      const history: ChatMessage[] = options.conversationHistory || [];
 
       // Determine the agent type from the agent config
       const agentType = agent.config.agentType || "default";
@@ -67,6 +77,27 @@ export class AgentRunner {
       // Get available tools for this specific agent
       const allToolNames = yield* toolRegistry.listTools();
       const agentToolNames = agent.config.tools || [];
+
+      // Auto-expand execute-* counterparts for approval flows when their parent tool is allowed
+      function mapToExecuteTool(name: string): string | undefined {
+        switch (name) {
+          case "trashEmail":
+            return "executeTrashEmail";
+          case "deleteEmail":
+            return "executeDeleteEmail";
+          case "deleteLabel":
+            return "executeDeleteLabel";
+          default:
+            return undefined;
+        }
+      }
+
+      const expandedToolNamesSet = new Set<string>(agentToolNames);
+      for (const t of agentToolNames) {
+        const exec = mapToExecuteTool(t);
+        if (exec) expandedToolNamesSet.add(exec);
+      }
+      const expandedToolNames = Array.from(expandedToolNamesSet);
 
       // Validate that all agent tools exist in the registry
       const invalidTools = agentToolNames.filter((toolName) => !allToolNames.includes(toolName));
@@ -87,7 +118,7 @@ export class AgentRunner {
 
       // Get tool definitions for only the agent's specified tools
       const allTools = yield* toolRegistry.getToolDefinitions();
-      const tools = allTools.filter((tool) => agentToolNames.includes(tool.function.name));
+      const tools = allTools.filter((tool) => expandedToolNames.includes(tool.function.name));
 
       // Create execution context
       const context: ToolExecutionContext = {
@@ -210,7 +241,8 @@ export class AgentRunner {
 
       // Optionally persist conversation history via a storage layer in the future
 
-      return response;
+      // Return the full message history from this turn so callers can persist it
+      return { ...response, messages: currentMessages };
     });
   }
 }
