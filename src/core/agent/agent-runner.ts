@@ -71,8 +71,7 @@ export class AgentRunner {
       // Use provided history if available to preserve context across turns
       const history: ChatMessage[] = options.conversationHistory || [];
 
-      // Determine the agent type from the agent config
-      const agentType = agent.config.agentType || "default";
+      const agentType = agent.config.agentType;
 
       // Get available tools for this specific agent
       const allToolNames = yield* toolRegistry.listTools();

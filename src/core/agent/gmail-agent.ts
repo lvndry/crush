@@ -13,17 +13,8 @@ export class GmailTaskError extends Error {
     message: string,
     public override readonly cause?: unknown,
   ) {
-    super(message);
+    super(message, { cause });
     this.name = "GmailTaskError";
-    // Error class doesn't have cause property in all environments
-    if (cause) {
-      Object.defineProperty(this, "cause", {
-        value: cause,
-        enumerable: false,
-        writable: true,
-        configurable: true,
-      });
-    }
   }
 }
 

@@ -38,10 +38,16 @@ class DefaultLiteLLMService implements LLMService {
 
     // Define supported models for each provider
     this.providerModels = {
-      openai: ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"],
-      anthropic: ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"],
-      google: ["gemini-pro", "gemini-1.5-pro"],
-      mistral: ["mistral-small", "mistral-medium", "mistral-large"],
+      openai: ["gpt-5", "gpt-4", "gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo", "o3"],
+      anthropic: [
+        "claude-opus-4",
+        "claude-sonnet-4",
+        "claude-3-opus",
+        "claude-3-sonnet",
+        "claude-3-haiku",
+      ],
+      google: ["gemini-pro", "gemini-2.0-flash", "gemini-1.5-pro"],
+      mistral: ["mistral-small-latest", "mistral-medium-latest", "mistral-large-latest"],
       ollama: ["llama3", "llama2", "mistral"],
     };
   }

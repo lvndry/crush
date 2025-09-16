@@ -94,7 +94,6 @@ export function createAIAgentCommand(): Effect.Effect<
       environment: {},
     };
 
-    // Create the agent
     const agentService = yield* AgentServiceTag;
     const agent = yield* agentService.createAgent(
       agentAnswers.name,
@@ -218,7 +217,7 @@ export function chatWithAIAgentCommand(
     console.log("Type 'exit' or 'quit' to end the conversation.");
     console.log();
 
-    // Start the chat loop with error logging (do not swallow silently)
+    // Start the chat loop with error logging
     yield* startChatLoop(agent).pipe(
       Effect.catchAll((error) =>
         Effect.gen(function* () {
@@ -300,7 +299,7 @@ function startChatLoop(
         console.log();
         console.log(`❌ Error: ${error instanceof Error ? error.message : String(error)}`);
         console.log();
-        // Also log via structured logger
+
         const logger = yield* LoggerServiceTag;
         yield* logger.error("Agent chat processing error", { error });
       }

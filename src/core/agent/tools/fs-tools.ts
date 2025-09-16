@@ -766,7 +766,22 @@ export function createMkdirTool(): Tool<FileSystem.FileSystem | ShellService> {
       message: (args, context) =>
         Effect.gen(function* () {
           const shell = yield* ShellServiceTag;
+          const fs = yield* FileSystem.FileSystem;
           const target = yield* shell.resolvePathForMkdir(buildKeyFromContext(context), args.path);
+
+          // Check if directory already exists
+          const statResult = yield* fs
+            .stat(target)
+            .pipe(Effect.catchAll(() => Effect.succeed(null)));
+
+          if (statResult) {
+            if (statResult.type === "Directory") {
+              return `Directory already exists: ${target}\n\nNo action needed - the directory is already present.`;
+            } else {
+              return `Path exists but is not a directory: ${target}\n\nCannot create directory at this location because a file already exists.`;
+            }
+          }
+
           return `About to create directory: ${target}${args.recursive === false ? "" : " (with parents)"}.\n\nIMPORTANT: After getting user confirmation, you MUST call the executeMkdir tool with these exact arguments: {"path": "${args.path}", "recursive": ${args.recursive !== false}}`;
         }),
       errorMessage: "Approval required: Directory creation requires user confirmation.",
@@ -809,6 +824,22 @@ export function createExecuteMkdirTool(): Tool<FileSystem.FileSystem | ShellServ
         const fs = yield* FileSystem.FileSystem;
         const shell = yield* ShellServiceTag;
         const target = yield* shell.resolvePathForMkdir(buildKeyFromContext(context), args.path);
+
+        // Check if directory already exists
+        const statResult = yield* fs.stat(target).pipe(Effect.catchAll(() => Effect.succeed(null)));
+
+        if (statResult) {
+          if (statResult.type === "Directory") {
+            return { success: true, result: `Directory already exists: ${target}` };
+          } else {
+            return {
+              success: false,
+              result: null,
+              error: `Cannot create directory '${target}': a file already exists at this path`,
+            };
+          }
+        }
+
         try {
           yield* fs.makeDirectory(target, { recursive: args.recursive !== false });
           return { success: true, result: `Directory created: ${target}` };
@@ -817,6 +848,67 @@ export function createExecuteMkdirTool(): Tool<FileSystem.FileSystem | ShellServ
             success: false,
             result: null,
             error: `mkdir failed: ${error instanceof Error ? error.message : String(error)}`,
+          };
+        }
+      }),
+  });
+}
+
+// stat - check if file/directory exists and get info
+export function createStatTool(): Tool<FileSystem.FileSystem | ShellService> {
+  const parameters = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      path: { type: "string", description: "File or directory path to check" },
+    },
+    required: ["path"],
+  } as const;
+
+  return defineTool<FileSystem.FileSystem | ShellService, { path: string }>({
+    name: "stat",
+    description: "Check if a file or directory exists and get its information",
+    parameters,
+    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    handler: (args, context) =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const shell = yield* ShellServiceTag;
+        const target = yield* shell.resolvePathForMkdir(buildKeyFromContext(context), args.path);
+
+        try {
+          const stat = yield* fs.stat(target);
+          return {
+            success: true,
+            result: {
+              path: target,
+              exists: true,
+              type: stat.type,
+              size: stat.size,
+              mtime: stat.mtime,
+              atime: stat.atime,
+            },
+          };
+        } catch (error) {
+          // Check if it's a "not found" error
+          if (error instanceof Error && error.message.includes("ENOENT")) {
+            return {
+              success: true,
+              result: {
+                path: target,
+                exists: false,
+                type: null,
+                size: null,
+                mtime: null,
+                atime: null,
+              },
+            };
+          }
+
+          return {
+            success: false,
+            result: null,
+            error: `stat failed: ${error instanceof Error ? error.message : String(error)}`,
           };
         }
       }),

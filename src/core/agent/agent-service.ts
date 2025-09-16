@@ -87,6 +87,7 @@ export class DefaultAgentService implements AgentService {
           tasks: [],
           timeout: 30000,
           environment: {},
+          agentType: "default",
           llmProvider: "openai",
           llmModel: "gpt-4",
         };
