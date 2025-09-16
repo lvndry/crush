@@ -163,7 +163,7 @@ Customize where Crush stores data:
 }
 ```
 
-**Default**: `./.crush` (no configuration needed)
+**Default**: `./.crush`
 
 #### 📊 Logging (Optional)
 
@@ -184,20 +184,6 @@ Configure logging behavior:
 - `level`: `debug`, `info`, `warn`, `error`
 - `format`: `pretty`, `json`
 - `output`: `console`, `file`
-
-#### ⚡ Performance (Optional)
-
-Tune performance settings:
-
-```json
-{
-  "performance": {
-    "maxConcurrentAgents": 5,
-    "maxConcurrentTasks": 10,
-    "timeout": 30000
-  }
-}
-```
 
 ### Authentication Management
 
