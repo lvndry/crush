@@ -211,6 +211,232 @@ export function createCdTool(): Tool<FileSystem.FileSystem | ShellService> {
   });
 }
 
+// readFile
+export function createReadFileTool(): Tool<FileSystem.FileSystem | ShellService> {
+  const parameters = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      path: { type: "string", description: "File path to read (relative to cwd allowed)" },
+      startLine: { type: "number", description: "1-based start line (inclusive)" },
+      endLine: { type: "number", description: "1-based end line (inclusive)" },
+      maxBytes: {
+        type: "number",
+        description: "Maximum number of bytes to return (content is truncated if exceeded)",
+        default: 131072,
+      },
+      encoding: {
+        type: "string",
+        description: "Text encoding (currently utf-8)",
+        default: "utf-8",
+      },
+    },
+    required: ["path"],
+  } as const;
+
+  return defineTool<
+    FileSystem.FileSystem | ShellService,
+    { path: string; startLine?: number; endLine?: number; maxBytes?: number; encoding?: string }
+  >({
+    name: "readFile",
+    description: "Read a text file with optional line range and size limit",
+    parameters,
+    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    handler: (args, context) =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const shell = yield* ShellServiceTag;
+        const filePath = yield* shell.resolvePath(buildKeyFromContext(context), args.path);
+
+        try {
+          const stat = yield* fs.stat(filePath);
+          if (stat.type === "Directory") {
+            return { success: false, result: null, error: `Not a file: ${filePath}` };
+          }
+
+          let content = yield* fs.readFileString(filePath);
+
+          // Strip UTF-8 BOM if present
+          if (content.length > 0 && content.charCodeAt(0) === 0xfeff) {
+            content = content.slice(1);
+          }
+
+          let totalLines = 0;
+          let returnedLines = 0;
+          let rangeStart: number | undefined = undefined;
+          let rangeEnd: number | undefined = undefined;
+
+          // Apply line range if provided
+          if (args.startLine !== undefined || args.endLine !== undefined) {
+            const lines = content.split(/\r?\n/);
+            totalLines = lines.length;
+            const start = Math.max(1, args.startLine ?? 1);
+            const rawEnd = args.endLine ?? totalLines;
+            const end = Math.max(start, Math.min(rawEnd, totalLines));
+            content = lines.slice(start - 1, end).join("\n");
+            returnedLines = end - start + 1;
+            rangeStart = start;
+            rangeEnd = end;
+          } else {
+            // If no range, we can still report total lines lazily without splitting twice
+            totalLines = content === "" ? 0 : content.split(/\r?\n/).length;
+            returnedLines = totalLines;
+          }
+
+          // Enforce maxBytes safeguard (approximate by string length)
+          const maxBytes =
+            typeof args.maxBytes === "number" && args.maxBytes > 0 ? args.maxBytes : 131072;
+          let truncated = false;
+          if (content.length > maxBytes) {
+            content = content.slice(0, maxBytes);
+            truncated = true;
+          }
+
+          return {
+            success: true,
+            result: {
+              path: filePath,
+              encoding: (args.encoding ?? "utf-8").toLowerCase(),
+              content,
+              truncated,
+              totalLines,
+              returnedLines,
+              range:
+                rangeStart !== undefined ? { startLine: rangeStart, endLine: rangeEnd } : undefined,
+            },
+          };
+        } catch (error) {
+          return {
+            success: false,
+            result: null,
+            error: `readFile failed: ${error instanceof Error ? error.message : String(error)}`,
+          };
+        }
+      }),
+  });
+}
+
+// writeFile (approval required)
+type WriteFileArgs = { path: string; content: string; encoding?: string; createDirs?: boolean };
+
+export function createWriteFileTool(): Tool<FileSystem.FileSystem | ShellService> {
+  const parameters = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      path: {
+        type: "string",
+        description:
+          "File path to write to, will be created if it doesn't exist (relative to cwd allowed)",
+      },
+      content: { type: "string", description: "Content to write to the file" },
+      encoding: {
+        type: "string",
+        description: "Text encoding (currently utf-8)",
+        default: "utf-8",
+      },
+      createDirs: {
+        type: "boolean",
+        description: "Create parent directories if they don't exist",
+        default: false,
+      },
+    },
+    required: ["path", "content"],
+  } as const;
+
+  return defineTool<FileSystem.FileSystem | ShellService, WriteFileArgs>({
+    name: "writeFile",
+    description:
+      "Write content to a file, creating it if it doesn't exist (requires user approval)",
+    parameters,
+    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    approval: {
+      message: (args, context) =>
+        Effect.gen(function* () {
+          const shell = yield* ShellServiceTag;
+          const target = yield* shell.resolvePath(buildKeyFromContext(context), args.path, {
+            skipExistenceCheck: true,
+          });
+          return `About to write to file: ${target}${args.createDirs === true ? " (will create parent directories)" : ""}.\n\nIMPORTANT: After getting user confirmation, you MUST call the executeWriteFile tool with these exact arguments: {"path": "${args.path}", "content": ${JSON.stringify(args.content)}, "encoding": "${args.encoding ?? "utf-8"}", "createDirs": ${args.createDirs === true}}`;
+        }),
+      errorMessage: "Approval required: File writing requires user confirmation.",
+      execute: {
+        toolName: "executeWriteFile",
+        buildArgs: (args) => ({
+          path: args.path,
+          content: args.content,
+          encoding: args.encoding,
+          createDirs: args.createDirs,
+        }),
+      },
+    },
+    handler: (_args) =>
+      Effect.succeed({ success: false, result: null, error: "Approval required" }),
+  });
+}
+
+export function createExecuteWriteFileTool(): Tool<FileSystem.FileSystem | ShellService> {
+  const parameters = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      path: {
+        type: "string",
+        description: "File path to write to, will be created if it doesn't exist",
+      },
+      content: { type: "string", description: "Content to write to the file" },
+      encoding: {
+        type: "string",
+        description: "Text encoding (currently utf-8)",
+        default: "utf-8",
+      },
+      createDirs: {
+        type: "boolean",
+        description: "Create parent directories if they don't exist",
+        default: false,
+      },
+    },
+    required: ["path", "content"],
+  } as const;
+
+  return defineTool<FileSystem.FileSystem | ShellService, WriteFileArgs>({
+    name: "executeWriteFile",
+    description: "Execute writeFile after user approval",
+    hidden: true,
+    parameters,
+    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    handler: (args, context) =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const shell = yield* ShellServiceTag;
+        const target = yield* shell.resolvePath(buildKeyFromContext(context), args.path, {
+          skipExistenceCheck: true,
+        });
+
+        try {
+          // Create parent directories if requested
+          if (args.createDirs === true) {
+            const parentDir = target.substring(0, target.lastIndexOf("/"));
+            if (parentDir && parentDir !== target) {
+              yield* fs.makeDirectory(parentDir, { recursive: true });
+            }
+          }
+
+          // Write the file content
+          yield* fs.writeFileString(target, args.content);
+
+          return { success: true, result: `File written: ${target}` };
+        } catch (error) {
+          return {
+            success: false,
+            result: null,
+            error: `writeFile failed: ${error instanceof Error ? error.message : String(error)}`,
+          };
+        }
+      }),
+  });
+}
+
 // grep
 export function createGrepTool(): Tool<FileSystem.FileSystem | ShellService> {
   const parameters = {

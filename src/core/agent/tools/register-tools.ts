@@ -3,13 +3,16 @@ import {
   createCdTool,
   createExecuteMkdirTool,
   createExecuteRmTool,
+  createExecuteWriteFileTool,
   createFindDirTool,
   createFindTool,
   createGrepTool,
   createLsTool,
   createMkdirTool,
   createPwdTool,
+  createReadFileTool,
   createRmTool,
+  createWriteFileTool,
 } from "./fs-tools";
 import {
   createAddLabelsToEmailTool,
@@ -112,23 +115,29 @@ export function registerFileTools(): Effect.Effect<void, Error, ToolRegistry> {
     const ls = createLsTool();
     const cd = createCdTool();
     const grep = createGrepTool();
+    const readFile = createReadFileTool();
     const find = createFindTool();
     const finddir = createFindDirTool();
     const mkdir = createMkdirTool();
     const executeMkdir = createExecuteMkdirTool();
     const rm = createRmTool();
     const executeRm = createExecuteRmTool();
+    const writeFile = createWriteFileTool();
+    const executeWriteFile = createExecuteWriteFileTool();
 
     yield* registry.registerTool(pwd);
     yield* registry.registerTool(ls);
     yield* registry.registerTool(cd);
     yield* registry.registerTool(grep);
+    yield* registry.registerTool(readFile);
+    yield* registry.registerTool(writeFile);
     yield* registry.registerTool(find);
     yield* registry.registerTool(finddir);
     yield* registry.registerTool(mkdir);
     yield* registry.registerTool(executeMkdir);
     yield* registry.registerTool(rm);
     yield* registry.registerTool(executeRm);
+    yield* registry.registerTool(executeWriteFile);
   });
 }
 
