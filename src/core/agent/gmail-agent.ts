@@ -150,7 +150,7 @@ export function executeGmailTask(
           return {
             taskId: task.id,
             status: "success",
-            output: `Email sent successfully to ${to.join(", ")}`,
+            output: `Draft created for ${to.join(", ")}`,
             duration: Date.now() - startTime,
             timestamp: new Date(),
             metadata: {

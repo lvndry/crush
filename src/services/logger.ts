@@ -228,6 +228,30 @@ export function logToolExecutionError(
   });
 }
 
+export function logToolExecutionApproval(
+  toolName: string,
+  agentId: string,
+  durationMs: number,
+  approvalMessage: string,
+  conversationId?: string,
+): Effect.Effect<void, never, LoggerService> {
+  return Effect.gen(function* () {
+    const logger = yield* LoggerServiceTag;
+    const toolEmoji = getToolEmoji(toolName);
+    const duration = formatDuration(durationMs);
+    const message = `${toolEmoji} ${toolName} ⚠️ APPROVE REQUIRED (${duration}) - ${approvalMessage}`;
+
+    yield* logger.warn(message, {
+      toolName,
+      agentId,
+      conversationId,
+      durationMs,
+      status: "approval_required",
+      approvalMessage,
+    });
+  });
+}
+
 // Utility functions for tool logging
 function getToolEmoji(toolName: string): string {
   const toolEmojis: Record<string, string> = {

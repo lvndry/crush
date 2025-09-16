@@ -39,6 +39,10 @@ export interface BaseToolConfig<R, Args extends Record<string, unknown>> {
       context: ToolExecutionContext,
     ) => Effect.Effect<string, Error, R>;
     /**
+     * Custom error message when approval is required. Defaults to generic message.
+     */
+    readonly errorMessage?: string;
+    /**
      * Optional execution callback that defines which tool to call on user approval
      * and how to build its arguments from the validated input.
      */
@@ -98,9 +102,9 @@ export function defineTool<R, Args extends Record<string, unknown>>(
           return Effect.succeed({ success: false, result: null, error: message });
         }
         const validated = result.value as Args;
-        // Enforce approval if configured - ALWAYS require approval for destructive tools
+        // Enforce approval if configured
         if (config.approval) {
-          // Generate approval message (can be async to fetch context)
+          // Return an approval request payload
           return Effect.gen(function* () {
             const approvalMessage = yield* config.approval!.message(validated, context);
             const execute = config.approval?.execute;
@@ -111,14 +115,15 @@ export function defineTool<R, Args extends Record<string, unknown>>(
                 message: approvalMessage,
                 ...(execute
                   ? {
-                      instruction: `Please ask the user for confirmation. If they confirm, call: ${execute.toolName}`,
+                      instruction: `Please ask the user for confirmation. If they confirm, call this tool again with { "confirm": true } or call: ${execute.toolName} with these exact arguments: ${JSON.stringify(execute.buildArgs(validated))}`,
                       executeToolName: execute.toolName,
                       executeArgs: execute.buildArgs(validated),
                     }
                   : {}),
               },
               error:
-                "Approval required: This is a destructive action that requires user confirmation.",
+                config.approval?.errorMessage ??
+                "Approval required: This action requires user confirmation.",
             } as ToolExecutionResult;
           });
         }
@@ -211,9 +216,7 @@ export function withApprovalBoolean(
   options?: { fieldName?: string; description?: string },
 ): Record<string, unknown> {
   const fieldName = options?.fieldName ?? "confirm";
-  const description =
-    options?.description ??
-    "Set to true to confirm this destructive action. The operation cannot be undone.";
+  const description = options?.description ?? "Set to true to confirm this action.";
 
   const copy = JSON.parse(JSON.stringify(schema)) as {
     type?: string;

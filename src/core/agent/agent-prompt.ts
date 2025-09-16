@@ -52,7 +52,7 @@ You can help with reading, searching, and organizing emails.
           listEmails: "List the user's emails with optional filtering.",
           getEmail: "Get the full content of a specific email by ID.",
           searchEmails: "Search for emails matching specific criteria.",
-          sendEmail: "Send an email on behalf of the user.",
+          sendEmail: "Draft an email on behalf of the user (does not send).",
         },
       },
       coder: {

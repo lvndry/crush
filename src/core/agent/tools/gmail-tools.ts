@@ -280,7 +280,7 @@ export function createSendEmailTool(): Tool<GmailService> {
     { to: string[]; subject: string; body: string; cc?: string[]; bcc?: string[] }
   >({
     name: "sendEmail",
-    description: "Send an email on behalf of the user",
+    description: "Draft an email on behalf of the user (does not send)",
     parameters,
     validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
     handler: (validatedArgs) =>
@@ -291,7 +291,7 @@ export function createSendEmailTool(): Tool<GmailService> {
         if (cc) options.cc = cc;
         if (bcc) options.bcc = bcc;
         yield* gmailService.sendEmail(to, subject, body, options);
-        return { success: true, result: `Email sent to ${to.join(", ")}` };
+        return { success: true, result: `Draft created for ${to.join(", ")}` };
       }),
   });
 }

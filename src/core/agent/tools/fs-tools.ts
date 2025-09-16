@@ -540,9 +540,10 @@ export function createMkdirTool(): Tool<FileSystem.FileSystem | ShellService> {
       message: (args, context) =>
         Effect.gen(function* () {
           const shell = yield* ShellServiceTag;
-          const target = yield* shell.resolvePath(buildKeyFromContext(context), args.path);
-          return `About to create directory: ${target}${args.recursive === false ? "" : " (with parents)"}.\nIf the user confirms, call executeMkdir with the same arguments.`;
+          const target = yield* shell.resolvePathForMkdir(buildKeyFromContext(context), args.path);
+          return `About to create directory: ${target}${args.recursive === false ? "" : " (with parents)"}.\n\nIMPORTANT: After getting user confirmation, you MUST call the executeMkdir tool with these exact arguments: {"path": "${args.path}", "recursive": ${args.recursive !== false}}`;
         }),
+      errorMessage: "Approval required: Directory creation requires user confirmation.",
       execute: {
         toolName: "executeMkdir",
         buildArgs: (args) => ({
@@ -581,7 +582,7 @@ export function createExecuteMkdirTool(): Tool<FileSystem.FileSystem | ShellServ
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
         const shell = yield* ShellServiceTag;
-        const target = yield* shell.resolvePath(buildKeyFromContext(context), args.path);
+        const target = yield* shell.resolvePathForMkdir(buildKeyFromContext(context), args.path);
         try {
           yield* fs.makeDirectory(target, { recursive: args.recursive !== false });
           return { success: true, result: `Directory created: ${target}` };
@@ -629,6 +630,7 @@ export function createRmTool(): Tool<FileSystem.FileSystem | ShellService> {
           const recurse = args.recursive === true ? " recursively" : "";
           return `About to delete${recurse}: ${target}. This action may be irreversible.\nIf the user confirms, call executeRm with the same arguments.`;
         }),
+      errorMessage: "Approval required: File/directory deletion requires user confirmation.",
       execute: {
         toolName: "executeRm",
         buildArgs: (args) => ({

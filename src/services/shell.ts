@@ -10,12 +10,17 @@ export interface ShellService {
   readonly resolvePath: (
     key: { agentId: string; conversationId?: string },
     path: string,
+    options?: { skipExistenceCheck?: boolean },
   ) => Effect.Effect<string, Error, FileSystem.FileSystem>;
   readonly findDirectory: (
     key: { agentId: string; conversationId?: string },
     name: string,
     maxDepth?: number,
   ) => Effect.Effect<string[], Error, FileSystem.FileSystem>;
+  readonly resolvePathForMkdir: (
+    key: { agentId: string; conversationId?: string },
+    path: string,
+  ) => Effect.Effect<string, Error, FileSystem.FileSystem>;
   readonly escapePath: (path: string) => string;
 }
 
@@ -151,7 +156,7 @@ export function createShellServiceLayer(): Layer.Layer<ShellService, never, File
             cwdByKey.set(makeKey(key), target);
           }),
 
-        resolvePath: (key, path) =>
+        resolvePath: (key, path, options = {}) =>
           Effect.gen(function* () {
             const base = cwdByKey.get(makeKey(key)) ?? (process.env["HOME"] || process.cwd());
 
@@ -162,6 +167,11 @@ export function createShellServiceLayer(): Layer.Layer<ShellService, never, File
             const resolved = normalizedPath.startsWith("/")
               ? normalizedPath
               : `${base}/${normalizedPath}`;
+
+            // If skipExistenceCheck is true, return the resolved path without checking existence
+            if (options.skipExistenceCheck) {
+              return resolved;
+            }
 
             // Check if the resolved path exists
             const statResult = yield* fs
@@ -198,6 +208,50 @@ export function createShellServiceLayer(): Layer.Layer<ShellService, never, File
           Effect.gen(function* () {
             const base = cwdByKey.get(makeKey(key)) ?? (process.env["HOME"] || process.cwd());
             return yield* findDirectoryByName(base, name, maxDepth);
+          }),
+
+        resolvePathForMkdir: (key, path) =>
+          Effect.gen(function* () {
+            const base = cwdByKey.get(makeKey(key)) ?? (process.env["HOME"] || process.cwd());
+
+            // Normalize the path first
+            const normalizedPath = normalize(path);
+
+            // Check if it's an absolute path (after normalization)
+            const resolved = normalizedPath.startsWith("/")
+              ? normalizedPath
+              : `${base}/${normalizedPath}`;
+
+            // For mkdir, we need to check if the parent directory exists
+            const parentDir = resolved.substring(0, resolved.lastIndexOf("/"));
+
+            // If parentDir is empty, it means we're creating in root
+            if (parentDir === "") {
+              return resolved;
+            }
+
+            // Check if the parent directory exists
+            const parentStatResult = yield* fs
+              .stat(parentDir)
+              .pipe(Effect.catchAll(() => Effect.succeed(null)));
+
+            if (!parentStatResult) {
+              return yield* Effect.fail(
+                new Error(
+                  `Cannot create directory '${resolved}': parent directory '${parentDir}' does not exist. Use recursive=true to create parent directories.`,
+                ),
+              );
+            }
+
+            if (parentStatResult.type !== "Directory") {
+              return yield* Effect.fail(
+                new Error(
+                  `Cannot create directory '${resolved}': '${parentDir}' is not a directory.`,
+                ),
+              );
+            }
+
+            return resolved;
           }),
 
         escapePath: (path) => escapeForShell(path),

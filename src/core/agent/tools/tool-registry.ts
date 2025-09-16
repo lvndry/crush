@@ -1,10 +1,11 @@
 import { Context, Effect, Layer } from "effect";
 import { type ToolDefinition } from "../../../services/llm/types";
 import {
-  type LoggerService,
-  logToolExecutionError,
-  logToolExecutionStart,
-  logToolExecutionSuccess,
+    type LoggerService,
+    logToolExecutionApproval,
+    logToolExecutionError,
+    logToolExecutionStart,
+    logToolExecutionSuccess,
 } from "../../../services/logger";
 
 /**
@@ -139,14 +140,30 @@ class DefaultToolRegistry implements ToolRegistry {
               resultSummary,
             ).pipe(Effect.catchAll(() => Effect.void));
           } else {
-            const errorMessage = result.error || "Tool returned success=false";
-            yield* logToolExecutionError(
-              name,
-              context.agentId,
-              durationMs,
-              errorMessage,
-              context.conversationId,
-            ).pipe(Effect.catchAll(() => Effect.void));
+            // If this is an approval-required response, log as warning with special label
+            const resultObj = result.result as
+              | { approvalRequired?: boolean; message?: string }
+              | undefined;
+            const isApproval = resultObj?.approvalRequired === true;
+            if (isApproval) {
+              const approvalMsg = resultObj?.message || result.error || "Approval required";
+              yield* logToolExecutionApproval(
+                name,
+                context.agentId,
+                durationMs,
+                approvalMsg,
+                context.conversationId,
+              ).pipe(Effect.catchAll(() => Effect.void));
+            } else {
+              const errorMessage = result.error || "Tool returned success=false";
+              yield* logToolExecutionError(
+                name,
+                context.agentId,
+                durationMs,
+                errorMessage,
+                context.conversationId,
+              ).pipe(Effect.catchAll(() => Effect.void));
+            }
           }
 
           return result;

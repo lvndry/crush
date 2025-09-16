@@ -276,13 +276,13 @@ export class GmailServiceResource implements GmailService {
           });
           // Attachments not implemented in this first pass
           yield* Effect.promise(() =>
-            this.gmail.users.messages.send({ userId: "me", requestBody: { raw } }),
+            this.gmail.users.drafts.create({ userId: "me", requestBody: { message: { raw } } }),
           );
           return void 0;
         } catch (err) {
           const status = getHttpStatusFromError(err);
           throw new GmailOperationError(
-            `Failed to send email: ${err instanceof Error ? err.message : String(err)}`,
+            `Failed to create draft: ${err instanceof Error ? err.message : String(err)}`,
             status,
           );
         }
@@ -579,6 +579,7 @@ export class GmailServiceResource implements GmailService {
           "https://www.googleapis.com/auth/gmail.send",
           "https://www.googleapis.com/auth/gmail.modify",
           "https://www.googleapis.com/auth/gmail.labels",
+          "https://www.googleapis.com/auth/gmail.compose",
         ];
 
         const authUrl = this.oauthClient.generateAuthUrl({
