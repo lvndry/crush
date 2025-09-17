@@ -189,7 +189,6 @@
   - [ ] Environment-based configuration
   - [ ] Configuration file support (JSON/YAML/TOML)
   - [ ] Configuration validation
-  - [ ] Hot configuration reload
 
 - [ ] **Security Features**
   - [ ] Credential management
@@ -202,10 +201,8 @@
 #### 📋 CLI Enhancements
 
 - [ ] **Interactive Commands**
-  - [ ] Agent creation wizard
+  - [x] Agent creation wizard
   - [ ] Configuration setup assistant
-  - [ ] Interactive debugging tools
-  - [ ] Command completion
 
 - [ ] **Output & Formatting**
   - [ ] Pretty-printed output
@@ -223,7 +220,7 @@
 
 - [ ] **Documentation**
   - [ ] API documentation
-  - [ ] CLI usage examples
+  - [x] CLI usage examples
   - [ ] Agent development guide
   - [ ] MCP integration tutorial
 

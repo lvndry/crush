@@ -20,14 +20,14 @@ Every task has these essential properties:
 
 ```typescript
 interface Task {
-  readonly id: string;                    // Unique identifier
-  readonly name: string;                  // Human-readable name
-  readonly description: string;           // Purpose description
-  readonly type: TaskType;               // Task type
-  readonly config: TaskConfig;           // Type-specific configuration
+  readonly id: string; // Unique identifier
+  readonly name: string; // Human-readable name
+  readonly description: string; // Purpose description
+  readonly type: TaskType; // Task type
+  readonly config: TaskConfig; // Type-specific configuration
   readonly dependencies?: readonly string[]; // Task dependencies
-  readonly retryCount?: number;          // Current retry count
-  readonly maxRetries?: number;          // Maximum retry attempts
+  readonly retryCount?: number; // Current retry count
+  readonly maxRetries?: number; // Maximum retry attempts
 }
 ```
 
@@ -50,17 +50,18 @@ Execute shell commands in a controlled environment.
 
 ```typescript
 interface CommandTaskConfig {
-  readonly command: string;              // Shell command to execute
-  readonly workingDirectory?: string;    // Working directory
+  readonly command: string; // Shell command to execute
+  readonly workingDirectory?: string; // Working directory
   readonly environment?: Record<string, string>; // Environment variables
-  readonly timeout?: number;             // Command timeout
-  readonly shell?: string;               // Shell to use (default: /bin/sh)
+  readonly timeout?: number; // Command timeout
+  readonly shell?: string; // Shell to use (default: /bin/sh)
 }
 ```
 
 ### Examples
 
 #### Basic Command
+
 ```typescript
 {
   id: "list-files",
@@ -74,6 +75,7 @@ interface CommandTaskConfig {
 ```
 
 #### Command with Working Directory
+
 ```typescript
 {
   id: "backup-database",
@@ -91,6 +93,7 @@ interface CommandTaskConfig {
 ```
 
 #### Command with Timeout
+
 ```typescript
 {
   id: "long-running-process",
@@ -121,10 +124,10 @@ Execute JavaScript or TypeScript code within the agent runtime.
 
 ```typescript
 interface ScriptTaskConfig {
-  readonly script: string;               // JavaScript/TypeScript code
-  readonly workingDirectory?: string;    // Working directory
+  readonly script: string; // JavaScript/TypeScript code
+  readonly workingDirectory?: string; // Working directory
   readonly environment?: Record<string, string>; // Environment variables
-  readonly timeout?: number;             // Script timeout
+  readonly timeout?: number; // Script timeout
   readonly language?: "javascript" | "typescript"; // Script language
 }
 ```
@@ -132,6 +135,7 @@ interface ScriptTaskConfig {
 ### Examples
 
 #### Data Processing Script
+
 ```typescript
 {
   id: "process-data",
@@ -142,22 +146,22 @@ interface ScriptTaskConfig {
     script: `
       const fs = require('fs');
       const path = require('path');
-      
+
       // Read input data
       const inputPath = path.join(process.cwd(), 'input.json');
       const data = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
-      
+
       // Process data
       const processed = data.map(item => ({
         ...item,
         processed: true,
         timestamp: new Date().toISOString()
       }));
-      
+
       // Write output
       const outputPath = path.join(process.cwd(), 'output.json');
       fs.writeFileSync(outputPath, JSON.stringify(processed, null, 2));
-      
+
       console.log(\`Processed \${processed.length} items\`);
     `,
     workingDirectory: "/data"
@@ -166,6 +170,7 @@ interface ScriptTaskConfig {
 ```
 
 #### API Integration Script
+
 ```typescript
 {
   id: "fetch-data",
@@ -175,7 +180,7 @@ interface ScriptTaskConfig {
   config: {
     script: `
       const https = require('https');
-      
+
       const options = {
         hostname: 'api.example.com',
         port: 443,
@@ -186,28 +191,28 @@ interface ScriptTaskConfig {
           'Content-Type': 'application/json'
         }
       };
-      
+
       const req = https.request(options, (res) => {
         let data = '';
-        
+
         res.on('data', (chunk) => {
           data += chunk;
         });
-        
+
         res.on('end', () => {
           const result = JSON.parse(data);
           console.log(\`Fetched \${result.items.length} items\`);
-          
+
           // Save to file
           require('fs').writeFileSync('api-data.json', data);
         });
       });
-      
+
       req.on('error', (error) => {
         console.error('API request failed:', error);
         process.exit(1);
       });
-      
+
       req.end();
     `,
     environment: {
@@ -245,19 +250,20 @@ Make HTTP requests to external APIs or services.
 
 ```typescript
 interface ApiTaskConfig {
-  readonly url: string;                  // Request URL
+  readonly url: string; // Request URL
   readonly method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH"; // HTTP method
   readonly headers?: Record<string, string>; // Request headers
-  readonly body?: unknown;               // Request body
-  readonly timeout?: number;             // Request timeout
-  readonly followRedirects?: boolean;    // Follow redirects
-  readonly validateSSL?: boolean;        // Validate SSL certificates
+  readonly body?: unknown; // Request body
+  readonly timeout?: number; // Request timeout
+  readonly followRedirects?: boolean; // Follow redirects
+  readonly validateSSL?: boolean; // Validate SSL certificates
 }
 ```
 
 ### Examples
 
 #### GET Request
+
 ```typescript
 {
   id: "health-check",
@@ -276,6 +282,7 @@ interface ApiTaskConfig {
 ```
 
 #### POST Request with Body
+
 ```typescript
 {
   id: "create-user",
@@ -299,6 +306,7 @@ interface ApiTaskConfig {
 ```
 
 #### File Upload
+
 ```typescript
 {
   id: "upload-file",
@@ -348,19 +356,27 @@ Perform file system operations and file management.
 
 ```typescript
 interface FileTaskConfig {
-  readonly filePath: string;             // Target file or directory path
-  readonly operation: "read" | "write" | "copy" | "move" | "delete" | "list" | "watch"; // Operation type
-  readonly content?: string;             // Content for write operations
-  readonly destination?: string;         // Destination for copy/move operations
-  readonly pattern?: string;             // File pattern for list operations
-  readonly recursive?: boolean;          // Recursive operations
-  readonly createDirectories?: boolean;  // Create directories if needed
+  readonly filePath: string; // Target file or directory path
+  readonly operation:
+    | "read"
+    | "write"
+    | "copy"
+    | "move"
+    | "delete"
+    | "list"
+    | "watch"; // Operation type
+  readonly content?: string; // Content for write operations
+  readonly destination?: string; // Destination for copy/move operations
+  readonly pattern?: string; // File pattern for list operations
+  readonly recursive?: boolean; // Recursive operations
+  readonly createDirectories?: boolean; // Create directories if needed
 }
 ```
 
 ### Examples
 
 #### Read File
+
 ```typescript
 {
   id: "read-config",
@@ -375,6 +391,7 @@ interface FileTaskConfig {
 ```
 
 #### Write File
+
 ```typescript
 {
   id: "write-log",
@@ -391,6 +408,7 @@ interface FileTaskConfig {
 ```
 
 #### Copy Files
+
 ```typescript
 {
   id: "backup-files",
@@ -407,6 +425,7 @@ interface FileTaskConfig {
 ```
 
 #### List Files
+
 ```typescript
 {
   id: "list-logs",
@@ -423,6 +442,7 @@ interface FileTaskConfig {
 ```
 
 #### Delete Files
+
 ```typescript
 {
   id: "cleanup-temp",
@@ -454,17 +474,18 @@ Handle incoming webhook requests and trigger actions.
 
 ```typescript
 interface WebhookTaskConfig {
-  readonly endpoint: string;             // Webhook endpoint path
-  readonly method?: string;              // HTTP method to accept
-  readonly secret?: string;              // Webhook secret for validation
-  readonly timeout?: number;             // Request timeout
-  readonly maxPayloadSize?: number;      // Maximum payload size
+  readonly endpoint: string; // Webhook endpoint path
+  readonly method?: string; // HTTP method to accept
+  readonly secret?: string; // Webhook secret for validation
+  readonly timeout?: number; // Request timeout
+  readonly maxPayloadSize?: number; // Maximum payload size
 }
 ```
 
 ### Examples
 
 #### GitHub Webhook
+
 ```typescript
 {
   id: "github-webhook",
@@ -488,7 +509,7 @@ Implement custom task types for specific use cases.
 
 ```typescript
 interface CustomTaskConfig {
-  readonly plugin: string;               // Plugin name
+  readonly plugin: string; // Plugin name
   readonly config: Record<string, unknown>; // Plugin-specific configuration
 }
 ```
@@ -507,6 +528,7 @@ Tasks can depend on other tasks to create execution workflows.
 ### Examples
 
 #### Sequential Tasks
+
 ```typescript
 // Task 1: Fetch data
 {
@@ -536,6 +558,7 @@ Tasks can depend on other tasks to create execution workflows.
 ```
 
 #### Parallel Tasks
+
 ```typescript
 // These tasks can run in parallel (no dependencies)
 {
@@ -634,6 +657,7 @@ interface TaskResult {
 ```
 
 ### Success Result
+
 ```typescript
 {
   taskId: "backup-database",
@@ -649,6 +673,7 @@ interface TaskResult {
 ```
 
 ### Failure Result
+
 ```typescript
 {
   taskId: "api-call",

@@ -1,11 +1,11 @@
 import { Context, Effect, Layer } from "effect";
 import { type ToolDefinition } from "../../../services/llm/types";
 import {
-    type LoggerService,
-    logToolExecutionApproval,
-    logToolExecutionError,
-    logToolExecutionStart,
-    logToolExecutionSuccess,
+  type LoggerService,
+  logToolExecutionApproval,
+  logToolExecutionError,
+  logToolExecutionStart,
+  logToolExecutionSuccess,
 } from "../../../services/logger";
 
 /**
@@ -35,6 +35,8 @@ export interface Tool<R = never> {
     args: Record<string, unknown>,
     context: ToolExecutionContext,
   ) => Effect.Effect<ToolExecutionResult, Error, R>;
+  /** Optional function to create a summary of the tool execution result */
+  readonly createSummary: ((result: ToolExecutionResult) => string | undefined) | undefined;
 }
 
 export interface ToolRegistry {
@@ -129,7 +131,7 @@ class DefaultToolRegistry implements ToolRegistry {
 
           if (result.success) {
             // Create a summary of the result for better logging
-            const resultSummary = createResultSummary(name, result);
+            const resultSummary = tool.createSummary?.(result);
 
             // Log successful execution with improved formatting
             yield* logToolExecutionSuccess(
@@ -185,73 +187,6 @@ class DefaultToolRegistry implements ToolRegistry {
       }.bind(this),
     );
   }
-}
-
-// Helper function to create meaningful result summaries
-function createResultSummary(toolName: string, result: ToolExecutionResult): string | undefined {
-  if (!result.success) {
-    return undefined;
-  }
-
-  const data = result.result;
-
-  switch (toolName) {
-    case "listEmails":
-      if (Array.isArray(data)) {
-        return `Found ${data.length} emails`;
-      }
-      break;
-
-    case "getEmail":
-      if (data && typeof data === "object" && "subject" in data) {
-        return `Retrieved: ${(data as unknown as { subject: string }).subject}`;
-      }
-      break;
-
-    case "sendEmail":
-      if (data && typeof data === "object" && "messageId" in data) {
-        return `Sent successfully (ID: ${(data as unknown as { messageId: string }).messageId})`;
-      }
-      break;
-
-    case "replyToEmail":
-    case "forwardEmail":
-      if (data && typeof data === "object" && "messageId" in data) {
-        return `Message sent (ID: ${(data as unknown as { messageId: string }).messageId})`;
-      }
-      break;
-
-    case "markAsRead":
-    case "markAsUnread":
-      return "Status updated";
-
-    case "trashEmail":
-      return "Email moved to trash";
-
-    case "deleteEmail":
-      return "Email deleted permanently";
-
-    case "createLabel":
-      if (data && typeof data === "object" && "id" in data) {
-        return `Label created (ID: ${(data as unknown as { id: string }).id})`;
-      }
-      break;
-
-    case "addLabel":
-    case "removeLabel":
-      return "Labels updated";
-
-    case "searchEmails":
-      if (Array.isArray(data)) {
-        return `Found ${data.length} matching emails`;
-      }
-      break;
-
-    default:
-      return undefined;
-  }
-
-  return undefined;
 }
 
 // Create a service tag for dependency injection

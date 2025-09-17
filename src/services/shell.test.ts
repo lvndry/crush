@@ -1,18 +1,18 @@
 import { NodeFileSystem } from "@effect/platform-node";
 import { describe, expect, it } from "bun:test";
 import { Effect, Layer } from "effect";
-import { createShellServiceLayer, ShellServiceTag } from "./shell";
+import { createFileSystemContextServiceLayer, FileSystemContextServiceTag } from "./shell";
 
-describe("ShellService", () => {
+describe("FileSystemContextService", () => {
   const createTestLayer = () => {
-    const shellLayer = createShellServiceLayer();
+    const shellLayer = createFileSystemContextServiceLayer();
     return Layer.provide(shellLayer, NodeFileSystem.layer);
   };
 
   describe("getCwd", () => {
     it("should default to HOME directory when no working directory is set", async () => {
       const testEffect = Effect.gen(function* () {
-        const shell = yield* ShellServiceTag;
+        const shell = yield* FileSystemContextServiceTag;
         const cwd = yield* shell.getCwd({ agentId: "test-agent" });
         return cwd;
       });
@@ -26,7 +26,7 @@ describe("ShellService", () => {
 
     it("should return set working directory for specific agent", async () => {
       const testEffect = Effect.gen(function* () {
-        const shell = yield* ShellServiceTag;
+        const shell = yield* FileSystemContextServiceTag;
         const testPath = "/tmp/test-dir";
 
         // First set a working directory
@@ -48,7 +48,7 @@ describe("ShellService", () => {
   describe("resolvePath", () => {
     it("should handle absolute paths correctly", async () => {
       const testEffect = Effect.gen(function* () {
-        const shell = yield* ShellServiceTag;
+        const shell = yield* FileSystemContextServiceTag;
         const resolved = yield* shell.resolvePath({ agentId: "test" }, "/usr/bin");
         return resolved;
       });
@@ -62,7 +62,7 @@ describe("ShellService", () => {
 
     it("should resolve relative paths from working directory", async () => {
       const testEffect = Effect.gen(function* () {
-        const shell = yield* ShellServiceTag;
+        const shell = yield* FileSystemContextServiceTag;
         const resolved = yield* shell.resolvePath({ agentId: "test" }, "Documents");
         return resolved;
       });
@@ -78,7 +78,7 @@ describe("ShellService", () => {
   describe("path normalization", () => {
     it("should handle backslash-escaped spaces", async () => {
       const testEffect = Effect.gen(function* () {
-        const shell = yield* ShellServiceTag;
+        const shell = yield* FileSystemContextServiceTag;
         const resolved = yield* shell.resolvePath(
           { agentId: "test" },
           "/Library/Application\\ Support/",
@@ -95,7 +95,7 @@ describe("ShellService", () => {
 
     it("should handle double-quoted paths", async () => {
       const testEffect = Effect.gen(function* () {
-        const shell = yield* ShellServiceTag;
+        const shell = yield* FileSystemContextServiceTag;
         const resolved = yield* shell.resolvePath(
           { agentId: "test" },
           '"/Library/Application Support/"',
@@ -112,7 +112,7 @@ describe("ShellService", () => {
 
     it("should handle single-quoted paths", async () => {
       const testEffect = Effect.gen(function* () {
-        const shell = yield* ShellServiceTag;
+        const shell = yield* FileSystemContextServiceTag;
         const resolved = yield* shell.resolvePath(
           { agentId: "test" },
           "'/Library/Application Support/'",
@@ -129,7 +129,7 @@ describe("ShellService", () => {
 
     it("should handle mixed escaping", async () => {
       const testEffect = Effect.gen(function* () {
-        const shell = yield* ShellServiceTag;
+        const shell = yield* FileSystemContextServiceTag;
         const resolved = yield* shell.resolvePath(
           { agentId: "test" },
           '"/Library/Application\\ Support/"',
@@ -146,7 +146,7 @@ describe("ShellService", () => {
 
     it("should handle paths with multiple spaces", async () => {
       const testEffect = Effect.gen(function* () {
-        const shell = yield* ShellServiceTag;
+        const shell = yield* FileSystemContextServiceTag;
         const resolved = yield* shell.resolvePath({ agentId: "test" }, '"/My Folder With Spaces/"');
         return resolved;
       }).pipe(Effect.catchAll((error) => Effect.succeed(error.message)));
@@ -163,7 +163,7 @@ describe("ShellService", () => {
   describe("escapePath", () => {
     it("should escape paths with spaces", async () => {
       const testEffect = Effect.gen(function* () {
-        const shell = yield* ShellServiceTag;
+        const shell = yield* FileSystemContextServiceTag;
         const escaped = shell.escapePath("/Library/Application Support/");
         return escaped;
       });
@@ -177,7 +177,7 @@ describe("ShellService", () => {
 
     it("should escape paths with special characters", async () => {
       const testEffect = Effect.gen(function* () {
-        const shell = yield* ShellServiceTag;
+        const shell = yield* FileSystemContextServiceTag;
         const escaped = shell.escapePath("/path/with(special)chars/");
         return escaped;
       });
@@ -191,7 +191,7 @@ describe("ShellService", () => {
 
     it("should not escape simple paths", async () => {
       const testEffect = Effect.gen(function* () {
-        const shell = yield* ShellServiceTag;
+        const shell = yield* FileSystemContextServiceTag;
         const escaped = shell.escapePath("/simple/path/");
         return escaped;
       });
@@ -205,7 +205,7 @@ describe("ShellService", () => {
 
     it("should handle already quoted paths", async () => {
       const testEffect = Effect.gen(function* () {
-        const shell = yield* ShellServiceTag;
+        const shell = yield* FileSystemContextServiceTag;
         const escaped = shell.escapePath('"/already/quoted/"');
         return escaped;
       });
@@ -221,7 +221,7 @@ describe("ShellService", () => {
   describe("findDirectory", () => {
     it("should find directories by name", async () => {
       const testEffect = Effect.gen(function* () {
-        const shell = yield* ShellServiceTag;
+        const shell = yield* FileSystemContextServiceTag;
         const found = yield* shell.findDirectory({ agentId: "test" }, "bin", 1);
         return found;
       });
@@ -237,7 +237,7 @@ describe("ShellService", () => {
 
     it("should return empty array when no directories found", async () => {
       const testEffect = Effect.gen(function* () {
-        const shell = yield* ShellServiceTag;
+        const shell = yield* FileSystemContextServiceTag;
         const found = yield* shell.findDirectory(
           { agentId: "test" },
           "nonexistentdirectory12345",
@@ -257,7 +257,7 @@ describe("ShellService", () => {
   describe("error handling", () => {
     it("should provide helpful error messages for non-existent paths", async () => {
       const testEffect = Effect.gen(function* () {
-        const shell = yield* ShellServiceTag;
+        const shell = yield* FileSystemContextServiceTag;
         yield* shell.resolvePath({ agentId: "test" }, "/absolute/nonexistent/path");
         return "should not reach here";
       }).pipe(Effect.catchAll((error) => Effect.succeed(error.message)));

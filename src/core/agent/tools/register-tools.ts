@@ -33,6 +33,7 @@ import {
   createTrashEmailTool,
   createUpdateLabelTool,
 } from "./gmail-tools";
+import { createExecuteCommandApprovedTool, createExecuteCommandTool } from "./shell-tools";
 import { ToolRegistryTag, type ToolRegistry } from "./tool-registry";
 
 /**
@@ -47,8 +48,8 @@ export function registerAllTools(): Effect.Effect<void, Error, ToolRegistry> {
 
     // Register other tool categories as needed
     yield* registerFileTools();
+    yield* registerShellTools();
     // yield* registerWebTools();
-    // etc.
   });
 }
 
@@ -141,6 +142,19 @@ export function registerFileTools(): Effect.Effect<void, Error, ToolRegistry> {
     yield* registry.registerTool(rm);
     yield* registry.registerTool(executeRm);
     yield* registry.registerTool(executeWriteFile);
+  });
+}
+
+// Register shell command execution tools
+export function registerShellTools(): Effect.Effect<void, Error, ToolRegistry> {
+  return Effect.gen(function* () {
+    const registry = yield* ToolRegistryTag;
+
+    const executeCommandTool = createExecuteCommandTool();
+    const executeCommandApprovedTool = createExecuteCommandApprovedTool();
+
+    yield* registry.registerTool(executeCommandTool);
+    yield* registry.registerTool(executeCommandApprovedTool);
   });
 }
 

@@ -1,3 +1,5 @@
+import globals from "globals";
+
 import js from '@eslint/js';
 import typescript from '@typescript-eslint/eslint-plugin';
 import typescriptParser from '@typescript-eslint/parser';
@@ -35,6 +37,8 @@ export default [
         project: './tsconfig.json'
       },
       globals: {
+        ...globals.node,
+        ...globals.browser,
         console: 'readonly',
         process: 'readonly',
         Buffer: 'readonly',

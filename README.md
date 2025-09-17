@@ -128,7 +128,7 @@ Required for Gmail integration and Google services:
 
 #### 🤖 LLM Providers
 
-Configure language model providers for AI agents:
+Configure model providers for AI agents:
 
 ```json
 {
@@ -202,27 +202,6 @@ crush auth gmail logout
 
 **Token Storage**: Authentication tokens are automatically stored in `.crush/google/gmail-token.json` and managed securely by Crush.
 
-### Environment Variables
-
-You can also use environment variables instead of the config file:
-
-```bash
-# Google OAuth
-export GOOGLE_CLIENT_ID="your-client-id"
-export GOOGLE_CLIENT_SECRET="your-client-secret"
-
-# LLM API Keys
-export OPENAI_API_KEY="sk-your-openai-key"
-export ANTHROPIC_API_KEY="sk-ant-your-anthropic-key"
-
-# Configuration
-export CRUSH_CONFIG_PATH="/path/to/your/config.json"
-```
-
-### Configuration Validation
-
-Crush validates your configuration on startup and provides helpful error messages for missing or invalid settings. Check the logs for configuration issues:
-
 ```bash
 # Run with verbose logging to see configuration details
 crush --verbose agent list
@@ -237,84 +216,7 @@ crush --verbose agent list
 - [Configuration](docs/configuration.md) - Application configuration options
 - [API Reference](docs/api-reference.md) - Service interfaces and types
 - [Examples](docs/examples.md) - Practical usage examples
-- [Contributing](docs/contributing.md) - Development guidelines
-
-## 🏗️ Architecture
-
-Crush is built using a layered architecture with clear separation of concerns:
-
-```
-┌─────────────────────────────────────────┐
-│                CLI Layer                │
-│         (Commands & User Interface)     │
-├─────────────────────────────────────────┤
-│              Core Layer                 │
-│        (Business Logic & Services)      │
-├─────────────────────────────────────────┤
-│            Services Layer               │
-│    (Storage, Logging, Configuration)    │
-├─────────────────────────────────────────┤
-│           Effect-TS Runtime             │
-│      (Functional Programming Layer)     │
-└─────────────────────────────────────────┘
-```
-
-### Core Components
-
-- **Agent Service**: Manages agent lifecycle and operations
-- **Storage Service**: Handles persistence (file-based and in-memory)
-- **Configuration Service**: Manages application settings
-- **Logging Service**: Structured logging with Effect's Logger
-- **CLI Commands**: User interface for all operations
-
-## 🛠️ Development
-
-### Project Structure
-
-```
-src/
-├── cli/                    # CLI commands and user interface
-│   └── commands/
-│       └── agent.ts       # Agent management commands
-├── core/                   # Core business logic
-│   ├── agent/             # Agent service and types
-│   ├── automation/        # Automation logic (planned)
-│   ├── config/            # Configuration types (planned)
-│   └── types/             # Core type definitions
-├── services/              # Infrastructure services
-│   ├── config.ts          # Configuration service
-│   ├── logger.ts          # Logging service
-│   └── storage.ts         # Storage service
-└── main.ts                # Application entry point
-```
-
-### Development Commands
-
-```bash
-# Development with hot reload
-bun run dev
-
-# Build the project
-bun run build
-
-# Run linting
-bun run lint
-
-# Fix linting issues
-bun run lint:fix
-
-# Format code
-bun run format
-
-# Run tests
-bun test
-
-# Run tests in watch mode
-bun run test:watch
-
-# Clean build artifacts
-bun run clean
-```
+- [Contributing](CONTRIBUTING.md) - Development guidelines
 
 ## 📋 Current Status
 

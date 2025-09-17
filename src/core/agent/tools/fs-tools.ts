@@ -1,6 +1,9 @@
 import { FileSystem } from "@effect/platform";
 import { Effect } from "effect";
-import { type ShellService, ShellServiceTag } from "../../../services/shell";
+import {
+  type FileSystemContextService,
+  FileSystemContextServiceTag,
+} from "../../../services/shell";
 import { defineTool, makeJsonSchemaValidator } from "./base-tool";
 import { type Tool, type ToolExecutionContext } from "./tool-registry";
 
@@ -38,21 +41,21 @@ function normalizeFilterPattern(pattern?: string): {
 }
 
 // pwd
-export function createPwdTool(): Tool<ShellService> {
+export function createPwdTool(): Tool<FileSystemContextService> {
   const parameters = {
     type: "object",
     additionalProperties: false,
     properties: {},
     required: [],
   } as const;
-  return defineTool<ShellService, Record<string, never>>({
+  return defineTool<FileSystemContextService, Record<string, never>>({
     name: "pwd",
     description: "Print the current working directory for this agent session",
     parameters,
     validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
     handler: (_args, context) =>
       Effect.gen(function* () {
-        const shell = yield* ShellServiceTag;
+        const shell = yield* FileSystemContextServiceTag;
         const cwd = yield* shell.getCwd(buildKeyFromContext(context));
         return { success: true, result: cwd };
       }),
@@ -60,7 +63,7 @@ export function createPwdTool(): Tool<ShellService> {
 }
 
 // ls
-export function createLsTool(): Tool<FileSystem.FileSystem | ShellService> {
+export function createLsTool(): Tool<FileSystem.FileSystem | FileSystemContextService> {
   const parameters = {
     type: "object",
     additionalProperties: false,
@@ -86,7 +89,7 @@ export function createLsTool(): Tool<FileSystem.FileSystem | ShellService> {
   } as const;
 
   return defineTool<
-    FileSystem.FileSystem | ShellService,
+    FileSystem.FileSystem | FileSystemContextService,
     {
       path?: string;
       showHidden?: boolean;
@@ -102,7 +105,7 @@ export function createLsTool(): Tool<FileSystem.FileSystem | ShellService> {
     handler: (args, context) =>
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
-        const shell = yield* ShellServiceTag;
+        const shell = yield* FileSystemContextServiceTag;
 
         const basePath = args.path
           ? yield* shell.resolvePath(buildKeyFromContext(context), args.path)
@@ -173,7 +176,7 @@ export function createLsTool(): Tool<FileSystem.FileSystem | ShellService> {
 }
 
 // cd
-export function createCdTool(): Tool<FileSystem.FileSystem | ShellService> {
+export function createCdTool(): Tool<FileSystem.FileSystem | FileSystemContextService> {
   const parameters = {
     type: "object",
     additionalProperties: false,
@@ -183,7 +186,7 @@ export function createCdTool(): Tool<FileSystem.FileSystem | ShellService> {
     required: ["path"],
   } as const;
 
-  return defineTool<FileSystem.FileSystem | ShellService, { path: string }>({
+  return defineTool<FileSystem.FileSystem | FileSystemContextService, { path: string }>({
     name: "cd",
     description: "Change the current working directory for this agent session",
     parameters,
@@ -191,7 +194,7 @@ export function createCdTool(): Tool<FileSystem.FileSystem | ShellService> {
     handler: (args, context) =>
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
-        const shell = yield* ShellServiceTag;
+        const shell = yield* FileSystemContextServiceTag;
         const target = yield* shell.resolvePath(buildKeyFromContext(context), args.path);
         try {
           const stat = yield* fs.stat(target);
@@ -212,7 +215,7 @@ export function createCdTool(): Tool<FileSystem.FileSystem | ShellService> {
 }
 
 // readFile
-export function createReadFileTool(): Tool<FileSystem.FileSystem | ShellService> {
+export function createReadFileTool(): Tool<FileSystem.FileSystem | FileSystemContextService> {
   const parameters = {
     type: "object",
     additionalProperties: false,
@@ -235,7 +238,7 @@ export function createReadFileTool(): Tool<FileSystem.FileSystem | ShellService>
   } as const;
 
   return defineTool<
-    FileSystem.FileSystem | ShellService,
+    FileSystem.FileSystem | FileSystemContextService,
     { path: string; startLine?: number; endLine?: number; maxBytes?: number; encoding?: string }
   >({
     name: "readFile",
@@ -245,7 +248,7 @@ export function createReadFileTool(): Tool<FileSystem.FileSystem | ShellService>
     handler: (args, context) =>
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
-        const shell = yield* ShellServiceTag;
+        const shell = yield* FileSystemContextServiceTag;
         const filePath = yield* shell.resolvePath(buildKeyFromContext(context), args.path);
 
         try {
@@ -319,7 +322,7 @@ export function createReadFileTool(): Tool<FileSystem.FileSystem | ShellService>
 // writeFile (approval required)
 type WriteFileArgs = { path: string; content: string; encoding?: string; createDirs?: boolean };
 
-export function createWriteFileTool(): Tool<FileSystem.FileSystem | ShellService> {
+export function createWriteFileTool(): Tool<FileSystem.FileSystem | FileSystemContextService> {
   const parameters = {
     type: "object",
     additionalProperties: false,
@@ -344,7 +347,7 @@ export function createWriteFileTool(): Tool<FileSystem.FileSystem | ShellService
     required: ["path", "content"],
   } as const;
 
-  return defineTool<FileSystem.FileSystem | ShellService, WriteFileArgs>({
+  return defineTool<FileSystem.FileSystem | FileSystemContextService, WriteFileArgs>({
     name: "writeFile",
     description:
       "Write content to a file, creating it if it doesn't exist (requires user approval)",
@@ -353,7 +356,7 @@ export function createWriteFileTool(): Tool<FileSystem.FileSystem | ShellService
     approval: {
       message: (args, context) =>
         Effect.gen(function* () {
-          const shell = yield* ShellServiceTag;
+          const shell = yield* FileSystemContextServiceTag;
           const target = yield* shell.resolvePath(buildKeyFromContext(context), args.path, {
             skipExistenceCheck: true,
           });
@@ -375,7 +378,9 @@ export function createWriteFileTool(): Tool<FileSystem.FileSystem | ShellService
   });
 }
 
-export function createExecuteWriteFileTool(): Tool<FileSystem.FileSystem | ShellService> {
+export function createExecuteWriteFileTool(): Tool<
+  FileSystem.FileSystem | FileSystemContextService
+> {
   const parameters = {
     type: "object",
     additionalProperties: false,
@@ -399,7 +404,7 @@ export function createExecuteWriteFileTool(): Tool<FileSystem.FileSystem | Shell
     required: ["path", "content"],
   } as const;
 
-  return defineTool<FileSystem.FileSystem | ShellService, WriteFileArgs>({
+  return defineTool<FileSystem.FileSystem | FileSystemContextService, WriteFileArgs>({
     name: "executeWriteFile",
     description: "Execute writeFile after user approval",
     hidden: true,
@@ -408,7 +413,7 @@ export function createExecuteWriteFileTool(): Tool<FileSystem.FileSystem | Shell
     handler: (args, context) =>
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
-        const shell = yield* ShellServiceTag;
+        const shell = yield* FileSystemContextServiceTag;
         const target = yield* shell.resolvePath(buildKeyFromContext(context), args.path, {
           skipExistenceCheck: true,
         });
@@ -438,7 +443,7 @@ export function createExecuteWriteFileTool(): Tool<FileSystem.FileSystem | Shell
 }
 
 // grep
-export function createGrepTool(): Tool<FileSystem.FileSystem | ShellService> {
+export function createGrepTool(): Tool<FileSystem.FileSystem | FileSystemContextService> {
   const parameters = {
     type: "object",
     additionalProperties: false,
@@ -454,7 +459,7 @@ export function createGrepTool(): Tool<FileSystem.FileSystem | ShellService> {
   } as const;
 
   return defineTool<
-    FileSystem.FileSystem | ShellService,
+    FileSystem.FileSystem | FileSystemContextService,
     {
       pattern: string;
       path?: string;
@@ -471,7 +476,7 @@ export function createGrepTool(): Tool<FileSystem.FileSystem | ShellService> {
     handler: (args, context) =>
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
-        const shell = yield* ShellServiceTag;
+        const shell = yield* FileSystemContextServiceTag;
         const start = args.path
           ? yield* shell.resolvePath(buildKeyFromContext(context), args.path)
           : yield* shell.getCwd(buildKeyFromContext(context));
@@ -563,7 +568,7 @@ export function createGrepTool(): Tool<FileSystem.FileSystem | ShellService> {
 }
 
 // find
-export function createFindTool(): Tool<FileSystem.FileSystem | ShellService> {
+export function createFindTool(): Tool<FileSystem.FileSystem | FileSystemContextService> {
   const parameters = {
     type: "object",
     additionalProperties: false,
@@ -597,7 +602,7 @@ export function createFindTool(): Tool<FileSystem.FileSystem | ShellService> {
   } as const;
 
   return defineTool<
-    FileSystem.FileSystem | ShellService,
+    FileSystem.FileSystem | FileSystemContextService,
     {
       path?: string;
       name?: string;
@@ -616,7 +621,7 @@ export function createFindTool(): Tool<FileSystem.FileSystem | ShellService> {
     handler: (args, context) =>
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
-        const shell = yield* ShellServiceTag;
+        const shell = yield* FileSystemContextServiceTag;
 
         const filter = normalizeFilterPattern(args.name);
         const includeHidden = args.includeHidden === true;
@@ -742,7 +747,7 @@ export function createFindTool(): Tool<FileSystem.FileSystem | ShellService> {
 }
 
 // mkdir (approval required)
-export function createMkdirTool(): Tool<FileSystem.FileSystem | ShellService> {
+export function createMkdirTool(): Tool<FileSystem.FileSystem | FileSystemContextService> {
   const parameters = {
     type: "object",
     additionalProperties: false,
@@ -757,7 +762,10 @@ export function createMkdirTool(): Tool<FileSystem.FileSystem | ShellService> {
     required: ["path"],
   } as const;
 
-  return defineTool<FileSystem.FileSystem | ShellService, { path: string; recursive?: boolean }>({
+  return defineTool<
+    FileSystem.FileSystem | FileSystemContextService,
+    { path: string; recursive?: boolean }
+  >({
     name: "mkdir",
     description: "Create a directory (requires user approval)",
     parameters,
@@ -765,7 +773,7 @@ export function createMkdirTool(): Tool<FileSystem.FileSystem | ShellService> {
     approval: {
       message: (args, context) =>
         Effect.gen(function* () {
-          const shell = yield* ShellServiceTag;
+          const shell = yield* FileSystemContextServiceTag;
           const fs = yield* FileSystem.FileSystem;
           const target = yield* shell.resolvePathForMkdir(buildKeyFromContext(context), args.path);
 
@@ -798,7 +806,7 @@ export function createMkdirTool(): Tool<FileSystem.FileSystem | ShellService> {
   });
 }
 
-export function createExecuteMkdirTool(): Tool<FileSystem.FileSystem | ShellService> {
+export function createExecuteMkdirTool(): Tool<FileSystem.FileSystem | FileSystemContextService> {
   const parameters = {
     type: "object",
     additionalProperties: false,
@@ -813,7 +821,10 @@ export function createExecuteMkdirTool(): Tool<FileSystem.FileSystem | ShellServ
     required: ["path"],
   } as const;
 
-  return defineTool<FileSystem.FileSystem | ShellService, { path: string; recursive?: boolean }>({
+  return defineTool<
+    FileSystem.FileSystem | FileSystemContextService,
+    { path: string; recursive?: boolean }
+  >({
     name: "executeMkdir",
     description: "Execute mkdir after user approval",
     hidden: true,
@@ -822,7 +833,7 @@ export function createExecuteMkdirTool(): Tool<FileSystem.FileSystem | ShellServ
     handler: (args, context) =>
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
-        const shell = yield* ShellServiceTag;
+        const shell = yield* FileSystemContextServiceTag;
         const target = yield* shell.resolvePathForMkdir(buildKeyFromContext(context), args.path);
 
         // Check if directory already exists
@@ -855,7 +866,7 @@ export function createExecuteMkdirTool(): Tool<FileSystem.FileSystem | ShellServ
 }
 
 // stat - check if file/directory exists and get info
-export function createStatTool(): Tool<FileSystem.FileSystem | ShellService> {
+export function createStatTool(): Tool<FileSystem.FileSystem | FileSystemContextService> {
   const parameters = {
     type: "object",
     additionalProperties: false,
@@ -865,7 +876,7 @@ export function createStatTool(): Tool<FileSystem.FileSystem | ShellService> {
     required: ["path"],
   } as const;
 
-  return defineTool<FileSystem.FileSystem | ShellService, { path: string }>({
+  return defineTool<FileSystem.FileSystem | FileSystemContextService, { path: string }>({
     name: "stat",
     description: "Check if a file or directory exists and get its information",
     parameters,
@@ -873,7 +884,7 @@ export function createStatTool(): Tool<FileSystem.FileSystem | ShellService> {
     handler: (args, context) =>
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
-        const shell = yield* ShellServiceTag;
+        const shell = yield* FileSystemContextServiceTag;
         const target = yield* shell.resolvePathForMkdir(buildKeyFromContext(context), args.path);
 
         try {
@@ -916,7 +927,7 @@ export function createStatTool(): Tool<FileSystem.FileSystem | ShellService> {
 }
 
 // rm (approval required)
-export function createRmTool(): Tool<FileSystem.FileSystem | ShellService> {
+export function createRmTool(): Tool<FileSystem.FileSystem | FileSystemContextService> {
   const parameters = {
     type: "object",
     additionalProperties: false,
@@ -933,7 +944,7 @@ export function createRmTool(): Tool<FileSystem.FileSystem | ShellService> {
   } as const;
 
   return defineTool<
-    FileSystem.FileSystem | ShellService,
+    FileSystem.FileSystem | FileSystemContextService,
     { path: string; recursive?: boolean; force?: boolean }
   >({
     name: "rm",
@@ -943,7 +954,7 @@ export function createRmTool(): Tool<FileSystem.FileSystem | ShellService> {
     approval: {
       message: (args, context) =>
         Effect.gen(function* () {
-          const shell = yield* ShellServiceTag;
+          const shell = yield* FileSystemContextServiceTag;
           const target = yield* shell.resolvePath(buildKeyFromContext(context), args.path);
           const recurse = args.recursive === true ? " recursively" : "";
           return `About to delete${recurse}: ${target}. This action may be irreversible.\nIf the user confirms, call executeRm with the same arguments.`;
@@ -963,7 +974,7 @@ export function createRmTool(): Tool<FileSystem.FileSystem | ShellService> {
   });
 }
 
-export function createExecuteRmTool(): Tool<FileSystem.FileSystem | ShellService> {
+export function createExecuteRmTool(): Tool<FileSystem.FileSystem | FileSystemContextService> {
   const parameters = {
     type: "object",
     additionalProperties: false,
@@ -980,7 +991,7 @@ export function createExecuteRmTool(): Tool<FileSystem.FileSystem | ShellService
   } as const;
 
   return defineTool<
-    FileSystem.FileSystem | ShellService,
+    FileSystem.FileSystem | FileSystemContextService,
     { path: string; recursive?: boolean; force?: boolean }
   >({
     name: "executeRm",
@@ -991,7 +1002,7 @@ export function createExecuteRmTool(): Tool<FileSystem.FileSystem | ShellService
     handler: (args, context) =>
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
-        const shell = yield* ShellServiceTag;
+        const shell = yield* FileSystemContextServiceTag;
         const target = yield* shell.resolvePath(buildKeyFromContext(context), args.path);
         try {
           // Basic safeguards: do not allow deleting root or home dir directly
@@ -1040,7 +1051,7 @@ export function createExecuteRmTool(): Tool<FileSystem.FileSystem | ShellService
 }
 
 // finddir - search for directories by name
-export function createFindDirTool(): Tool<FileSystem.FileSystem | ShellService> {
+export function createFindDirTool(): Tool<FileSystem.FileSystem | FileSystemContextService> {
   const parameters = {
     type: "object",
     additionalProperties: false,
@@ -1059,7 +1070,7 @@ export function createFindDirTool(): Tool<FileSystem.FileSystem | ShellService> 
   } as const;
 
   return defineTool<
-    FileSystem.FileSystem | ShellService,
+    FileSystem.FileSystem | FileSystemContextService,
     { name: string; path?: string; maxDepth?: number }
   >({
     name: "finddir",
@@ -1068,7 +1079,7 @@ export function createFindDirTool(): Tool<FileSystem.FileSystem | ShellService> 
     validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
     handler: (args, context) =>
       Effect.gen(function* () {
-        const shell = yield* ShellServiceTag;
+        const shell = yield* FileSystemContextServiceTag;
         const startPath = args.path
           ? yield* shell.resolvePath(buildKeyFromContext(context), args.path)
           : yield* shell.getCwd(buildKeyFromContext(context));

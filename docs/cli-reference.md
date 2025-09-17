@@ -432,11 +432,6 @@ Crush supports configuration via a JSON file (planned feature):
     "level": "info",
     "format": "pretty",
     "output": "console"
-  },
-  "performance": {
-    "maxConcurrentAgents": 5,
-    "maxConcurrentTasks": 10,
-    "timeout": 30000
   }
 }
 ```

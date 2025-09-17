@@ -23,6 +23,7 @@ crush agent run <agent-id> --dry-run
 ```
 
 **Expected Output:**
+
 ```
 ✅ Agent created successfully!
    ID: 1724243d-344e-42ec-97e8-e53a2c8fd9d8
@@ -55,6 +56,7 @@ crush agent create robust-agent \
 ```
 
 **Expected Output:**
+
 ```
 ✅ Agent created successfully!
    ID: 3705b499-ff20-4c07-8b74-3728f049e889
@@ -83,6 +85,7 @@ crush agent create db-backup \
 ```
 
 **Agent Configuration (when task system is implemented):**
+
 ```json
 {
   "id": "db-backup-agent",
@@ -160,6 +163,7 @@ crush agent create data-processor \
 ```
 
 **Agent Configuration:**
+
 ```json
 {
   "id": "data-processor-agent",
@@ -294,6 +298,7 @@ crush agent create api-monitor \
 ```
 
 **Agent Configuration:**
+
 ```json
 {
   "id": "api-monitor-agent",
@@ -489,6 +494,7 @@ crush agent create notifier \
 ```
 
 **Workflow Execution:**
+
 ```bash
 # Run agents in sequence
 crush agent run <data-collector-id>
@@ -638,7 +644,7 @@ crush agent run $AGENT_ID
 # Check exit code
 if [ $? -eq 0 ]; then
     echo "Backup completed successfully"
-    
+
     # Clean up agent
     crush agent delete $AGENT_ID
     echo "Cleaned up backup agent"
@@ -663,34 +669,34 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - uses: actions/checkout@v2
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v2
-      with:
-        node-version: '18'
-    
-    - name: Install Crush
-      run: npm install -g crush
-    
-    - name: Create deployment agent
-      run: |
-        crush agent create deploy-agent \
-          --description "Deployment automation agent" \
-          --timeout 1800000
-    
-    - name: Run deployment
-      run: |
-        AGENT_ID=$(crush agent list | grep "deploy-agent" | cut -d'(' -f2 | cut -d')' -f1)
-        crush agent run $AGENT_ID
-    
-    - name: Cleanup
-      if: always()
-      run: |
-        AGENT_ID=$(crush agent list | grep "deploy-agent" | cut -d'(' -f2 | cut -d')' -f1)
-        crush agent delete $AGENT_ID
+      - uses: actions/checkout@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: "18"
+
+      - name: Install Crush
+        run: npm install -g crush
+
+      - name: Create deployment agent
+        run: |
+          crush agent create deploy-agent \
+            --description "Deployment automation agent" \
+            --timeout 1800000
+
+      - name: Run deployment
+        run: |
+          AGENT_ID=$(crush agent list | grep "deploy-agent" | cut -d'(' -f2 | cut -d')' -f1)
+          crush agent run $AGENT_ID
+
+      - name: Cleanup
+        if: always()
+        run: |
+          AGENT_ID=$(crush agent list | grep "deploy-agent" | cut -d'(' -f2 | cut -d')' -f1)
+          crush agent delete $AGENT_ID
 ```
 
 ## 📚 Best Practices Examples

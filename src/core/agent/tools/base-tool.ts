@@ -55,6 +55,8 @@ export interface BaseToolConfig<R, Args extends Record<string, unknown>> {
     args: Args,
     context: ToolExecutionContext,
   ) => Effect.Effect<ToolExecutionResult, Error, R>;
+  /** Optional function to create a summary of the tool execution result */
+  readonly createSummary?: (result: ToolExecutionResult) => string | undefined;
 }
 
 /**
@@ -91,6 +93,7 @@ export function defineTool<R, Args extends Record<string, unknown>>(
     description: config.description,
     parameters: config.parameters,
     hidden: config.hidden === true,
+    createSummary: config.createSummary,
     execute(
       args: Record<string, unknown>,
       context: ToolExecutionContext,

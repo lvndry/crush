@@ -22,7 +22,7 @@ import { AgentConfigService, createConfigLayer } from "./services/config";
 import { createGmailServiceLayer } from "./services/gmail";
 import { createLiteLLMServiceLayer } from "./services/llm/litellm-service";
 import { createLoggerLayer, LoggerServiceTag } from "./services/logger";
-import { createShellServiceLayer } from "./services/shell";
+import { createFileSystemContextServiceLayer } from "./services/shell";
 import { FileStorageService } from "./services/storage/file";
 import { StorageServiceTag } from "./services/storage/service";
 
@@ -72,7 +72,7 @@ function createAppLayer() {
   const llmLayer = createLiteLLMServiceLayer().pipe(Layer.provide(configLayer));
   const toolRegistryLayer = createToolRegistryLayer();
 
-  const shellLayer = createShellServiceLayer().pipe(Layer.provide(fileSystemLayer));
+  const shellLayer = createFileSystemContextServiceLayer().pipe(Layer.provide(fileSystemLayer));
 
   const toolRegistrationLayer = createToolRegistrationLayer().pipe(
     Layer.provide(toolRegistryLayer),

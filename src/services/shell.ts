@@ -1,7 +1,7 @@
 import { FileSystem } from "@effect/platform";
 import { Context, Effect, Layer } from "effect";
 
-export interface ShellService {
+export interface FileSystemContextService {
   readonly getCwd: (key: { agentId: string; conversationId?: string }) => Effect.Effect<string>;
   readonly setCwd: (
     key: { agentId: string; conversationId?: string },
@@ -24,15 +24,21 @@ export interface ShellService {
   readonly escapePath: (path: string) => string;
 }
 
-export const ShellServiceTag = Context.GenericTag<ShellService>("ShellService");
+export const FileSystemContextServiceTag = Context.GenericTag<FileSystemContextService>(
+  "FileSystemContextService",
+);
 
 /**
- * In-memory shell service that tracks a working directory per agent/conversation.
+ * filesystem context service that tracks a working directory per agent/conversation.
  * Falls back to process.cwd() when no directory was set.
  */
-export function createShellServiceLayer(): Layer.Layer<ShellService, never, FileSystem.FileSystem> {
+export function createFileSystemContextServiceLayer(): Layer.Layer<
+  FileSystemContextService,
+  never,
+  FileSystem.FileSystem
+> {
   return Layer.effect(
-    ShellServiceTag,
+    FileSystemContextServiceTag,
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
 
@@ -131,7 +137,7 @@ export function createShellServiceLayer(): Layer.Layer<ShellService, never, File
         });
       }
 
-      const service: ShellService = {
+      const service: FileSystemContextService = {
         getCwd: (key) =>
           Effect.sync(() => cwdByKey.get(makeKey(key)) ?? (process.env["HOME"] || process.cwd())),
 

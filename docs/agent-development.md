@@ -19,13 +19,13 @@ Every agent has these essential properties:
 
 ```typescript
 interface Agent {
-  readonly id: string;           // Unique identifier (UUID)
-  readonly name: string;         // Human-readable name
-  readonly description: string;  // Purpose and functionality description
-  readonly config: AgentConfig;  // Configuration and tasks
-  readonly status: AgentStatus;  // Current execution status
-  readonly createdAt: Date;      // Creation timestamp
-  readonly updatedAt: Date;      // Last modification timestamp
+  readonly id: string; // Unique identifier (UUID)
+  readonly name: string; // Human-readable name
+  readonly description: string; // Purpose and functionality description
+  readonly config: AgentConfig; // Configuration and tasks
+  readonly status: AgentStatus; // Current execution status
+  readonly createdAt: Date; // Creation timestamp
+  readonly updatedAt: Date; // Last modification timestamp
 }
 ```
 
@@ -33,10 +33,10 @@ interface Agent {
 
 ```typescript
 interface AgentConfig {
-  readonly tasks: readonly Task[];        // List of tasks to execute
-  readonly schedule?: Schedule;           // Optional scheduling configuration
-  readonly retryPolicy?: RetryPolicy;     // Retry behavior for failed tasks
-  readonly timeout?: number;              // Global timeout in milliseconds
+  readonly tasks: readonly Task[]; // List of tasks to execute
+  readonly schedule?: Schedule; // Optional scheduling configuration
+  readonly retryPolicy?: RetryPolicy; // Retry behavior for failed tasks
+  readonly timeout?: number; // Global timeout in milliseconds
   readonly environment?: Record<string, string>; // Environment variables
 }
 ```
@@ -57,7 +57,7 @@ Agents can be in one of these states:
 
 ```bash
 # Create a simple agent
-crush agent create my-agent --description "My first automation agent"
+crush agent create
 ```
 
 ### Advanced Agent Creation
@@ -95,6 +95,7 @@ crush agent create batch-processor --timeout 3600000
 ```
 
 **Timeout Guidelines:**
+
 - Short tasks: 30 seconds - 5 minutes
 - Medium tasks: 5 - 30 minutes
 - Long tasks: 30 minutes - 2 hours
@@ -106,16 +107,17 @@ Configure how agents handle failures:
 
 ```typescript
 interface RetryPolicy {
-  readonly maxRetries: number;                    // Maximum retry attempts (0-10)
+  readonly maxRetries: number; // Maximum retry attempts (0-10)
   readonly backoff: "linear" | "exponential" | "fixed"; // Backoff strategy
-  readonly delay: number;                         // Initial delay in milliseconds
-  readonly maxDelay?: number;                     // Maximum delay cap
+  readonly delay: number; // Initial delay in milliseconds
+  readonly maxDelay?: number; // Maximum delay cap
 }
 ```
 
 **Retry Strategies:**
 
 1. **Linear Backoff**: Constant delay between retries
+
    ```
    Retry 1: 1000ms delay
    Retry 2: 1000ms delay
@@ -123,6 +125,7 @@ interface RetryPolicy {
    ```
 
 2. **Exponential Backoff**: Increasing delay (recommended)
+
    ```
    Retry 1: 1000ms delay
    Retry 2: 2000ms delay
@@ -137,6 +140,7 @@ interface RetryPolicy {
    ```
 
 **Example Configuration:**
+
 ```bash
 crush agent create resilient-agent \
   --max-retries 3 \
@@ -160,6 +164,7 @@ Agents can have custom environment variables:
 Crush supports multiple task types:
 
 #### 1. Command Tasks
+
 Execute shell commands:
 
 ```typescript
@@ -179,6 +184,7 @@ Execute shell commands:
 ```
 
 #### 2. Script Tasks
+
 Execute JavaScript/TypeScript scripts:
 
 ```typescript
@@ -201,6 +207,7 @@ Execute JavaScript/TypeScript scripts:
 ```
 
 #### 3. API Tasks
+
 Make HTTP requests:
 
 ```typescript
@@ -221,6 +228,7 @@ Make HTTP requests:
 ```
 
 #### 4. File Tasks
+
 File system operations:
 
 ```typescript
@@ -262,6 +270,7 @@ Tasks can depend on other tasks:
 ```
 
 **Dependency Rules:**
+
 - Tasks with dependencies wait for all dependencies to complete successfully
 - If any dependency fails, dependent tasks are skipped
 - Circular dependencies are detected and prevented
@@ -281,20 +290,25 @@ Tasks can depend on other tasks:
 ### Execution Modes
 
 #### Normal Execution
+
 ```bash
 crush agent run <agent-id>
 ```
 
 #### Dry Run Mode
+
 ```bash
 crush agent run <agent-id> --dry-run
 ```
+
 Shows what would be executed without actually running tasks.
 
 #### Watch Mode
+
 ```bash
 crush agent run <agent-id> --watch
 ```
+
 Continuously monitors for changes and re-runs the agent.
 
 ### Execution Context
@@ -394,6 +408,7 @@ interface Schedule {
 ```
 
 **Examples:**
+
 - Cron expressions: `"0 2 * * *"` (daily at 2 AM)
 - Intervals: `3600000` (every hour)
 - One-time: `"2024-12-31T23:59:59Z"`
@@ -431,6 +446,7 @@ crush agent create backup-agent \
 ```
 
 **Tasks:**
+
 1. Create backup directory
 2. Dump database
 3. Compress backup
@@ -449,6 +465,7 @@ crush agent create data-processor \
 ```
 
 **Tasks:**
+
 1. Monitor input directory
 2. Validate data format
 3. Transform data
@@ -468,6 +485,7 @@ crush agent create api-monitor \
 ```
 
 **Tasks:**
+
 1. Health check endpoint
 2. Performance metrics collection
 3. Error rate monitoring
