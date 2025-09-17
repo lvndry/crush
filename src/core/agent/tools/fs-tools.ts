@@ -40,6 +40,129 @@ function normalizeFilterPattern(pattern?: string): {
   return { type: "substring", value: trimmed };
 }
 
+// findPath - helps agent discover paths when unsure
+export function createFindPathTool(): Tool<FileSystem.FileSystem | FileSystemContextService> {
+  const parameters = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      name: {
+        type: "string",
+        description: "Name or partial name of the directory/file to find",
+      },
+      maxDepth: {
+        type: "number",
+        description: "Maximum search depth (default: 3)",
+        default: 3,
+      },
+      type: {
+        type: "string",
+        enum: ["directory", "file", "both"],
+        description: "Type of item to search for",
+        default: "both",
+      },
+    },
+    required: ["name"],
+  } as const;
+
+  return defineTool<
+    FileSystem.FileSystem | FileSystemContextService,
+    { name: string; maxDepth?: number; type?: "directory" | "file" | "both" }
+  >({
+    name: "findPath",
+    description: "Find directories or files by name when you're unsure about the exact path",
+    parameters,
+    validate: makeJsonSchemaValidator(parameters),
+    handler: (args, context) =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const shell = yield* FileSystemContextServiceTag;
+
+        const currentDir = yield* shell.getCwd(buildKeyFromContext(context));
+        const maxDepth = args.maxDepth ?? 3;
+        const searchType = args.type ?? "both";
+
+        const results: { path: string; name: string; type: "file" | "dir" }[] = [];
+
+        function searchDirectory(
+          dir: string,
+          depth: number,
+        ): Effect.Effect<void, Error, FileSystem.FileSystem> {
+          return Effect.gen(function* () {
+            if (depth > maxDepth) return;
+
+            try {
+              const entries = yield* fs
+                .readDirectory(dir)
+                .pipe(Effect.catchAll(() => Effect.succeed([])));
+
+              for (const name of entries) {
+                const fullPath = `${dir}/${name}`;
+
+                try {
+                  const stat = yield* fs
+                    .stat(fullPath)
+                    .pipe(Effect.catchAll(() => Effect.succeed(null)));
+
+                  if (!stat) continue;
+
+                  const isDirectory = stat.type === "Directory";
+                  const isFile = stat.type === "File";
+
+                  // Check if name matches (case-insensitive partial match)
+                  const nameMatches = name.toLowerCase().includes(args.name.toLowerCase());
+
+                  if (nameMatches) {
+                    if (
+                      (searchType === "directory" && isDirectory) ||
+                      (searchType === "file" && isFile) ||
+                      searchType === "both"
+                    ) {
+                      results.push({
+                        path: fullPath,
+                        name,
+                        type: isDirectory ? "dir" : "file",
+                      });
+                    }
+                  }
+
+                  // Recurse into directories
+                  if (isDirectory && depth < maxDepth) {
+                    yield* searchDirectory(fullPath, depth + 1);
+                  }
+                } catch {
+                  // Skip inaccessible files/directories
+                  continue;
+                }
+              }
+            } catch {
+              // Skip inaccessible directories
+              return;
+            }
+          });
+        }
+
+        yield* searchDirectory(currentDir, 0);
+
+        return {
+          success: true,
+          result: {
+            searchTerm: args.name,
+            currentDirectory: currentDir,
+            maxDepth,
+            type: searchType,
+            results: results.slice(0, 50), // Limit results to avoid overwhelming output
+            totalFound: results.length,
+            message:
+              results.length === 0
+                ? `No ${searchType === "both" ? "items" : searchType + "s"} found matching "${args.name}"`
+                : `Found ${results.length} ${searchType === "both" ? "items" : searchType + "s"} matching "${args.name}"`,
+          },
+        };
+      }),
+  });
+}
+
 // pwd
 export function createPwdTool(): Tool<FileSystemContextService> {
   const parameters = {
@@ -108,8 +231,23 @@ export function createLsTool(): Tool<FileSystem.FileSystem | FileSystemContextSe
         const shell = yield* FileSystemContextServiceTag;
 
         const basePath = args.path
-          ? yield* shell.resolvePath(buildKeyFromContext(context), args.path)
+          ? yield* shell.resolvePath(buildKeyFromContext(context), args.path).pipe(
+              Effect.catchAll((error) =>
+                Effect.succeed({
+                  success: false,
+                  result: null,
+                  error: error instanceof Error ? error.message : String(error),
+                }),
+              ),
+            )
           : yield* shell.getCwd(buildKeyFromContext(context));
+
+        // If path resolution failed, return the error with suggestions
+        if (typeof basePath === "object" && "success" in basePath && !basePath.success) {
+          return basePath;
+        }
+
+        const resolvedPath = basePath as string;
 
         const includeHidden = args.showHidden === true;
         const recursive = args.recursive === true;
@@ -158,11 +296,11 @@ export function createLsTool(): Tool<FileSystem.FileSystem | FileSystemContextSe
         }
 
         try {
-          const stat = yield* fs.stat(basePath);
+          const stat = yield* fs.stat(resolvedPath);
           if (stat.type !== "Directory") {
-            return { success: false, result: null, error: `Not a directory: ${basePath}` };
+            return { success: false, result: null, error: `Not a directory: ${resolvedPath}` };
           }
-          yield* walk(basePath);
+          yield* walk(resolvedPath);
           return { success: true, result: results };
         } catch (error) {
           return {
@@ -195,7 +333,29 @@ export function createCdTool(): Tool<FileSystem.FileSystem | FileSystemContextSe
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
         const shell = yield* FileSystemContextServiceTag;
-        const target = yield* shell.resolvePath(buildKeyFromContext(context), args.path);
+
+        // Try to resolve the path - this will provide helpful suggestions if the path doesn't exist
+        const targetResult = yield* shell.resolvePath(buildKeyFromContext(context), args.path).pipe(
+          Effect.catchAll((error) =>
+            Effect.succeed({
+              success: false,
+              result: null,
+              error: error instanceof Error ? error.message : String(error),
+            }),
+          ),
+        );
+
+        // If path resolution failed, return the error with suggestions
+        if (
+          typeof targetResult === "object" &&
+          "success" in targetResult &&
+          !targetResult.success
+        ) {
+          return targetResult;
+        }
+
+        const target = targetResult as string;
+
         try {
           const stat = yield* fs.stat(target);
           if (stat.type !== "Directory") {
@@ -249,7 +409,28 @@ export function createReadFileTool(): Tool<FileSystem.FileSystem | FileSystemCon
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
         const shell = yield* FileSystemContextServiceTag;
-        const filePath = yield* shell.resolvePath(buildKeyFromContext(context), args.path);
+        const filePathResult = yield* shell
+          .resolvePath(buildKeyFromContext(context), args.path)
+          .pipe(
+            Effect.catchAll((error) =>
+              Effect.succeed({
+                success: false,
+                result: null,
+                error: error instanceof Error ? error.message : String(error),
+              }),
+            ),
+          );
+
+        // If path resolution failed, return the error with suggestions
+        if (
+          typeof filePathResult === "object" &&
+          "success" in filePathResult &&
+          !filePathResult.success
+        ) {
+          return filePathResult;
+        }
+
+        const filePath = filePathResult as string;
 
         try {
           const stat = yield* fs.stat(filePath);
