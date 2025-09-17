@@ -73,12 +73,16 @@
 - [ ] **Task Execution Engine**
   - [x] Implement task execution framework
   - [x] Implement Gmail tool execution
-  - [->] Command execution capability
+  - [x] Command execution capability
   - [ ] Script execution capability
   - [ ] API call execution
-  - [->] File operation tasks
+  - [x] File operation tasks
   - [ ] Result tracking and storage
 
+- [ ] **Context Management**
+  - [ ] Reduce length of system prompt
+  - [ ] Summarize previous on every step and send the summary along the message
+        Conversation sent to the API is [{ role:system, message: "..."}, {"role": "system": "summary of previous messages..."}, { role: "user", message: "..."} ]
 - [ ] **Ease of use**
   - [ ] Cookbooks with concrete example of agents and worfklows that can be created
 
