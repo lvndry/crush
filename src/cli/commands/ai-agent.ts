@@ -1,3 +1,4 @@
+import { FileSystem } from "@effect/platform";
 import { Effect } from "effect";
 import inquirer from "inquirer";
 import { agentPromptBuilder } from "../../core/agent/agent-prompt";
@@ -15,8 +16,15 @@ import {
 import type { Agent, AgentConfig } from "../../core/types/index";
 import type { ConfigService } from "../../services/config";
 import type { ChatMessage } from "../../services/llm/types";
-import { LLMConfigurationError, LLMServiceTag, type LLMService } from "../../services/llm/types";
+import {
+  LLMConfigurationError,
+  LLMRateLimitError,
+  LLMRequestError,
+  LLMServiceTag,
+  type LLMService,
+} from "../../services/llm/types";
 import { LoggerServiceTag, type LoggerService } from "../../services/logger";
+import { FileSystemContextServiceTag, type FileSystemContextService } from "../../services/shell";
 
 /**
  * CLI commands for AI agent management
@@ -202,7 +210,13 @@ export function chatWithAIAgentCommand(
 ): Effect.Effect<
   void,
   StorageError | StorageNotFoundError,
-  AgentService | ConfigService | LLMService | ToolRegistry | LoggerService
+  | AgentService
+  | ConfigService
+  | LLMService
+  | ToolRegistry
+  | LoggerService
+  | FileSystemContextService
+  | FileSystem.FileSystem
 > {
   return Effect.gen(function* () {
     // Get the agent service
@@ -231,16 +245,38 @@ export function chatWithAIAgentCommand(
   });
 }
 
+function initializeSession(
+  agent: Agent,
+  conversationId: string,
+): Effect.Effect<void, Error, FileSystemContextService | LoggerService | FileSystem.FileSystem> {
+  return Effect.gen(function* () {
+    const agentKey = { agentId: agent.id, conversationId };
+    const fileSystemContext = yield* FileSystemContextServiceTag;
+    const logger = yield* LoggerServiceTag;
+    yield* fileSystemContext.setCwd(agentKey, process.cwd());
+    yield* logger.info(`Initialized agent working directory to: ${process.cwd()}`);
+  });
+}
 /**
  * Chat loop for interacting with the AI agent
  */
 function startChatLoop(
   agent: Agent,
-): Effect.Effect<void, Error, ConfigService | LLMService | ToolRegistry | LoggerService> {
+): Effect.Effect<
+  void,
+  Error,
+  | ConfigService
+  | LLMService
+  | ToolRegistry
+  | LoggerService
+  | FileSystemContextService
+  | FileSystem.FileSystem
+> {
   return Effect.gen(function* () {
     let chatActive = true;
     let conversationId: string | undefined;
     let conversationHistory: ChatMessage[] = [];
+    let sessionInitialized = false;
 
     while (chatActive) {
       // Prompt for user input
@@ -269,8 +305,20 @@ function startChatLoop(
         continue;
       }
 
-      // Process the user message
       try {
+        if (!sessionInitialized) {
+          yield* initializeSession(agent, conversationId || "").pipe(
+            Effect.catchAll((error) =>
+              Effect.gen(function* () {
+                const logger = yield* LoggerServiceTag;
+                yield* logger.error("Session initialization error", { error });
+              }),
+            ),
+          );
+
+          sessionInitialized = true;
+        }
+
         // Create runner options
         const options: AgentRunnerOptions = {
           agent,
@@ -297,7 +345,20 @@ function startChatLoop(
         console.log();
       } catch (error) {
         console.log();
-        console.log(`❌ Error: ${error instanceof Error ? error.message : String(error)}`);
+
+        // Handle different error types with appropriate user feedback
+        if (error instanceof LLMRateLimitError) {
+          console.log(
+            `⏳ Rate limit exceeded. The request was too large or you've hit your API limits.`,
+          );
+          console.log(`   Please try again in a moment or consider using a smaller context.`);
+          console.log(`   Error details: ${error.message}`);
+        } else if (error instanceof LLMRequestError) {
+          console.log(`❌ LLM request failed: ${error.message}`);
+          console.log(`   This might be a temporary issue. Please try again.`);
+        } else {
+          console.log(`❌ Error: ${error instanceof Error ? error.message : String(error)}`);
+        }
         console.log();
 
         const logger = yield* LoggerServiceTag;

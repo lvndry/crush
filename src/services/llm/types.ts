@@ -23,6 +23,7 @@ export class LLMRequestError extends Error {
     message: string,
   ) {
     super(message);
+
     this.name = "LLMRequestError";
   }
 }

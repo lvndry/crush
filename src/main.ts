@@ -3,7 +3,6 @@
 import { FileSystem } from "@effect/platform";
 import { NodeFileSystem } from "@effect/platform-node";
 import { Command } from "commander";
-import { config } from "dotenv";
 import { Effect, Layer } from "effect";
 import {
   createAgentCommand,
@@ -25,8 +24,6 @@ import { createLoggerLayer, LoggerServiceTag } from "./services/logger";
 import { createFileSystemContextServiceLayer } from "./services/shell";
 import { FileStorageService } from "./services/storage/file";
 import { StorageServiceTag } from "./services/storage/service";
-
-config();
 
 /**
  * Main entry point for the Crush CLI

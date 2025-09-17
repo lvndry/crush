@@ -298,13 +298,40 @@ class DefaultLiteLLMService implements LLMService {
       catch: (error: unknown) => {
         const errorMessage = error instanceof Error ? error.message : String(error);
 
-        // Handle different error types
-        if (errorMessage.includes("authentication") || errorMessage.includes("api key")) {
+        // Check for HTTP status codes in the error
+        let httpStatus: number | undefined;
+
+        // Try to extract HTTP status from error message or error object
+        if (error instanceof Error) {
+          // Check if error has status property (common in HTTP libraries)
+          const errorWithStatus = error as Error & { status?: number; statusCode?: number };
+          httpStatus = errorWithStatus.status || errorWithStatus.statusCode;
+
+          // Fallback: try to extract from message
+          if (!httpStatus) {
+            const statusMatch = errorMessage.match(/(\d{3})\s/);
+            if (statusMatch && statusMatch[1]) {
+              httpStatus = parseInt(statusMatch[1], 10);
+            }
+          }
+        }
+
+        // Handle different error types based on HTTP status codes
+        if (httpStatus === 401 || httpStatus === 403) {
           return new LLMAuthenticationError(providerName, errorMessage);
-        } else if (errorMessage.includes("rate limit") || errorMessage.includes("quota")) {
+        } else if (httpStatus === 429) {
           return new LLMRateLimitError(providerName, errorMessage);
+        } else if (httpStatus && httpStatus >= 400 && httpStatus < 500) {
+          return new LLMRequestError(providerName, errorMessage);
+        } else if (httpStatus && httpStatus >= 500) {
+          return new LLMRequestError(providerName, `Server error (${httpStatus}): ${errorMessage}`);
         } else {
-          return new LLMRequestError(providerName, errorMessage || "Unknown LLM request error");
+          // Fallback to message-based detection for non-HTTP errors
+          if (errorMessage.includes("authentication") || errorMessage.includes("api key")) {
+            return new LLMAuthenticationError(providerName, errorMessage);
+          } else {
+            return new LLMRequestError(providerName, errorMessage || "Unknown LLM request error");
+          }
         }
       },
     });

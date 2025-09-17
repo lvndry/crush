@@ -52,7 +52,7 @@ export function createPwdTool(): Tool<FileSystemContextService> {
     name: "pwd",
     description: "Print the current working directory for this agent session",
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: makeJsonSchemaValidator(parameters),
     handler: (_args, context) =>
       Effect.gen(function* () {
         const shell = yield* FileSystemContextServiceTag;
@@ -101,7 +101,7 @@ export function createLsTool(): Tool<FileSystem.FileSystem | FileSystemContextSe
     name: "ls",
     description: "List directory contents with optional filtering and recursion",
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: makeJsonSchemaValidator(parameters),
     handler: (args, context) =>
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
@@ -190,7 +190,7 @@ export function createCdTool(): Tool<FileSystem.FileSystem | FileSystemContextSe
     name: "cd",
     description: "Change the current working directory for this agent session",
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: makeJsonSchemaValidator(parameters),
     handler: (args, context) =>
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
@@ -244,7 +244,7 @@ export function createReadFileTool(): Tool<FileSystem.FileSystem | FileSystemCon
     name: "readFile",
     description: "Read a text file with optional line range and size limit",
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: makeJsonSchemaValidator(parameters),
     handler: (args, context) =>
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
@@ -352,7 +352,7 @@ export function createWriteFileTool(): Tool<FileSystem.FileSystem | FileSystemCo
     description:
       "Write content to a file, creating it if it doesn't exist (requires user approval)",
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: makeJsonSchemaValidator(parameters),
     approval: {
       message: (args, context) =>
         Effect.gen(function* () {
@@ -409,7 +409,7 @@ export function createExecuteWriteFileTool(): Tool<
     description: "Execute writeFile after user approval",
     hidden: true,
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: makeJsonSchemaValidator(parameters),
     handler: (args, context) =>
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
@@ -769,7 +769,7 @@ export function createMkdirTool(): Tool<FileSystem.FileSystem | FileSystemContex
     name: "mkdir",
     description: "Create a directory (requires user approval)",
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: makeJsonSchemaValidator(parameters),
     approval: {
       message: (args, context) =>
         Effect.gen(function* () {
@@ -1076,7 +1076,7 @@ export function createFindDirTool(): Tool<FileSystem.FileSystem | FileSystemCont
     name: "finddir",
     description: "Search for directories by name with partial matching",
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: makeJsonSchemaValidator(parameters),
     handler: (args, context) =>
       Effect.gen(function* () {
         const shell = yield* FileSystemContextServiceTag;

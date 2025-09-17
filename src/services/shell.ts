@@ -138,8 +138,7 @@ export function createFileSystemContextServiceLayer(): Layer.Layer<
       }
 
       const service: FileSystemContextService = {
-        getCwd: (key) =>
-          Effect.sync(() => cwdByKey.get(makeKey(key)) ?? (process.env["HOME"] || process.cwd())),
+        getCwd: (key) => Effect.sync(() => cwdByKey.get(makeKey(key)) ?? process.cwd()),
 
         setCwd: (key, path) =>
           Effect.gen(function* () {
@@ -149,22 +148,21 @@ export function createFileSystemContextServiceLayer(): Layer.Layer<
               .stat(target)
               .pipe(Effect.catchAll(() => Effect.succeed(null)));
 
-            if (statResult) {
-              const isDir =
-                (statResult as unknown as { isDirectory?: boolean; type?: string }).isDirectory ===
-                  true || (statResult as unknown as { type?: string }).type === "Directory";
-              if (!isDir) {
-                return yield* Effect.fail(new Error(`Not a directory: ${target}`));
-              }
+            if (!statResult) {
+              return yield* Effect.fail(new Error(`Directory does not exist: ${target}`));
             }
-            // If the directory doesn't exist, we still allow setting it
-            // This is useful for testing and when the directory will be created later
+
+            const isDir = statResult.type === "Directory";
+            if (!isDir) {
+              return yield* Effect.fail(new Error(`Not a directory: ${target}`));
+            }
+
             cwdByKey.set(makeKey(key), target);
           }),
 
         resolvePath: (key, path, options = {}) =>
           Effect.gen(function* () {
-            const base = cwdByKey.get(makeKey(key)) ?? (process.env["HOME"] || process.cwd());
+            const base = cwdByKey.get(makeKey(key)) ?? process.cwd();
 
             // Normalize the path first
             const normalizedPath = normalize(path);
@@ -212,13 +210,13 @@ export function createFileSystemContextServiceLayer(): Layer.Layer<
 
         findDirectory: (key, name, maxDepth = 3) =>
           Effect.gen(function* () {
-            const base = cwdByKey.get(makeKey(key)) ?? (process.env["HOME"] || process.cwd());
+            const base = cwdByKey.get(makeKey(key)) ?? process.cwd();
             return yield* findDirectoryByName(base, name, maxDepth);
           }),
 
         resolvePathForMkdir: (key, path) =>
           Effect.gen(function* () {
-            const base = cwdByKey.get(makeKey(key)) ?? (process.env["HOME"] || process.cwd());
+            const base = cwdByKey.get(makeKey(key)) ?? process.cwd();
 
             // Normalize the path first
             const normalizedPath = normalize(path);
