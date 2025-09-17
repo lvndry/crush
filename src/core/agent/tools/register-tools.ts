@@ -16,6 +16,17 @@ import {
   createWriteFileTool,
 } from "./fs-tools";
 import {
+  createGitAddTool,
+  createGitBranchTool,
+  createGitCheckoutTool,
+  createGitCommitTool,
+  createGitDiffTool,
+  createGitLogTool,
+  createGitPullTool,
+  createGitPushTool,
+  createGitStatusTool,
+} from "./git-tools";
+import {
   createAddLabelsToEmailTool,
   createBatchModifyEmailsTool,
   createCreateLabelTool,
@@ -49,6 +60,7 @@ export function registerAllTools(): Effect.Effect<void, Error, ToolRegistry> {
     // Register other tool categories as needed
     yield* registerFileTools();
     yield* registerShellTools();
+    yield* registerGitTools();
     // yield* registerWebTools();
   });
 }
@@ -155,6 +167,39 @@ export function registerShellTools(): Effect.Effect<void, Error, ToolRegistry> {
 
     yield* registry.registerTool(executeCommandTool);
     yield* registry.registerTool(executeCommandApprovedTool);
+  });
+}
+
+// Register Git tools
+export function registerGitTools(): Effect.Effect<void, Error, ToolRegistry> {
+  return Effect.gen(function* () {
+    const registry = yield* ToolRegistryTag;
+
+    // Safe Git operations (no approval needed)
+    const gitStatusTool = createGitStatusTool();
+    const gitLogTool = createGitLogTool();
+    const gitDiffTool = createGitDiffTool();
+    const gitBranchTool = createGitBranchTool();
+
+    // Potentially destructive operations (approval required)
+    const gitAddTool = createGitAddTool();
+    const gitCommitTool = createGitCommitTool();
+    const gitPushTool = createGitPushTool();
+    const gitPullTool = createGitPullTool();
+    const gitCheckoutTool = createGitCheckoutTool();
+
+    // Register safe tools
+    yield* registry.registerTool(gitStatusTool);
+    yield* registry.registerTool(gitLogTool);
+    yield* registry.registerTool(gitDiffTool);
+    yield* registry.registerTool(gitBranchTool);
+
+    // Register approval-required tools
+    yield* registry.registerTool(gitAddTool);
+    yield* registry.registerTool(gitCommitTool);
+    yield* registry.registerTool(gitPushTool);
+    yield* registry.registerTool(gitPullTool);
+    yield* registry.registerTool(gitCheckoutTool);
   });
 }
 

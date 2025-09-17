@@ -53,7 +53,7 @@ bun run src/main.ts
 
 ```bash
 # Create your first agent
-crush agent create my-agent --description "My first automation agent"
+crush agent create
 
 # List all agents
 crush agent list
