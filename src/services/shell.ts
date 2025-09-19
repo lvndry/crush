@@ -1,4 +1,5 @@
 import { FileSystem } from "@effect/platform";
+import { spawn } from "child_process";
 import { Context, Effect, Layer } from "effect";
 
 export interface FileSystemContextService {
@@ -67,23 +68,28 @@ export function createFileSystemContextServiceLayer(): Layer.Layer<
         return normalized;
       }
 
-      function escapeForShell(p: string): string {
+      function escapeForShell(path: string): string {
         // Escape paths for safe use in shell commands
         // If the path contains spaces or special characters, wrap in quotes
         if (
-          p.includes(" ") ||
-          p.includes("(") ||
-          p.includes(")") ||
-          p.includes("&") ||
-          p.includes("|")
+          path.includes(" ") ||
+          path.includes("(") ||
+          path.includes(")") ||
+          path.includes("&") ||
+          path.includes("|")
         ) {
           // If already quoted, don't double-quote
-          if ((p.startsWith('"') && p.endsWith('"')) || (p.startsWith("'") && p.endsWith("'"))) {
-            return p;
+          if (
+            (path.startsWith('"') && path.endsWith('"')) ||
+            (path.startsWith("'") && path.endsWith("'"))
+          ) {
+            return path;
           }
-          return `"${p.replace(/"/g, '\\"')}"`;
+
+          return `"${path.replace(/"/g, '\\"')}"`;
         }
-        return p;
+
+        return path;
       }
 
       function findDirectoryByName(
@@ -92,48 +98,68 @@ export function createFileSystemContextServiceLayer(): Layer.Layer<
         maxDepth: number,
       ): Effect.Effect<string[], Error, FileSystem.FileSystem> {
         return Effect.gen(function* () {
-          const results: string[] = [];
+          // Use system find command for efficiency
+          const command = `find ${escapeForShell(startPath)} -maxdepth ${maxDepth} -type d -iname "*${targetName}*"`;
+          const result = yield* Effect.promise<{
+            stdout: string;
+            stderr: string;
+            exitCode: number;
+          }>(
+            () =>
+              new Promise((resolve, reject) => {
+                const child = spawn("sh", ["-c", command], {
+                  stdio: ["ignore", "pipe", "pipe"],
+                  timeout: 10000,
+                });
 
-          function searchDirectory(
-            dir: string,
-            depth: number,
-          ): Effect.Effect<void, Error, FileSystem.FileSystem> {
-            return Effect.gen(function* () {
-              if (depth > maxDepth) return;
+                let stdout = "";
+                let stderr = "";
 
-              // Handle permission errors gracefully
-              const entriesResult = yield* fs
-                .readDirectory(dir)
-                .pipe(Effect.catchAll(() => Effect.succeed([])));
-
-              for (const entry of entriesResult) {
-                const fullPath = `${dir}/${entry}`;
-
-                // Check if this entry matches our target name (case-insensitive)
-                if (entry.toLowerCase().includes(targetName.toLowerCase())) {
-                  const statResult = yield* fs
-                    .stat(fullPath)
-                    .pipe(Effect.catchAll(() => Effect.succeed(null)));
-                  if (statResult && statResult.type === "Directory") {
-                    results.push(fullPath);
-                  }
+                if (child.stdout) {
+                  child.stdout.on("data", (data: Buffer) => {
+                    stdout += data.toString();
+                  });
                 }
 
-                // Recursively search subdirectories
-                if (depth < maxDepth) {
-                  const statResult = yield* fs
-                    .stat(fullPath)
-                    .pipe(Effect.catchAll(() => Effect.succeed(null)));
-                  if (statResult && statResult.type === "Directory") {
-                    yield* searchDirectory(fullPath, depth + 1);
-                  }
+                if (child.stderr) {
+                  child.stderr.on("data", (data: Buffer) => {
+                    stderr += data.toString();
+                  });
                 }
-              }
-            });
+
+                child.on("close", (code: number | null) => {
+                  resolve({
+                    stdout: stdout.trim(),
+                    stderr: stderr.trim(),
+                    exitCode: code || 0,
+                  });
+                });
+
+                child.on("error", (error: Error) => {
+                  reject(error);
+                });
+              }),
+          ).pipe(
+            Effect.catchAll((error: Error) =>
+              Effect.succeed({
+                stdout: "",
+                stderr: error.message,
+                exitCode: 1,
+              }),
+            ),
+          );
+
+          if (result.exitCode !== 0) {
+            return [];
           }
 
-          yield* searchDirectory(startPath, 0);
-          return results.sort();
+          // Parse results and sort
+          const results = result.stdout
+            .split("\n")
+            .filter((line) => line.trim())
+            .sort();
+
+          return results;
         });
       }
 
