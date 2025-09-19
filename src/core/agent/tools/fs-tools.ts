@@ -906,14 +906,10 @@ export function createFindTool(): Tool<FileSystem.FileSystem | FileSystemContext
         for (const searchPath of searchPaths) {
           if (results.length >= maxResults) break;
 
-          try {
-            const st = yield* fs.stat(searchPath);
-            if (st.type === "Directory") {
-              yield* walk(searchPath, 0);
-            }
-          } catch {
-            // Skip inaccessible paths
-            continue;
+          const st = yield* fs.stat(searchPath).pipe(Effect.catchAll(() => Effect.succeed(null)));
+
+          if (st && st.type === "Directory") {
+            yield* walk(searchPath, 0);
           }
 
           // If we found results in early paths and using smart search, we can stop early

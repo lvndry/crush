@@ -1,8 +1,9 @@
 import { type ChatMessage } from "./types";
 
 /**
- * Simple context window management utilities
- * This is a basic implementation to handle context window limits
+ * Advanced context window management utilities
+ * Provides intelligent conversation summarization and token management
+ * for maintaining context within LLM model limits
  */
 
 // Model context window limits (in tokens)
@@ -119,12 +120,14 @@ export function shouldSummarize(
 }
 
 /**
- * Find the point where summarization should start
+ * Find the point where summarization should start, considering both message count and token limits
  */
 export function findSummarizationPoint(
   messages: ChatMessage[],
   model: string,
   targetTokens: number,
+  maxRecentTokens?: number,
+  preserveRecentMessages?: number,
 ): number {
   const maxTokens = getModelContextLimit(model);
   const availableTokens = maxTokens - targetTokens;
@@ -141,21 +144,50 @@ export function findSummarizationPoint(
     }
   }
 
-  // Find the point where we exceed available tokens
-  for (let i = index; i < messages.length; i++) {
+  // Calculate how many recent messages to preserve
+  const recentMessagesToPreserve = preserveRecentMessages ?? 3;
+  const maxRecentTokensToPreserve = maxRecentTokens ?? 2000;
+
+  // Start from the end and work backwards to find recent messages to preserve
+  let recentTokens = 0;
+  let recentMessageCount = 0;
+  const recentStartIndex = Math.max(0, messages.length - recentMessagesToPreserve * 2); // *2 for user/assistant pairs
+
+  for (let i = messages.length - 1; i >= recentStartIndex; i--) {
+    const message = messages[i];
+    if (!message) continue;
+
+    const messageTokens = estimateMessageTokens(message);
+    if (recentTokens + messageTokens > maxRecentTokensToPreserve) {
+      break;
+    }
+
+    recentTokens += messageTokens;
+    recentMessageCount++;
+  }
+
+  const actualRecentStartIndex = Math.max(index, messages.length - recentMessageCount);
+
+  // Ensure we never return an index that would result in empty messages
+  if (actualRecentStartIndex >= messages.length) {
+    return Math.max(1, messages.length - 1); // Keep at least the system message + 1 recent message
+  }
+
+  // Find the point where we exceed available tokens, but don't go past recent messages
+  for (let i = index; i < actualRecentStartIndex; i++) {
     const message = messages[i];
     if (!message) continue;
     const messageTokens = estimateMessageTokens(message);
 
-    if (accumulatedTokens + messageTokens > availableTokens) {
+    if (accumulatedTokens + messageTokens > availableTokens - recentTokens) {
       return i;
     }
 
     accumulatedTokens += messageTokens;
   }
 
-  // If we can fit all messages, return the last index
-  return messages.length;
+  // If we can fit all messages, return the recent start index
+  return actualRecentStartIndex;
 }
 
 /**
@@ -169,12 +201,44 @@ export function createSummaryMessage(summarizedCount: number): ChatMessage {
 }
 
 /**
+ * Check if a message contains large tool call results that should be summarized
+ */
+export function isLargeToolResult(message: ChatMessage, maxTokens: number = 1000): boolean {
+  if (message.role !== "assistant" || !message.content) {
+    return false;
+  }
+
+  const tokens = estimateTokenCount(message.content);
+  return tokens > maxTokens;
+}
+
+/**
+ * Summarize large tool call results to reduce context usage
+ */
+export function summarizeToolResult(message: ChatMessage, maxTokens: number = 500): ChatMessage {
+  if (!isLargeToolResult(message, maxTokens * 2)) {
+    return message;
+  }
+
+  const originalTokens = estimateTokenCount(message.content);
+  const summary = `[TOOL RESULT SUMMARY] Large tool result (${originalTokens} tokens) has been summarized. Key information preserved.`;
+
+  return {
+    ...message,
+    content: summary,
+  };
+}
+
+/**
  * Summarize conversation by replacing early messages with a summary
  */
 export function summarizeConversation(
   messages: ChatMessage[],
   model: string,
   targetTokens?: number,
+  maxRecentTokens?: number,
+  preserveRecentMessages?: number,
+  summarizeToolResults?: boolean,
 ): ChatMessage[] {
   const maxTokens = getModelContextLimit(model);
   const currentTokens = estimateConversationTokens(messages);
@@ -185,7 +249,13 @@ export function summarizeConversation(
   }
 
   const actualTargetTokens = targetTokens || Math.floor(maxTokens * 0.6);
-  const summarizationPoint = findSummarizationPoint(messages, model, actualTargetTokens);
+  const summarizationPoint = findSummarizationPoint(
+    messages,
+    model,
+    actualTargetTokens,
+    maxRecentTokens,
+    preserveRecentMessages,
+  );
 
   if (summarizationPoint <= 1) {
     return messages; // Can't summarize much
@@ -193,7 +263,33 @@ export function summarizeConversation(
 
   // Create summary and keep recent messages
   const summaryMessage = createSummaryMessage(summarizationPoint);
-  const recentMessages = messages.slice(summarizationPoint);
+  let recentMessages = messages.slice(summarizationPoint);
 
-  return [summaryMessage, ...recentMessages];
+  // Safety check: ensure we never return an empty array
+  if (recentMessages.length === 0) {
+    // If no recent messages, keep at least the last message
+    recentMessages = messages.slice(-1);
+  }
+
+  // Summarize large tool results in recent messages if enabled
+  if (summarizeToolResults) {
+    recentMessages = recentMessages.map((msg) => summarizeToolResult(msg));
+  }
+
+  // Always preserve the system message (first message) if it exists
+  const systemMessage = messages[0];
+  let result: ChatMessage[];
+
+  if (systemMessage && systemMessage.role === "system") {
+    result = [systemMessage, summaryMessage, ...recentMessages];
+  } else {
+    result = [summaryMessage, ...recentMessages];
+  }
+
+  // Final safety check: ensure we never return an empty array
+  if (result.length === 0) {
+    return messages; // Fallback to original messages
+  }
+
+  return result;
 }

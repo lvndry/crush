@@ -112,7 +112,17 @@ function defaultConfig(): AppConfig {
     timeout: 30000,
   };
   const google: GoogleConfig = {};
-  const llm: LLMConfig = {};
+  const llm: LLMConfig = {
+    contextManagement: {
+      summarizationThreshold: 0.75, // Summarize when 75% of context window is used
+      targetTokensRatio: 0.6, // Target 60% of context window after summarization
+      aggressiveThreshold: 0.4, // Use 40% for aggressive summarization on errors
+      preserveRecentMessages: 3, // Always keep last 3 messages (conservative for tool-heavy workflows)
+      maxRecentTokens: 2000, // Maximum tokens to preserve in recent messages
+      enableProactiveSummarization: true, // Enable proactive summarization
+      summarizeToolResults: true, // Summarize large tool call results
+    },
+  };
 
   return { storage, logging, security, performance, google, llm };
 }

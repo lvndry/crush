@@ -162,7 +162,22 @@ export class AgentPromptBuilder {
           !options.conversationHistory ||
           options.conversationHistory[options.conversationHistory.length - 1]?.role !== "user"
         ) {
-          messages.push({ role: "user", content: userPrompt });
+          // Safety check: ensure userPrompt is not empty
+          if (userPrompt && userPrompt.trim().length > 0) {
+            messages.push({ role: "user", content: userPrompt });
+          } else {
+            // If userPrompt is empty, use the original userInput
+            if (options.userInput && options.userInput.trim().length > 0) {
+              messages.push({ role: "user", content: options.userInput });
+            }
+          }
+        }
+
+        // Final safety check: ensure we never return an empty messages array
+        if (messages.length === 0) {
+          throw new Error(
+            `Cannot create empty messages array - at least system message should be present. Template: ${templateName}, userInput: "${options.userInput}", userPrompt: "${userPrompt}"`,
+          );
         }
 
         return messages;

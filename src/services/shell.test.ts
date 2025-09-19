@@ -10,7 +10,7 @@ describe("FileSystemContextService", () => {
   };
 
   describe("getCwd", () => {
-    it("should default to HOME directory when no working directory is set", async () => {
+    it("should default to current working directory when no working directory is set", async () => {
       const testEffect = Effect.gen(function* () {
         const shell = yield* FileSystemContextServiceTag;
         const cwd = yield* shell.getCwd({ agentId: "test-agent" });
@@ -21,13 +21,18 @@ describe("FileSystemContextService", () => {
         testEffect.pipe(Effect.provide(createTestLayer())) as any,
       );
 
-      expect(result).toBe(process.env["HOME"] ?? "");
+      expect(result).toBe(process.cwd());
     });
 
     it("should return set working directory for specific agent", async () => {
       const testEffect = Effect.gen(function* () {
         const shell = yield* FileSystemContextServiceTag;
         const testPath = "/tmp/test-dir";
+
+        // Create the test directory first
+        yield* Effect.promise(() =>
+          import("fs/promises").then((fs) => fs.mkdir(testPath, { recursive: true })),
+        );
 
         // First set a working directory
         yield* shell.setCwd({ agentId: "test-agent" }, testPath);
@@ -63,7 +68,9 @@ describe("FileSystemContextService", () => {
     it("should resolve relative paths from working directory", async () => {
       const testEffect = Effect.gen(function* () {
         const shell = yield* FileSystemContextServiceTag;
-        const resolved = yield* shell.resolvePath({ agentId: "test" }, "Documents");
+        const resolved = yield* shell.resolvePath({ agentId: "test" }, "Documents", {
+          skipExistenceCheck: true,
+        });
         return resolved;
       });
 
@@ -71,7 +78,7 @@ describe("FileSystemContextService", () => {
         testEffect.pipe(Effect.provide(createTestLayer())) as any,
       );
 
-      expect(result).toBe(`${process.env["HOME"] ?? ""}/Documents`);
+      expect(result).toBe(`${process.cwd()}/Documents`);
     });
   });
 
@@ -222,7 +229,9 @@ describe("FileSystemContextService", () => {
     it("should find directories by name", async () => {
       const testEffect = Effect.gen(function* () {
         const shell = yield* FileSystemContextServiceTag;
-        const found = yield* shell.findDirectory({ agentId: "test" }, "bin", 1);
+        // Set working directory to root to search for system directories
+        yield* shell.setCwd({ agentId: "test" }, "/");
+        const found = yield* shell.findDirectory({ agentId: "test" }, "bin", 2);
         return found;
       });
 

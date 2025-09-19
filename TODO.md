@@ -83,6 +83,8 @@
   - [ ] Reduce length of system prompt
   - [ ] Summarize previous on every step and send the summary along the message
         Conversation sent to the API is [{ role:system, message: "..."}, {"role": "system": "summary of previous messages..."}, { role: "user", message: "..."} ]
+  - Explore subagent triggers
+
 - [ ] **Ease of use**
   - [ ] Cookbooks with concrete example of agents and worfklows that can be created
 
