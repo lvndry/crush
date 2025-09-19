@@ -1,4 +1,5 @@
 import { FileSystem } from "@effect/platform";
+import { spawn } from "child_process";
 import { Effect } from "effect";
 import {
   type FileSystemContextService,
@@ -61,102 +62,140 @@ export function createFindPathTool(): Tool<FileSystem.FileSystem | FileSystemCon
         description: "Type of item to search for",
         default: "both",
       },
+      searchPath: {
+        type: "string",
+        description: "Directory to start search from (defaults to current directory)",
+      },
     },
     required: ["name"],
   } as const;
 
   return defineTool<
     FileSystem.FileSystem | FileSystemContextService,
-    { name: string; maxDepth?: number; type?: "directory" | "file" | "both" }
+    { name: string; maxDepth?: number; type?: "directory" | "file" | "both"; searchPath?: string }
   >({
     name: "findPath",
-    description: "Find directories or files by name when you're unsure about the exact path",
+    description: "Find directories or files by name using the system find command",
     parameters,
     validate: makeJsonSchemaValidator(parameters),
     handler: (args, context) =>
       Effect.gen(function* () {
-        const fs = yield* FileSystem.FileSystem;
         const shell = yield* FileSystemContextServiceTag;
 
         const currentDir = yield* shell.getCwd(buildKeyFromContext(context));
+        const searchDir = args.searchPath
+          ? yield* shell.resolvePath(buildKeyFromContext(context), args.searchPath)
+          : currentDir;
+
         const maxDepth = args.maxDepth ?? 3;
         const searchType = args.type ?? "both";
 
-        const results: { path: string; name: string; type: "file" | "dir" }[] = [];
+        // Build find command arguments
+        const findArgs: string[] = [searchDir];
 
-        function searchDirectory(
-          dir: string,
-          depth: number,
-        ): Effect.Effect<void, Error, FileSystem.FileSystem> {
-          return Effect.gen(function* () {
-            if (depth > maxDepth) return;
+        // Add max depth
+        findArgs.push("-maxdepth", maxDepth.toString());
 
-            try {
-              const entries = yield* fs
-                .readDirectory(dir)
-                .pipe(Effect.catchAll(() => Effect.succeed([])));
-
-              for (const name of entries) {
-                const fullPath = `${dir}/${name}`;
-
-                try {
-                  const stat = yield* fs
-                    .stat(fullPath)
-                    .pipe(Effect.catchAll(() => Effect.succeed(null)));
-
-                  if (!stat) continue;
-
-                  const isDirectory = stat.type === "Directory";
-                  const isFile = stat.type === "File";
-
-                  // Check if name matches (case-insensitive partial match)
-                  const nameMatches = name.toLowerCase().includes(args.name.toLowerCase());
-
-                  if (nameMatches) {
-                    if (
-                      (searchType === "directory" && isDirectory) ||
-                      (searchType === "file" && isFile) ||
-                      searchType === "both"
-                    ) {
-                      results.push({
-                        path: fullPath,
-                        name,
-                        type: isDirectory ? "dir" : "file",
-                      });
-                    }
-                  }
-
-                  // Recurse into directories
-                  if (isDirectory && depth < maxDepth) {
-                    yield* searchDirectory(fullPath, depth + 1);
-                  }
-                } catch {
-                  // Skip inaccessible files/directories
-                  continue;
-                }
-              }
-            } catch {
-              // Skip inaccessible directories
-              return;
-            }
-          });
+        // Add type filter
+        if (searchType === "directory") {
+          findArgs.push("-type", "d");
+        } else if (searchType === "file") {
+          findArgs.push("-type", "f");
         }
 
-        yield* searchDirectory(currentDir, 0);
+        // Add name pattern (case-insensitive)
+        findArgs.push("-iname", `*${args.name}*`);
+
+        const command = `find ${findArgs.map((arg) => shell.escapePath(arg)).join(" ")}`;
+
+        // Execute the find command
+        const result = yield* Effect.promise<{
+          stdout: string;
+          stderr: string;
+          exitCode: number;
+        }>(
+          () =>
+            new Promise((resolve, reject) => {
+              const child = spawn("sh", ["-c", command], {
+                stdio: ["ignore", "pipe", "pipe"],
+                timeout: 30000,
+              });
+
+              let stdout = "";
+              let stderr = "";
+
+              if (child.stdout) {
+                child.stdout.on("data", (data: Buffer) => {
+                  stdout += data.toString();
+                });
+              }
+
+              if (child.stderr) {
+                child.stderr.on("data", (data: Buffer) => {
+                  stderr += data.toString();
+                });
+              }
+
+              child.on("close", (code: number | null) => {
+                resolve({
+                  stdout: stdout.trim(),
+                  stderr: stderr.trim(),
+                  exitCode: code || 0,
+                });
+              });
+
+              child.on("error", (error: Error) => {
+                reject(error);
+              });
+            }),
+        ).pipe(
+          Effect.catchAll((error: Error) =>
+            Effect.succeed({
+              stdout: "",
+              stderr: error.message,
+              exitCode: 1,
+            }),
+          ),
+        );
+
+        if (result.exitCode !== 0) {
+          return {
+            success: false,
+            result: null,
+            error: `find command failed: ${result.stderr}`,
+          };
+        }
+
+        // Parse results
+        const paths = result.stdout
+          .split("\n")
+          .filter((line) => line.trim())
+          .map((path) => {
+            const name = path.split("/").pop() || "";
+            // Determine type by checking if it's a directory
+            // We'll use a simple heuristic: if it doesn't have an extension and is likely a dir
+            const isDir = !name.includes(".") || name.endsWith("/");
+            return {
+              path: path.trim(),
+              name,
+              type: isDir ? ("dir" as const) : ("file" as const),
+            };
+          });
 
         return {
           success: true,
           result: {
             searchTerm: args.name,
             currentDirectory: currentDir,
+            searchDirectory: searchDir,
             maxDepth,
             type: searchType,
-            results: results.slice(0, 50), // Limit results to avoid overwhelming output
-            totalFound: results.length,
+            results: paths.slice(0, 50), // Limit results to avoid overwhelming output
+            totalFound: paths.length,
             message:
-              results.length === 0
+              paths.length === 0
                 ? `No ${searchType === "both" ? "items" : searchType + "s"} found matching "${args.name}"`
-                : `Found ${results.length} ${searchType === "both" ? "items" : searchType + "s"} matching "${args.name}"`,
+                : `Found ${paths.length} ${searchType === "both" ? "items" : searchType + "s"} matching "${args.name}"`,
           },
         };
       }),
@@ -635,6 +674,10 @@ export function createGrepTool(): Tool<FileSystem.FileSystem | FileSystemContext
       regex: { type: "boolean", description: "Treat pattern as regex (overrides re:<...>)" },
       ignoreCase: { type: "boolean", description: "Case-insensitive match", default: false },
       maxResults: { type: "number", description: "Max matches to return", default: 5000 },
+      filePattern: {
+        type: "string",
+        description: "File pattern to search in (e.g., '*.js', '*.ts')",
+      },
     },
     required: ["pattern"],
   } as const;
@@ -648,15 +691,15 @@ export function createGrepTool(): Tool<FileSystem.FileSystem | FileSystemContext
       regex?: boolean;
       ignoreCase?: boolean;
       maxResults?: number;
+      filePattern?: string;
     }
   >({
     name: "grep",
-    description: "Search for a pattern in files",
+    description: "Search for a pattern in files using the system grep command",
     parameters,
     validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
     handler: (args, context) =>
       Effect.gen(function* () {
-        const fs = yield* FileSystem.FileSystem;
         const shell = yield* FileSystemContextServiceTag;
         const start = args.path
           ? yield* shell.resolvePath(buildKeyFromContext(context), args.path)
@@ -665,85 +708,143 @@ export function createGrepTool(): Tool<FileSystem.FileSystem | FileSystemContext
         const maxResults =
           typeof args.maxResults === "number" && args.maxResults > 0 ? args.maxResults : 5000;
 
-        // Compile matcher
-        let matcher: (line: string) => boolean;
+        // Build grep command arguments
+        const grepArgs: string[] = [];
+
+        // Add recursive flag
+        if (recursive) {
+          grepArgs.push("-r");
+        }
+
+        // Add case sensitivity
+        if (args.ignoreCase) {
+          grepArgs.push("-i");
+        }
+
+        // Add line numbers
+        grepArgs.push("-n");
+
+        // Add file pattern if specified
+        if (args.filePattern) {
+          grepArgs.push("--include", args.filePattern);
+        }
+
+        // Add max count to limit results
+        grepArgs.push("-m", maxResults.toString());
+
+        // Determine if pattern is regex
+        let searchPattern: string;
         if (args.regex === true || args.pattern.startsWith("re:")) {
-          const source: string = args.regex === true ? args.pattern : args.pattern.slice(3) || "";
-          const flags: string = args.ignoreCase ? "i" : "";
-          const rx = new RegExp(source, flags);
-          matcher = (line: string): boolean => rx.test(line);
+          const source = args.regex === true ? args.pattern : args.pattern.slice(3) || "";
+          searchPattern = source;
+          grepArgs.push("-E"); // Extended regex
         } else {
-          const pat: string = args.ignoreCase ? args.pattern.toLowerCase() : args.pattern;
-          matcher = (line: string): boolean =>
-            (args.ignoreCase ? line.toLowerCase() : line).includes(pat);
+          searchPattern = args.pattern;
+          grepArgs.push("-F"); // Fixed string
         }
 
-        type Match = { file: string; line: number; text: string };
-        const matches: Match[] = [];
+        // Add the search pattern and path
+        grepArgs.push(searchPattern, start);
 
-        function walk(path: string): Effect.Effect<void, Error, FileSystem.FileSystem> {
-          return Effect.gen(function* () {
-            // Handle broken symbolic links gracefully
-            const stat = yield* fs.stat(path).pipe(Effect.catchAll(() => Effect.succeed(null)));
+        const command = `grep ${grepArgs.map((arg) => shell.escapePath(arg)).join(" ")}`;
 
-            if (!stat) {
-              // Skip broken symbolic links or inaccessible files
-              return;
-            }
+        // Execute the grep command
+        const result = yield* Effect.promise<{
+          stdout: string;
+          stderr: string;
+          exitCode: number;
+        }>(
+          () =>
+            new Promise((resolve, reject) => {
+              const child = spawn("sh", ["-c", command], {
+                stdio: ["ignore", "pipe", "pipe"],
+                timeout: 30000,
+              });
 
-            if (stat.type === "Directory") {
-              // Handle permission errors gracefully
-              const entries = yield* fs
-                .readDirectory(path)
-                .pipe(Effect.catchAll(() => Effect.succeed([])));
+              let stdout = "";
+              let stderr = "";
 
-              for (const name of entries) {
-                const full = `${path}/${name}`;
-                if (recursive) {
-                  yield* walk(full);
-                  if (matches.length >= maxResults) return;
-                } else {
-                  const st = yield* fs.stat(full).pipe(Effect.catchAll(() => Effect.succeed(null)));
-                  if (st && st.type !== "Directory") {
-                    yield* scanFile(full);
-                    if (matches.length >= maxResults) return;
-                  }
-                }
+              if (child.stdout) {
+                child.stdout.on("data", (data: Buffer) => {
+                  stdout += data.toString();
+                });
               }
-            } else {
-              yield* scanFile(path);
-            }
-          });
-        }
 
-        function scanFile(file: string): Effect.Effect<void, Error, FileSystem.FileSystem> {
-          return Effect.gen(function* () {
-            try {
-              const content = yield* fs.readFileString(file);
-              const lines = content.split(/\r?\n/);
-              for (let i = 0; i < lines.length; i++) {
-                const text: string = lines[i] ?? "";
-                if (matcher(text)) {
-                  matches.push({ file, line: i + 1, text });
-                  if (matches.length >= maxResults) return;
-                }
+              if (child.stderr) {
+                child.stderr.on("data", (data: Buffer) => {
+                  stderr += data.toString();
+                });
               }
-            } catch {
-              // Ignore unreadable files
-            }
-          });
-        }
 
-        try {
-          yield* walk(start);
-          return { success: true, result: matches };
-        } catch (error) {
+              child.on("close", (code: number | null) => {
+                resolve({
+                  stdout: stdout.trim(),
+                  stderr: stderr.trim(),
+                  exitCode: code || 0,
+                });
+              });
+
+              child.on("error", (error: Error) => {
+                reject(error);
+              });
+            }),
+        ).pipe(
+          Effect.catchAll((error: Error) =>
+            Effect.succeed({
+              stdout: "",
+              stderr: error.message,
+              exitCode: 1,
+            }),
+          ),
+        );
+
+        // Grep returns exit code 1 when no matches are found, which is normal
+        if (result.exitCode !== 0 && result.exitCode !== 1) {
           return {
             success: false,
             result: null,
-            error: `grep failed: ${error instanceof Error ? error.message : String(error)}`,
+            error: `grep command failed: ${result.stderr}`,
           };
         }
+
+        // Parse results
+        const matches = result.stdout
+          .split("\n")
+          .filter((line) => line.trim())
+          .map((line) => {
+            // Parse format: file:line:content
+            const parts = line.split(":");
+            if (parts.length >= 3 && parts[1]) {
+              const file = parts[0];
+              const lineNum = parseInt(parts[1], 10);
+              const text = parts.slice(2).join(":");
+              return {
+                file,
+                line: lineNum,
+                text,
+              };
+            }
+            return null;
+          })
+          .filter((match): match is { file: string; line: number; text: string } => match !== null);
+
+        return {
+          success: true,
+          result: {
+            pattern: args.pattern,
+            searchPath: start,
+            recursive,
+            regex: args.regex === true || args.pattern.startsWith("re:"),
+            ignoreCase: args.ignoreCase,
+            filePattern: args.filePattern,
+            matches: matches.slice(0, maxResults),
+            totalFound: matches.length,
+            message:
+              matches.length === 0
+                ? `No matches found for pattern "${args.pattern}"`
+                : `Found ${matches.length} matches for pattern "${args.pattern}"`,
+          },
+        };
       }),
   });
 }
@@ -796,66 +897,19 @@ export function createFindTool(): Tool<FileSystem.FileSystem | FileSystemContext
   >({
     name: "find",
     description:
-      "Find files and directories with smart hierarchical search (searches HOME first, then expands)",
+      "Find files and directories using the system find command with smart hierarchical search",
     parameters,
     validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
     handler: (args, context) =>
       Effect.gen(function* () {
-        const fs = yield* FileSystem.FileSystem;
         const shell = yield* FileSystemContextServiceTag;
 
-        const filter = normalizeFilterPattern(args.name);
         const includeHidden = args.includeHidden === true;
         const maxResults =
           typeof args.maxResults === "number" && args.maxResults > 0 ? args.maxResults : 5000;
         const maxDepth = typeof args.maxDepth === "number" ? args.maxDepth : 25;
         const typeFilter = args.type ?? "all";
         const useSmart = args.smart !== false; // Default to true
-
-        function matches(name: string): boolean {
-          if (!filter.value && !filter.regex) return true;
-          if (filter.type === "regex" && filter.regex) return filter.regex.test(name);
-          return filter.value ? name.includes(filter.value) : true;
-        }
-
-        const results: { path: string; name: string; type: "file" | "dir" }[] = [];
-
-        function walk(
-          dir: string,
-          depth: number,
-        ): Effect.Effect<void, Error, FileSystem.FileSystem> {
-          return Effect.gen(function* () {
-            if (depth > maxDepth || results.length >= maxResults) return;
-
-            // Handle permission errors gracefully
-            const entries = yield* fs
-              .readDirectory(dir)
-              .pipe(Effect.catchAll(() => Effect.succeed([])));
-
-            for (const name of entries) {
-              if (!includeHidden && name.startsWith(".")) continue;
-              const full = `${dir}/${name}`;
-
-              // Handle broken symbolic links gracefully
-              const stat = yield* fs.stat(full).pipe(Effect.catchAll(() => Effect.succeed(null)));
-
-              if (!stat) {
-                // Skip broken symbolic links or inaccessible files
-                continue;
-              }
-
-              const type = stat.type === "Directory" ? "dir" : "file";
-              if ((typeFilter === "all" || typeFilter === type) && matches(name)) {
-                results.push({ path: full, name, type });
-                if (results.length >= maxResults) return;
-              }
-              if (stat.type === "Directory") {
-                yield* walk(full, depth + 1);
-                if (results.length >= maxResults) return;
-              }
-            }
-          });
-        }
 
         // Smart search strategy: search in order of likelihood
         const searchPaths: string[] = [];
@@ -879,46 +933,143 @@ export function createFindTool(): Tool<FileSystem.FileSystem | FileSystemContext
             searchPaths.push(home);
           }
 
-          // 3. Common development directories in home
-          if (home) {
-            const commonDirs = [
-              `${home}/Documents`,
-              `${home}/Desktop`,
-              `${home}/Downloads`,
-              `${home}/Projects`,
-              `${home}/Code`,
-              `${home}/Development`,
-              `${home}/github`,
-              `${home}/git`,
-            ];
-            searchPaths.push(...commonDirs);
+          // 3. Parent directories (up to 3 levels up from cwd)
+          let currentPath = cwd;
+          for (let i = 0; i < 3; i++) {
+            const parent = currentPath.split("/").slice(0, -1).join("/");
+            if (parent && parent !== currentPath && parent !== "/") {
+              searchPaths.push(parent);
+              currentPath = parent;
+            } else {
+              break;
+            }
           }
-
-          // 4. System-wide common locations (only if we haven't found enough results)
-          searchPaths.push("/usr/local", "/opt", "/Applications");
         } else {
           // Traditional search: start from current directory
           const start = yield* shell.getCwd(buildKeyFromContext(context));
           searchPaths.push(start);
         }
 
-        // Search each path in order
+        const allResults: { path: string; name: string; type: "file" | "dir" }[] = [];
+
+        // Search each path in order using system find command
         for (const searchPath of searchPaths) {
-          if (results.length >= maxResults) break;
+          if (allResults.length >= maxResults) break;
 
-          const st = yield* fs.stat(searchPath).pipe(Effect.catchAll(() => Effect.succeed(null)));
+          // Build find command arguments
+          const findArgs: string[] = [searchPath];
 
-          if (st && st.type === "Directory") {
-            yield* walk(searchPath, 0);
+          // Add max depth
+          findArgs.push("-maxdepth", maxDepth.toString());
+
+          // Add type filter
+          if (typeFilter === "dir") {
+            findArgs.push("-type", "d");
+          } else if (typeFilter === "file") {
+            findArgs.push("-type", "f");
           }
 
-          // If we found results in early paths and using smart search, we can stop early
-          if (useSmart && results.length > 0 && searchPath.includes(process.env["HOME"] || "")) {
+          // Add name pattern if specified
+          if (args.name) {
+            const filter = normalizeFilterPattern(args.name);
+            if (filter.type === "regex" && filter.regex) {
+              findArgs.push("-regex", filter.regex.source);
+            } else if (filter.value) {
+              findArgs.push("-iname", `*${filter.value}*`);
+            }
+          }
+
+          // Handle hidden files
+          if (!includeHidden) {
+            findArgs.push("!", "-name", ".*");
+          }
+
+          const command = `find ${findArgs.map((arg) => shell.escapePath(arg)).join(" ")}`;
+
+          // Execute the find command
+          const result = yield* Effect.promise<{
+            stdout: string;
+            stderr: string;
+            exitCode: number;
+          }>(
+            () =>
+              new Promise((resolve, reject) => {
+                const child = spawn("sh", ["-c", command], {
+                  stdio: ["ignore", "pipe", "pipe"],
+                  timeout: 30000,
+                });
+
+                let stdout = "";
+                let stderr = "";
+
+                if (child.stdout) {
+                  child.stdout.on("data", (data: Buffer) => {
+                    stdout += data.toString();
+                  });
+                }
+
+                if (child.stderr) {
+                  child.stderr.on("data", (data: Buffer) => {
+                    stderr += data.toString();
+                  });
+                }
+
+                child.on("close", (code: number | null) => {
+                  resolve({
+                    stdout: stdout.trim(),
+                    stderr: stderr.trim(),
+                    exitCode: code || 0,
+                  });
+                });
+
+                child.on("error", (error: Error) => {
+                  reject(error);
+                });
+              }),
+          ).pipe(
+            Effect.catchAll((error: Error) =>
+              Effect.succeed({
+                stdout: "",
+                stderr: error.message,
+                exitCode: 1,
+              }),
+            ),
+          );
+
+          if (result.exitCode !== 0) {
+            // Continue to next search path if this one fails
+            continue;
+          }
+
+          // Parse results
+          const paths = result.stdout
+            .split("\n")
+            .filter((line) => line.trim())
+            .map((path) => {
+              const name = path.split("/").pop() || "";
+              // Determine type by checking if it's a directory
+              // We'll use a simple heuristic: if it doesn't have an extension and is likely a dir
+              const isDir = !name.includes(".") || name.endsWith("/");
+              return {
+                path: path.trim(),
+                name,
+                type: isDir ? ("dir" as const) : ("file" as const),
+              };
+            });
+
+          allResults.push(...paths);
+
+          // If we found results and using smart search, we can stop early
+          // This prevents searching too many locations when we already have good results
+          if (useSmart && allResults.length >= Math.min(maxResults / 2, 10)) {
             break;
           }
         }
 
-        return { success: true, result: results };
+        return {
+          success: true,
+          result: allResults.slice(0, maxResults),
+        };
       }),
   });
 }

@@ -86,10 +86,9 @@ describe("FileSystemContextService", () => {
     it("should handle backslash-escaped spaces", async () => {
       const testEffect = Effect.gen(function* () {
         const shell = yield* FileSystemContextServiceTag;
-        const resolved = yield* shell.resolvePath(
-          { agentId: "test" },
-          "/Library/Application\\ Support/",
-        );
+        const resolved = yield* shell.resolvePath({ agentId: "test" }, "/tmp/Test\\ Directory/", {
+          skipExistenceCheck: true,
+        });
         return resolved;
       });
 
@@ -97,16 +96,15 @@ describe("FileSystemContextService", () => {
         testEffect.pipe(Effect.provide(createTestLayer())) as any,
       );
 
-      expect(result).toBe("/Library/Application Support/");
+      expect(result).toBe("/tmp/Test Directory/");
     });
 
     it("should handle double-quoted paths", async () => {
       const testEffect = Effect.gen(function* () {
         const shell = yield* FileSystemContextServiceTag;
-        const resolved = yield* shell.resolvePath(
-          { agentId: "test" },
-          '"/Library/Application Support/"',
-        );
+        const resolved = yield* shell.resolvePath({ agentId: "test" }, '"/tmp/Test Directory/"', {
+          skipExistenceCheck: true,
+        });
         return resolved;
       });
 
@@ -114,16 +112,15 @@ describe("FileSystemContextService", () => {
         testEffect.pipe(Effect.provide(createTestLayer())) as any,
       );
 
-      expect(result).toBe("/Library/Application Support/");
+      expect(result).toBe("/tmp/Test Directory/");
     });
 
     it("should handle single-quoted paths", async () => {
       const testEffect = Effect.gen(function* () {
         const shell = yield* FileSystemContextServiceTag;
-        const resolved = yield* shell.resolvePath(
-          { agentId: "test" },
-          "'/Library/Application Support/'",
-        );
+        const resolved = yield* shell.resolvePath({ agentId: "test" }, "'/tmp/Test Directory/'", {
+          skipExistenceCheck: true,
+        });
         return resolved;
       });
 
@@ -131,16 +128,15 @@ describe("FileSystemContextService", () => {
         testEffect.pipe(Effect.provide(createTestLayer())) as any,
       );
 
-      expect(result).toBe("/Library/Application Support/");
+      expect(result).toBe("/tmp/Test Directory/");
     });
 
     it("should handle mixed escaping", async () => {
       const testEffect = Effect.gen(function* () {
         const shell = yield* FileSystemContextServiceTag;
-        const resolved = yield* shell.resolvePath(
-          { agentId: "test" },
-          '"/Library/Application\\ Support/"',
-        );
+        const resolved = yield* shell.resolvePath({ agentId: "test" }, '"/tmp/Test\\ Directory/"', {
+          skipExistenceCheck: true,
+        });
         return resolved;
       });
 
@@ -148,7 +144,7 @@ describe("FileSystemContextService", () => {
         testEffect.pipe(Effect.provide(createTestLayer())) as any,
       );
 
-      expect(result).toBe("/Library/Application Support/");
+      expect(result).toBe("/tmp/Test Directory/");
     });
 
     it("should handle paths with multiple spaces", async () => {
@@ -171,7 +167,7 @@ describe("FileSystemContextService", () => {
     it("should escape paths with spaces", async () => {
       const testEffect = Effect.gen(function* () {
         const shell = yield* FileSystemContextServiceTag;
-        const escaped = shell.escapePath("/Library/Application Support/");
+        const escaped = shell.escapePath("/tmp/Test Directory/");
         return escaped;
       });
 
@@ -179,7 +175,7 @@ describe("FileSystemContextService", () => {
         testEffect.pipe(Effect.provide(createTestLayer())) as any,
       );
 
-      expect(result).toBe('"/Library/Application Support/"');
+      expect(result).toBe('"/tmp/Test Directory/"');
     });
 
     it("should escape paths with special characters", async () => {
