@@ -22,7 +22,7 @@ interface GoogleOAuthToken {
 export function gmailLoginCommand(): Effect.Effect<
   void,
   GmailAuthenticationError,
-  GmailService | LoggerService
+  GmailService | LoggerService | ConfigService
 > {
   return Effect.gen(function* () {
     const logger = yield* LoggerServiceTag;
