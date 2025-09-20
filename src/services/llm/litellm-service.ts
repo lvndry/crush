@@ -1,5 +1,6 @@
 import { Effect, Layer } from "effect";
 import litellm from "litellm";
+import type { HandlerParams } from "litellm/dist/src/types";
 import { AgentConfigService, type ConfigService } from "../config";
 import {
   LLMAuthenticationError,
@@ -214,17 +215,20 @@ class DefaultLiteLLMService implements LLMService {
           },
         );
 
-        // Convert our options format to LiteLLM/OpenAI format (non-streaming)
         const liteLLMOptions: Record<string, unknown> = {
           model: formattedModel,
           messages: convertedMessages,
-          temperature: options.temperature ?? null,
-          max_tokens: options.maxTokens ?? null,
-          // Explicitly set non-streaming to satisfy types
           stream: false as const,
         };
 
-        // Add reasoning_effort parameter if specified
+        if (options.temperature) {
+          liteLLMOptions["temperature"] = options.temperature;
+        }
+
+        if (options.maxTokens) {
+          liteLLMOptions["max_tokens"] = options.maxTokens;
+        }
+
         if (options.reasoning_effort) {
           liteLLMOptions["reasoning_effort"] = options.reasoning_effort;
         }
@@ -236,9 +240,8 @@ class DefaultLiteLLMService implements LLMService {
           liteLLMOptions["tool_choice"] = options.toolChoice as unknown as Record<string, unknown>;
         }
 
-        // Call LiteLLM (treat response as unknown and narrow safely)
         const responseUnknown: unknown = await litellm.completion(
-          liteLLMOptions as unknown as Parameters<typeof litellm.completion>[0],
+          liteLLMOptions as unknown as HandlerParams,
         );
 
         function isRecord(value: unknown): value is Record<string, unknown> {
