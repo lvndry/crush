@@ -4,6 +4,8 @@ import { Schema } from "effect";
  * Core types and interfaces for the Crush automation CLI
  */
 
+export type { ChatMessage } from "../../services/llm/types";
+
 // Agent Types
 export interface Agent {
   readonly id: string;
@@ -152,6 +154,7 @@ export interface AppConfig {
   readonly performance: PerformanceConfig;
   readonly google?: GoogleConfig;
   readonly llm?: LLMConfig;
+  readonly linkup?: LinkupConfig;
 }
 
 export type StorageConfig =
@@ -190,12 +193,12 @@ export interface PerformanceConfig {
 }
 
 export interface GoogleConfig {
-  readonly clientId?: string;
-  readonly clientSecret?: string;
+  readonly clientId: string;
+  readonly clientSecret: string;
 }
 
 export interface LLMProviderConfig {
-  readonly api_key?: string;
+  readonly api_key: string;
 }
 
 export interface LLMConfig {
@@ -215,6 +218,12 @@ export interface ContextManagementConfig {
   readonly maxRecentTokens?: number; // Maximum tokens to preserve in recent messages
   readonly enableProactiveSummarization?: boolean; // Whether to summarize proactively
   readonly summarizeToolResults?: boolean; // Whether to summarize large tool call results
+}
+
+export interface LinkupConfig {
+  readonly apiKey: string;
+  readonly baseUrl?: string;
+  readonly timeout?: number;
 }
 
 // Schema definitions for runtime validation

@@ -63,7 +63,7 @@ class DefaultLiteLLMService implements LLMService {
           name: providerName,
           supportedModels: this.providerModels[providerName] || [],
           defaultModel: this.providerModels[providerName]?.[0] || "",
-          supportsToolCalling: ["openai", "anthropic", "google"].includes(providerName),
+          supportsToolCalling: ["openai", "anthropic", "google", "mistral"].includes(providerName),
           supportsStreaming: false,
           supportsVision: ["openai", "anthropic", "google"].includes(providerName),
           authenticate: () =>

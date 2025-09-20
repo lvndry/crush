@@ -45,6 +45,7 @@ import {
   createTrashEmailTool,
   createUpdateLabelTool,
 } from "./gmail-tools";
+import { createLinkupSearchTool } from "./linkup-tools";
 import { createExecuteCommandApprovedTool, createExecuteCommandTool } from "./shell-tools";
 import { ToolRegistryTag, type ToolRegistry } from "./tool-registry";
 
@@ -62,7 +63,7 @@ export function registerAllTools(): Effect.Effect<void, Error, ToolRegistry> {
     yield* registerFileTools();
     yield* registerShellTools();
     yield* registerGitTools();
-    // yield* registerWebTools();
+    yield* registerWebTools();
   });
 }
 
@@ -203,6 +204,17 @@ export function registerGitTools(): Effect.Effect<void, Error, ToolRegistry> {
     yield* registry.registerTool(gitPushTool);
     yield* registry.registerTool(gitPullTool);
     yield* registry.registerTool(gitCheckoutTool);
+  });
+}
+
+// Register web tools (Linkup search)
+export function registerWebTools(): Effect.Effect<void, Error, ToolRegistry> {
+  return Effect.gen(function* () {
+    const registry = yield* ToolRegistryTag;
+
+    const linkupSearchTool = createLinkupSearchTool();
+
+    yield* registry.registerTool(linkupSearchTool);
   });
 }
 

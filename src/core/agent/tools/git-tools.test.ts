@@ -19,7 +19,11 @@ describe("Git Tools", () => {
   const createTestLayer = () => {
     const shellLayer = createFileSystemContextServiceLayer();
     const toolRegistryLayer = createToolRegistryLayer();
-    return Layer.mergeAll(toolRegistryLayer, Layer.provide(shellLayer, NodeFileSystem.layer));
+    return Layer.mergeAll(
+      toolRegistryLayer,
+      Layer.provide(shellLayer, NodeFileSystem.layer),
+      NodeFileSystem.layer,
+    );
   };
 
   it("should create gitStatus tool with proper structure", () => {

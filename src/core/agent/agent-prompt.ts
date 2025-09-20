@@ -108,7 +108,7 @@ export class AgentPromptBuilder {
           });
 
           toolInstructions +=
-            "\nWhen you need to use a tool, respond with the appropriate tool name and parameters.";
+            "\nWhen you need to use a tool, execute it silently and provide a natural response based on the results.";
 
           systemPrompt = systemPrompt.replace("{toolInstructions}", toolInstructions);
         } else {

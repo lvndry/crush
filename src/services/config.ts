@@ -4,6 +4,7 @@ import type {
   AppConfig,
   GoogleConfig,
   LLMConfig,
+  LinkupConfig,
   LoggingConfig,
   PerformanceConfig,
   SecurityConfig,
@@ -111,7 +112,12 @@ function defaultConfig(): AppConfig {
     maxConcurrentTasks: 10,
     timeout: 30000,
   };
-  const google: GoogleConfig = {};
+
+  const google: GoogleConfig = {
+    clientId: "",
+    clientSecret: "",
+  };
+
   const llm: LLMConfig = {
     contextManagement: {
       summarizationThreshold: 0.75, // Summarize when 75% of context window is used
@@ -123,8 +129,13 @@ function defaultConfig(): AppConfig {
       summarizeToolResults: true, // Summarize large tool call results
     },
   };
+  const linkup: LinkupConfig = {
+    apiKey: "",
+    baseUrl: "https://api.linkup.so",
+    timeout: 30000,
+  };
 
-  return { storage, logging, security, performance, google, llm };
+  return { storage, logging, security, performance, google, llm, linkup };
 }
 
 function mergeConfig(base: AppConfig, override?: Partial<AppConfig>): AppConfig {
@@ -134,8 +145,9 @@ function mergeConfig(base: AppConfig, override?: Partial<AppConfig>): AppConfig 
     logging: { ...base.logging, ...(override.logging ?? {}) },
     security: { ...base.security, ...(override.security ?? {}) },
     performance: { ...base.performance, ...(override.performance ?? {}) },
-    google: { ...(base.google ?? {}), ...(override.google ?? {}) },
-    llm: { ...(base.llm ?? {}), ...(override.llm ?? {}) },
+    ...(override.google && { google: { ...base.google, ...override.google } }),
+    ...(override.llm && { llm: { ...(base.llm ?? {}), ...override.llm } }),
+    ...(override.linkup && { linkup: { ...base.linkup, ...override.linkup } }),
   };
 }
 

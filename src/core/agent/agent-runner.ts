@@ -1,11 +1,12 @@
 import { Effect, Schedule } from "effect";
 import { AgentConfigService, type ConfigService } from "../../services/config";
-import {
-  estimateConversationTokens,
-  getModelContextLimit,
-  shouldSummarize,
-  summarizeConversation,
-} from "../../services/llm/context-manager";
+// Context management imports temporarily disabled
+// import {
+//   estimateConversationTokens,
+//   getModelContextLimit,
+//   shouldSummarize,
+//   summarizeConversation,
+// } from "../../services/llm/context-manager";
 import {
   LLMRateLimitError,
   LLMServiceTag,
@@ -15,6 +16,7 @@ import {
 } from "../../services/llm/types";
 import { LoggerServiceTag, type LoggerService } from "../../services/logger";
 import { type Agent } from "../types";
+import { MarkdownRenderer } from "../utils/markdown-renderer";
 import { agentPromptBuilder } from "./agent-prompt";
 import {
   ToolRegistryTag,
@@ -26,52 +28,53 @@ import {
  * Agent runner for executing agent conversations
  */
 
-/**
- * Intelligently manage conversation context using token-based summarization
- * Preserves important context while staying within token limits
- */
-function manageContext(
-  messages: ChatMessage[],
-  model: string,
-  contextConfig?: {
-    summarizationThreshold?: number;
-    targetTokensRatio?: number;
-    enableProactiveSummarization?: boolean;
-    preserveRecentMessages?: number;
-    maxRecentTokens?: number;
-    summarizeToolResults?: boolean;
-  },
-): ChatMessage[] {
-  // Skip if proactive summarization is disabled
-  if (contextConfig?.enableProactiveSummarization === false) {
-    return messages;
-  }
-
-  // Use configured threshold or default to 75%
-  const threshold = contextConfig?.summarizationThreshold ?? 0.75;
-
-  // Check if we need to summarize based on token count
-  if (!shouldSummarize(messages, model, threshold)) {
-    return messages;
-  }
-
-  // Calculate target tokens using configured ratio or default to 60%
-  const maxTokens = getModelContextLimit(model);
-  const targetRatio = contextConfig?.targetTokensRatio ?? 0.6;
-  const targetTokens = Math.floor(maxTokens * targetRatio);
-
-  // Use the enhanced summarization with all new parameters
-  const summarizedMessages = summarizeConversation(
-    messages,
-    model,
-    targetTokens,
-    contextConfig?.maxRecentTokens,
-    contextConfig?.preserveRecentMessages,
-    contextConfig?.summarizeToolResults,
-  );
-
-  return summarizedMessages;
-}
+// Context management function temporarily disabled - keeping code for later investigation
+// /**
+//  * Intelligently manage conversation context using token-based summarization
+//  * Preserves important context while staying within token limits
+//  */
+// function manageContext(
+//   messages: ChatMessage[],
+//   model: string,
+//   contextConfig?: {
+//     summarizationThreshold?: number;
+//     targetTokensRatio?: number;
+//     enableProactiveSummarization?: boolean;
+//     preserveRecentMessages?: number;
+//     maxRecentTokens?: number;
+//     summarizeToolResults?: boolean;
+//   },
+// ): ChatMessage[] {
+//   // Skip if proactive summarization is disabled
+//   if (contextConfig?.enableProactiveSummarization === false) {
+//     return messages;
+//   }
+//
+//   // Use configured threshold or default to 90% (more conservative to preserve tool results)
+//   const threshold = contextConfig?.summarizationThreshold ?? 0.9;
+//
+//   // Check if we need to summarize based on token count
+//   if (!shouldSummarize(messages, model, threshold)) {
+//     return messages;
+//   }
+//
+//   // Calculate target tokens using configured ratio or default to 80% (more conservative)
+//   const maxTokens = getModelContextLimit(model);
+//   const targetRatio = contextConfig?.targetTokensRatio ?? 0.8;
+//   const targetTokens = Math.floor(maxTokens * targetRatio);
+//
+//   // Use the enhanced summarization with all new parameters
+//   const summarizedMessages = summarizeConversation(
+//     messages,
+//     model,
+//     targetTokens,
+//     contextConfig?.maxRecentTokens ?? 8000, // Default to 8K tokens for recent context
+//     contextConfig?.preserveRecentMessages ?? 10, // Default to 10 recent messages
+//     contextConfig?.summarizeToolResults ?? false, // Default to not summarizing tool results
+//   );
+//
+//   return summarizedMessages;
+// }
 
 export interface AgentRunnerOptions {
   readonly agent: Agent;
@@ -176,70 +179,72 @@ export class AgentRunner {
       const model = agent.config.llmModel;
 
       for (let i = 0; i < maxIterations; i++) {
-        // Proactively manage context before each iteration
-        const contextConfig = appConfig.llm?.contextManagement ?? undefined;
-        const managedMessages = manageContext(currentMessages, model, contextConfig);
-
-        // Log context management if it occurred
-        if (managedMessages.length !== currentMessages.length) {
-          yield* logger.info(
-            `Context managed: ${currentMessages.length} → ${managedMessages.length} messages`,
-            {
-              agentId: agent.id,
-              conversationId: actualConversationId,
-              iteration: i + 1,
-              model,
-              originalTokens: estimateConversationTokens(currentMessages),
-              managedTokens: estimateConversationTokens(managedMessages),
-              threshold: contextConfig?.summarizationThreshold ?? 0.75,
-            },
-          );
-        }
-
-        currentMessages.length = 0; // Clear array
-        currentMessages.push(...managedMessages);
-
-        // Safety: if context management resulted in an empty message list, rebuild a minimal prompt
-        if (currentMessages.length === 0) {
-          const minimalSystem = yield* agentPromptBuilder.buildSystemPrompt(agentType, {
-            agentName: agent.name,
-            agentDescription: agent.description,
-            userInput,
-            conversationHistory: history,
-            toolNames: agentToolNames,
-          });
-          const minimalUser = yield* agentPromptBuilder.buildUserPrompt(agentType, {
-            agentName: agent.name,
-            agentDescription: agent.description,
-            userInput,
-            conversationHistory: history,
-            toolNames: agentToolNames,
-          });
-
-          currentMessages.push({ role: "system", content: minimalSystem });
-          if (minimalUser && minimalUser.trim().length > 0) {
-            currentMessages.push({ role: "user", content: minimalUser });
-          }
-
-          yield* logger.warn(
-            "Message list was empty after context management; rebuilt minimal prompt",
-            {
-              agentId: agent.id,
-              conversationId: actualConversationId,
-              iteration: i + 1,
-            },
-          );
-        }
+        // Context management temporarily disabled - keeping code for later investigation
+        // const contextConfig = appConfig.llm?.contextManagement ?? undefined;
+        // const managedMessages = manageContext(currentMessages, model, contextConfig);
+        //
+        // // Log context management if it occurred
+        // if (managedMessages.length !== currentMessages.length) {
+        //   yield* logger.info(
+        //     `Context managed: ${currentMessages.length} → ${managedMessages.length} messages`,
+        //     {
+        //       agentId: agent.id,
+        //       conversationId: actualConversationId,
+        //       iteration: i + 1,
+        //       model,
+        //       originalTokens: estimateConversationTokens(currentMessages),
+        //       managedTokens: estimateConversationTokens(managedMessages),
+        //       threshold: contextConfig?.summarizationThreshold ?? 0.75,
+        //     },
+        //   );
+        // }
+        //
+        // currentMessages.length = 0; // Clear array
+        // currentMessages.push(...managedMessages);
+        //
+        // // Safety: if context management resulted in an empty message list, rebuild a minimal prompt
+        // if (currentMessages.length === 0) {
+        //   const minimalSystem = yield* agentPromptBuilder.buildSystemPrompt(agentType, {
+        //     agentName: agent.name,
+        //     agentDescription: agent.description,
+        //     userInput,
+        //     conversationHistory: history,
+        //     toolNames: agentToolNames,
+        //   });
+        //   const minimalUser = yield* agentPromptBuilder.buildUserPrompt(agentType, {
+        //     agentName: agent.name,
+        //     agentDescription: agent.description,
+        //     userInput,
+        //     conversationHistory: history,
+        //     toolNames: agentToolNames,
+        //   });
+        //
+        //   currentMessages.push({ role: "system", content: minimalSystem });
+        //   if (minimalUser && minimalUser.trim().length > 0) {
+        //     currentMessages.push({ role: "user", content: minimalUser });
+        //   }
+        //
+        //   yield* logger.warn(
+        //     "Message list was empty after context management; rebuilt minimal prompt",
+        //     {
+        //       agentId: agent.id,
+        //       conversationId: actualConversationId,
+        //       iteration: i + 1,
+        //     },
+        //   );
+        // }
 
         // Log user-friendly progress for info level
         if (i === 0) {
-          yield* logger.info(`🤖 ${agent.name} is thinking...`, {
+          const message = MarkdownRenderer.formatThinking(agent.name, true);
+          yield* logger.info(message, {
             agentId: agent.id,
             conversationId: actualConversationId,
             iteration: i + 1,
           });
         } else {
-          yield* logger.info(`🔄 ${agent.name} is processing results...`, {
+          const message = MarkdownRenderer.formatThinking(agent.name, false);
+          yield* logger.info(message, {
             agentId: agent.id,
             conversationId: actualConversationId,
             iteration: i + 1,
@@ -297,51 +302,52 @@ export class AgentRunner {
             Schedule.whileInput((error) => error instanceof LLMRateLimitError),
           ),
         ).pipe(
-          Effect.tapError((error) =>
+          Effect.tapError((_error) =>
             Effect.gen(function* () {
-              const logger = yield* LoggerServiceTag;
-              if (error instanceof LLMRateLimitError) {
-                // If this is a "request too large" error, try more aggressive context management
-                if (
-                  error.message.includes("Request too large") ||
-                  error.message.includes("tokens per min")
-                ) {
-                  // Use configured aggressive threshold or default to 40%
-                  const maxTokens = getModelContextLimit(model);
-                  const aggressiveRatio =
-                    appConfig.llm?.contextManagement?.aggressiveThreshold ?? 0.4;
-                  const aggressiveTargetTokens = Math.floor(maxTokens * aggressiveRatio);
-                  const contextConfig = appConfig.llm?.contextManagement;
-                  messagesToSend = summarizeConversation(
-                    messagesToSend,
-                    model,
-                    aggressiveTargetTokens,
-                    contextConfig?.maxRecentTokens,
-                    contextConfig?.preserveRecentMessages,
-                    contextConfig?.summarizeToolResults,
-                  );
-
-                  yield* logger.warn(
-                    `Request too large, applying aggressive context management and retrying...`,
-                    {
-                      agentId: agent.id,
-                      conversationId: actualConversationId,
-                      iteration: i + 1,
-                      messageCount: messagesToSend.length,
-                      targetTokens: aggressiveTargetTokens,
-                      aggressiveRatio,
-                      error: error.message,
-                    },
-                  );
-                } else {
-                  yield* logger.warn(`Rate limit hit, retrying...`, {
-                    agentId: agent.id,
-                    conversationId: actualConversationId,
-                    iteration: i + 1,
-                    error: error.message,
-                  });
-                }
-              }
+              // const logger = yield* LoggerServiceTag;
+              // Context management error handling temporarily disabled
+              // if (error instanceof LLMRateLimitError) {
+              //   // If this is a "request too large" error, try more aggressive context management
+              //   if (
+              //     error.message.includes("Request too large") ||
+              //     error.message.includes("tokens per min")
+              //   ) {
+              //     // Use configured aggressive threshold or default to 40%
+              //     const maxTokens = getModelContextLimit(model);
+              //     const aggressiveRatio =
+              //       appConfig.llm?.contextManagement?.aggressiveThreshold ?? 0.4;
+              //     const aggressiveTargetTokens = Math.floor(maxTokens * aggressiveRatio);
+              //     const contextConfig = appConfig.llm?.contextManagement;
+              //     messagesToSend = summarizeConversation(
+              //       messagesToSend,
+              //       model,
+              //       aggressiveTargetTokens,
+              //       contextConfig?.maxRecentTokens,
+              //       contextConfig?.preserveRecentMessages,
+              //       contextConfig?.summarizeToolResults,
+              //     );
+              //
+              //     yield* logger.warn(
+              //       `Request too large, applying aggressive context management and retrying...`,
+              //       {
+              //         agentId: agent.id,
+              //         conversationId: actualConversationId,
+              //         iteration: i + 1,
+              //         messageCount: messagesToSend.length,
+              //         targetTokens: aggressiveTargetTokens,
+              //         aggressiveRatio,
+              //         error: error.message,
+              //       },
+              //     );
+              //   } else {
+              //     yield* logger.warn(`Rate limit hit, retrying...`, {
+              //       agentId: agent.id,
+              //       conversationId: actualConversationId,
+              //       iteration: i + 1,
+              //       error: error.message,
+              //     });
+              //   }
+              // }
             }),
           ),
         );
@@ -383,12 +389,13 @@ export class AgentRunner {
           const toolResults: Record<string, unknown> = {};
 
           // Log user-friendly tool execution info
-          const toolNames = completion.toolCalls.map((tc) => tc.function.name).join(", ");
-          yield* logger.info(`🔧 ${agent.name} is using tools: ${toolNames}`, {
+          const toolNames = completion.toolCalls.map((tc) => tc.function.name);
+          const message = MarkdownRenderer.formatToolExecution(agent.name, toolNames);
+          yield* logger.info(message, {
             agentId: agent.id,
             conversationId: actualConversationId,
             toolCount: completion.toolCalls.length,
-            tools: completion.toolCalls.map((tc) => tc.function.name),
+            tools: toolNames,
           });
 
           // Execute each tool call
@@ -468,7 +475,8 @@ export class AgentRunner {
         response = { ...response, content: completion.content };
 
         // Log completion
-        yield* logger.info(`✅ ${agent.name} completed successfully`, {
+        const completionMessage = MarkdownRenderer.formatCompletion(agent.name);
+        yield* logger.info(completionMessage, {
           agentId: agent.id,
           conversationId: actualConversationId,
           totalIterations: i + 1,
@@ -478,7 +486,11 @@ export class AgentRunner {
       }
 
       if (response.content === "" && !response.toolCalls) {
-        yield* logger.warn(`⚠️ ${agent.name} reached maximum iterations (${maxIterations})`, {
+        const warningMessage = MarkdownRenderer.formatWarning(
+          agent.name,
+          `reached maximum iterations (${maxIterations})`,
+        );
+        yield* logger.warn(warningMessage, {
           agentId: agent.id,
           conversationId: actualConversationId,
           maxIterations,

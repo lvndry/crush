@@ -17,5 +17,10 @@
     "mistral": {
       "api_key": "mist-..."
     }
+  },
+  "linkup": {
+    "apiKey": "your-linkup-api-key-here",
+    "baseUrl": "https://api.linkup.so",
+    "timeout": 30000
   }
 }
