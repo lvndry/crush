@@ -6,6 +6,7 @@ import { Command } from "commander";
 import { Effect, Layer } from "effect";
 import { gmailLoginCommand, gmailLogoutCommand, gmailStatusCommand } from "./cli/commands/auth";
 import { chatWithAIAgentCommand, createAIAgentCommand } from "./cli/commands/chat-agent";
+import { editAgentCommand } from "./cli/commands/edit-agent";
 import {
   createAgentCommand,
   deleteAgentCommand,
@@ -234,6 +235,18 @@ function main() {
       .action((agentId: string) => {
         void Effect.runPromise(
           chatWithAIAgentCommand(agentId).pipe(
+            Effect.provide(createAppLayer()),
+            Effect.catchAll((error) => handleError(error)),
+          ),
+        );
+      });
+
+    agentCommand
+      .command("edit <agentId>")
+      .description("Edit an existing agent (interactive mode)")
+      .action((agentId: string) => {
+        void Effect.runPromise(
+          editAgentCommand(agentId).pipe(
             Effect.provide(createAppLayer()),
             Effect.catchAll((error) => handleError(error)),
           ),

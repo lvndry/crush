@@ -78,6 +78,34 @@ export class FileStorageService implements StorageService {
     );
   }
 
+  private readAgentFile(path: string): Effect.Effect<Agent, StorageError | StorageNotFoundError> {
+    return Effect.gen(
+      function* (this: FileStorageService) {
+        const content = yield* this.fs.readFileString(path).pipe(
+          Effect.mapError(
+            (error) =>
+              new StorageError({
+                operation: "read",
+                path,
+                reason: `Failed to read file: ${String(error.message)}`,
+              }),
+          ),
+        );
+
+        const rawData = JSON.parse(content) as Agent & { createdAt: string; updatedAt: string };
+
+        // Convert date strings back to Date objects
+        const agent: Agent = {
+          ...rawData,
+          createdAt: new Date(rawData.createdAt),
+          updatedAt: new Date(rawData.updatedAt),
+        };
+
+        return agent;
+      }.bind(this),
+    );
+  }
+
   private writeJsonFile<T>(path: string, data: T): Effect.Effect<void, StorageError> {
     return Effect.gen(
       function* (this: FileStorageService) {
@@ -128,7 +156,7 @@ export class FileStorageService implements StorageService {
 
   getAgent(id: string): Effect.Effect<Agent, StorageError | StorageNotFoundError> {
     const path = this.getAgentPath(id);
-    return this.readJsonFile<Agent>(path);
+    return this.readAgentFile(path);
   }
 
   listAgents(): Effect.Effect<readonly Agent[], StorageError> {
@@ -140,7 +168,7 @@ export class FileStorageService implements StorageService {
         const agents: Agent[] = [];
         for (const file of files) {
           const path = `${dir}/${file}`;
-          const agent = yield* this.readJsonFile<Agent>(path).pipe(
+          const agent = yield* this.readAgentFile(path).pipe(
             Effect.catchAll(() => Effect.void), // Skip corrupted files
           );
           if (agent) {

@@ -146,8 +146,8 @@ export function listAgentsCommand(): Effect.Effect<void, StorageError, AgentServ
       console.log(`   Description: ${agent.description}`);
       console.log(`   Status: ${agent.status}`);
       console.log(`   Tasks: ${agent.config.tasks.length}`);
-      console.log(`   Created: ${new Date(agent.createdAt).toISOString()}`);
-      console.log(`   Updated: ${new Date(agent.updatedAt).toISOString()}`);
+      console.log(`   Created: ${agent.createdAt.toISOString()}`);
+      console.log(`   Updated: ${agent.updatedAt.toISOString()}`);
       console.log();
     });
   });
@@ -336,8 +336,8 @@ export function getAgentCommand(
     console.log(`   Name: ${agent.name}`);
     console.log(`   Description: ${agent.description}`);
     console.log(`   Status: ${agent.status}`);
-    console.log(`   Created: ${new Date(agent.createdAt).toISOString()}`);
-    console.log(`   Updated: ${new Date(agent.updatedAt).toISOString()}`);
+    console.log(`   Created: ${agent.createdAt.toISOString()}`);
+    console.log(`   Updated: ${agent.updatedAt.toISOString()}`);
     console.log();
 
     console.log(`⚙️  Configuration:`);

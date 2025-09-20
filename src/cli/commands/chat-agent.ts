@@ -339,7 +339,7 @@ function initializeSession(
  * Special command types
  */
 type SpecialCommand = {
-  type: "new" | "help" | "status" | "clear" | "tools" | "unknown";
+  type: "new" | "help" | "status" | "clear" | "tools" | "edit" | "unknown";
   args: string[];
 };
 
@@ -404,6 +404,7 @@ function handleSpecialCommand(
         console.log("   /new     - Start a new conversation (clear context)");
         console.log("   /status  - Show current conversation status");
         console.log("   /tools   - List all available tools by category");
+        console.log("   /edit    - Edit this agent's configuration");
         console.log("   /clear   - Clear the screen");
         console.log("   /help    - Show this help message");
         console.log("   exit     - Exit the chat");
