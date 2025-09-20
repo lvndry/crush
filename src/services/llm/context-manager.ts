@@ -55,9 +55,7 @@ const MODEL_CONTEXT_LIMITS: Record<string, number> = Object.values(
  * Get the context window limit for a model
  */
 export function getModelContextLimit(model: string): number {
-  // Extract model name from provider/model format
-  const modelName = model.includes("/") ? model.split("/")[1] : model;
-  return MODEL_CONTEXT_LIMITS[modelName || model] || 4096; // Default to 4K if unknown
+  return MODEL_CONTEXT_LIMITS[model] || 4096; // Default to 4K if unknown
 }
 
 /**

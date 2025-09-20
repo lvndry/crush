@@ -66,6 +66,7 @@ export default [
       '@typescript-eslint/no-var-requires': 'error',
       '@typescript-eslint/ban-ts-comment': 'warn',
       'prefer-const': 'error',
+      "@typescript-eslint/no-unsafe-member-access": "warn",
       'no-var': 'error',
       'no-console': 'off'
     }
