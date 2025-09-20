@@ -159,6 +159,7 @@ const createAgent = (config: AgentConfig): Effect.Effect<Agent, AgentError> => {
 - Always specify return types for public functions
 - Use `readonly` arrays and objects where appropriate
 - Leverage Template Literal Types for string validation
+- Never use `any` outside of test files
 
 ### Effect-TS Patterns
 

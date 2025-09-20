@@ -14,6 +14,7 @@ import { agentPromptBuilder } from "./agent-prompt";
 import {
   ToolRegistryTag,
   type ToolExecutionContext,
+  type ToolExecutionResult,
   type ToolRegistry,
 } from "./tools/tool-registry";
 
@@ -300,7 +301,7 @@ export class AgentRunner {
                 });
 
                 // Execute the tool
-                const result = yield* toolRegistry.executeTool(name, args, context);
+                const result = yield* executeTool(name, args, context);
 
                 // Log tool execution result in debug mode
                 yield* logger.debug("Tool execution result", {
@@ -411,4 +412,38 @@ export class AgentRunner {
       return { ...response, messages: currentMessages };
     });
   }
+}
+
+/**
+ * Execute a tool by name with the provided arguments
+ *
+ * Finds the specified tool in the registry and executes it with the given arguments
+ * and context. Provides comprehensive logging of the execution process including
+ * start, success, and error states.
+ *
+ * @param name - The name of the tool to execute
+ * @param args - The arguments to pass to the tool
+ * @param context - The execution context containing agent and conversation information
+ * @returns An Effect that resolves to the tool execution result
+ *
+ * @throws {Error} When the tool is not found or execution fails
+ *
+ * @example
+ * ```typescript
+ * const result = yield* executeTool(
+ *   "gmail_list_emails",
+ *   { query: "is:unread" },
+ *   { agentId: "agent-123", conversationId: "conv-456" }
+ * );
+ * ```
+ */
+export function executeTool(
+  name: string,
+  args: Record<string, unknown>,
+  context: ToolExecutionContext,
+): Effect.Effect<ToolExecutionResult, Error, ToolRegistry | LoggerService> {
+  return Effect.gen(function* () {
+    const registry = yield* ToolRegistryTag;
+    return yield* registry.executeTool(name, args, context);
+  });
 }
