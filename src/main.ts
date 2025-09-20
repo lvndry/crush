@@ -4,15 +4,15 @@ import { FileSystem } from "@effect/platform";
 import { NodeFileSystem } from "@effect/platform-node";
 import { Command } from "commander";
 import { Effect, Layer } from "effect";
+import { gmailLoginCommand, gmailLogoutCommand, gmailStatusCommand } from "./cli/commands/auth";
+import { chatWithAIAgentCommand, createAIAgentCommand } from "./cli/commands/chat-agent";
 import {
   createAgentCommand,
   deleteAgentCommand,
   getAgentCommand,
   listAgentsCommand,
   runAgentCommand,
-} from "./cli/commands/agent";
-import { chatWithAIAgentCommand, createAIAgentCommand } from "./cli/commands/ai-agent";
-import { gmailLoginCommand, gmailLogoutCommand, gmailStatusCommand } from "./cli/commands/auth";
+} from "./cli/commands/task-agent";
 import { createAgentServiceLayer } from "./core/agent/agent-service";
 import { createToolRegistrationLayer } from "./core/agent/tools/register-tools";
 import { createToolRegistryLayer } from "./core/agent/tools/tool-registry";
@@ -98,7 +98,8 @@ function createAppLayer() {
  * Main CLI application entry point
  *
  * Sets up the Commander.js CLI program with all available commands including:
- * - Agent management (create, list, run, get, delete, chat)
+ * - Task Agent management (create, list, run, get, delete) - for traditional automation
+ * - Chat Agent management (create, chat) - for AI-powered conversational agents
  * - Automation management (list, create, run, delete)
  * - Configuration management (get, set, list, validate)
  * - Authentication (Gmail login, logout, status)
@@ -137,27 +138,27 @@ function main() {
       .action(() => {
         void Effect.runPromise(
           listAgentsCommand().pipe(
-            Effect.catchAll((error) => handleError(error)),
             Effect.provide(createAppLayer()),
+            Effect.catchAll((error) => handleError(error)),
           ),
         );
       });
 
     agentCommand
       .command("create")
-      .description("Create a new AI agent (interactive mode)")
+      .description("Create a new AI chat agent (interactive mode)")
       .action(() => {
         void Effect.runPromise(
           createAIAgentCommand().pipe(
-            Effect.catchAll((error) => handleError(error)),
             Effect.provide(createAppLayer()),
+            Effect.catchAll((error) => handleError(error)),
           ),
         );
       });
 
     agentCommand
       .command("create-quick <name>")
-      .description("Create a new agent quickly with command line options")
+      .description("Create a new task agent quickly with command line options")
       .option("-d, --description <description>", "Agent description")
       .option("-t, --timeout <timeout>", "Agent timeout in milliseconds", (value) =>
         parseInt(value, 10),
@@ -182,8 +183,8 @@ function main() {
         ) => {
           void Effect.runPromise(
             createAgentCommand(name, options.description || "", options).pipe(
-              Effect.catchAll((error) => handleError(error)),
               Effect.provide(createAppLayer()),
+              Effect.catchAll((error) => handleError(error)),
             ),
           );
         },
@@ -191,50 +192,50 @@ function main() {
 
     agentCommand
       .command("run <agentId>")
-      .description("Run an agent")
+      .description("Run a task agent")
       .option("--watch", "Watch for changes")
       .option("--dry-run", "Show what would be executed without running")
       .action((agentId: string, options: { watch?: boolean; dryRun?: boolean }) => {
         void Effect.runPromise(
           runAgentCommand(agentId, options).pipe(
-            Effect.catchAll((error) => handleError(error)),
             Effect.provide(createAppLayer()),
+            Effect.catchAll((error) => handleError(error)),
           ),
         );
       });
 
     agentCommand
       .command("get <agentId>")
-      .description("Get agent details")
+      .description("Get task agent details")
       .action((agentId: string) => {
         void Effect.runPromise(
           getAgentCommand(agentId).pipe(
-            Effect.catchAll((error) => handleError(error)),
             Effect.provide(createAppLayer()),
+            Effect.catchAll((error) => handleError(error)),
           ),
         );
       });
 
     agentCommand
       .command("delete <agentId>")
-      .description("Delete an agent")
+      .description("Delete a task agent")
       .action((agentId: string) => {
         void Effect.runPromise(
           deleteAgentCommand(agentId).pipe(
-            Effect.catchAll((error) => handleError(error)),
             Effect.provide(createAppLayer()),
+            Effect.catchAll((error) => handleError(error)),
           ),
         );
       });
 
     agentCommand
       .command("chat <agentId>")
-      .description("Start a chat with an agent")
+      .description("Start a chat with an AI agent")
       .action((agentId: string) => {
         void Effect.runPromise(
           chatWithAIAgentCommand(agentId).pipe(
-            Effect.catchAll((error) => handleError(error)),
             Effect.provide(createAppLayer()),
+            Effect.catchAll((error) => handleError(error)),
           ),
         );
       });
@@ -326,8 +327,8 @@ function main() {
       .action(() => {
         void Effect.runPromise(
           gmailLoginCommand().pipe(
-            Effect.catchAll((error) => handleError(error)),
             Effect.provide(createAppLayer()),
+            Effect.catchAll((error) => handleError(error)),
           ),
         );
       });
@@ -338,8 +339,8 @@ function main() {
       .action(() => {
         void Effect.runPromise(
           gmailLogoutCommand().pipe(
-            Effect.catchAll((error) => handleError(error)),
             Effect.provide(createAppLayer()),
+            Effect.catchAll((error) => handleError(error)),
           ),
         );
       });
@@ -350,8 +351,8 @@ function main() {
       .action(() => {
         void Effect.runPromise(
           gmailStatusCommand().pipe(
-            Effect.catchAll((error) => handleError(error)),
             Effect.provide(createAppLayer()),
+            Effect.catchAll((error) => handleError(error)),
           ),
         );
       });

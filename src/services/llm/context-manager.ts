@@ -6,30 +6,50 @@ import { type ChatMessage } from "./types";
  * for maintaining context within LLM model limits
  */
 
-// Model context window limits (in tokens)
-const MODEL_CONTEXT_LIMITS: Record<string, number> = {
-  "gpt-3.5-turbo": 4096,
-  "gpt-4": 8192,
-  "gpt-4o": 128000,
-  "gpt-4o-mini": 128000,
-  "gpt-4-turbo": 128000,
-  "gpt-5": 200000,
-  o3: 200000,
-  "claude-3-haiku": 200000,
-  "claude-3-sonnet": 200000,
-  "claude-3-opus": 200000,
-  "claude-sonnet-4": 200000,
-  "claude-opus-4": 200000,
-  "gemini-pro": 30720,
-  "gemini-1.5-pro": 2000000,
-  "gemini-2.0-flash": 1000000,
-  "mistral-small-latest": 32000,
-  "mistral-medium-latest": 32000,
-  "mistral-large-latest": 32000,
-  llama3: 8192,
-  llama2: 4096,
-  mistral: 32000,
+// Model context window limits organized by provider (in tokens)
+const MODEL_CONTEXT_LIMITS_BY_PROVIDER = {
+  // OpenAI models
+  openai: {
+    "gpt-3.5-turbo": 4096,
+    "gpt-4": 8192,
+    "gpt-4o": 128000,
+    "gpt-4o-mini": 128000,
+    "gpt-4-turbo": 128000,
+    "gpt-5": 200000,
+    o3: 200000,
+  },
+  // Anthropic Claude models
+  anthropic: {
+    "claude-3-haiku": 200000,
+    "claude-3-sonnet": 200000,
+    "claude-3-opus": 200000,
+    "claude-sonnet-4": 200000,
+    "claude-opus-4": 200000,
+  },
+  // Google Gemini models
+  google: {
+    "gemini-pro": 30720,
+    "gemini-1.5-pro": 2000000,
+    "gemini-2.0-flash": 1000000,
+  },
+  // Mistral AI models
+  mistral: {
+    "mistral-small-latest": 32000,
+    "mistral-medium-latest": 32000,
+    "mistral-large-latest": 32000,
+    mistral: 32000,
+  },
+  // Meta Llama models
+  meta: {
+    llama3: 8192,
+    llama2: 4096,
+  },
 };
+
+// Flatten the provider-organized limits into a single lookup table
+const MODEL_CONTEXT_LIMITS: Record<string, number> = Object.values(
+  MODEL_CONTEXT_LIMITS_BY_PROVIDER,
+).reduce((acc, providerModels) => ({ ...acc, ...providerModels }), {});
 
 /**
  * Get the context window limit for a model
@@ -38,6 +58,23 @@ export function getModelContextLimit(model: string): number {
   // Extract model name from provider/model format
   const modelName = model.includes("/") ? model.split("/")[1] : model;
   return MODEL_CONTEXT_LIMITS[modelName || model] || 4096; // Default to 4K if unknown
+}
+
+/**
+ * Get all models for a specific provider
+ */
+export function getModelsByProvider(provider: string): Record<string, number> {
+  return (
+    MODEL_CONTEXT_LIMITS_BY_PROVIDER[provider as keyof typeof MODEL_CONTEXT_LIMITS_BY_PROVIDER] ||
+    {}
+  );
+}
+
+/**
+ * Get all available providers
+ */
+export function getAvailableProviders(): string[] {
+  return Object.keys(MODEL_CONTEXT_LIMITS_BY_PROVIDER);
 }
 
 /**

@@ -17,7 +17,11 @@ import type { AgentConfig } from "../../core/types/index";
 import type { GmailEmail, GmailService } from "../../services/gmail";
 
 /**
- * CLI commands for agent management
+ * CLI commands for task-based agent management
+ *
+ * These commands handle traditional automation agents that execute predefined tasks
+ * like Gmail operations, shell commands, API calls, etc. They focus on workflow
+ * automation rather than conversational AI interactions.
  */
 
 /**

@@ -1,5 +1,6 @@
 import { Effect, Layer } from "effect";
 import litellm from "litellm";
+import type { HandlerParams } from "litellm/dist/src/types";
 import { AgentConfigService, type ConfigService } from "../config";
 import {
   LLMAuthenticationError,
@@ -12,6 +13,7 @@ import {
   type LLMError,
   type LLMProvider,
   type LLMService,
+  type ModelInfo,
 } from "./types";
 
 /**
@@ -25,7 +27,7 @@ interface LiteLLMConfig {
 
 class DefaultLiteLLMService implements LLMService {
   private config: LiteLLMConfig;
-  private providerModels: Record<string, string[]>;
+  private providerModels: Record<string, ModelInfo[]>;
 
   constructor(config: LiteLLMConfig) {
     this.config = config;
@@ -36,23 +38,62 @@ class DefaultLiteLLMService implements LLMService {
       process.env[`${provider.toUpperCase()}_API_KEY`] = apiKey;
     });
 
-    // Define supported models for each provider
+    // Define supported models for each provider with enhanced metadata
     this.providerModels = {
-      openai: ["gpt-5", "gpt-4", "gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo", "o3"],
-      anthropic: [
-        "claude-opus-4",
-        "claude-sonnet-4",
-        "claude-3-opus",
-        "claude-3-sonnet",
-        "claude-3-haiku",
+      openai: [
+        { id: "gpt-5", displayName: "GPT-5", isReasoningModel: true },
+        { id: "gpt-5-mini", displayName: "GPT-5 Mini", isReasoningModel: true },
+        { id: "gpt-5-nano", displayName: "GPT-5 Nano", isReasoningModel: true },
+        { id: "gpt-4.1", displayName: "GPT-4.1", isReasoningModel: true },
+        { id: "gpt-4.1-mini", displayName: "GPT-4.1 Mini", isReasoningModel: true },
+        { id: "gpt-4.1-nano", displayName: "GPT-4.1 Nano", isReasoningModel: true },
+        { id: "gpt-4o", displayName: "GPT-4o", isReasoningModel: false },
+        { id: "gpt-4o-mini", displayName: "GPT-4o Mini", isReasoningModel: false },
+        { id: "o4-mini", displayName: "o4-mini", isReasoningModel: true },
       ],
-      google: ["gemini-pro", "gemini-2.0-flash", "gemini-1.5-pro"],
-      mistral: ["mistral-small-latest", "mistral-medium-latest", "mistral-large-latest"],
-      ollama: ["llama3", "llama2", "mistral"],
+      anthropic: [
+        { id: "claude-opus-4", displayName: "Claude Opus 4", isReasoningModel: true },
+        { id: "claude-sonnet-4", displayName: "Claude Sonnet 4", isReasoningModel: true },
+        { id: "claude-3.7", displayName: "Claude 3.7", isReasoningModel: true },
+        { id: "claude-3-sonnet", displayName: "Claude 3 Sonnet", isReasoningModel: false },
+        { id: "claude-3-opus", displayName: "Claude 3 Opus", isReasoningModel: false },
+        { id: "claude-3-haiku", displayName: "Claude 3 Haiku", isReasoningModel: false },
+      ],
+      gemini: [
+        { id: "gemini-2.5-flash", displayName: "Gemini 2.5 Flash", isReasoningModel: true },
+        { id: "gemini-2.5-pro", displayName: "Gemini 2.5 Pro", isReasoningModel: true },
+        {
+          id: "gemini-2.5-flash-lite",
+          displayName: "Gemini 2.5 Flash Lite",
+          isReasoningModel: true,
+        },
+        { id: "gemini-2.0-flash", displayName: "Gemini 2.0 Flash", isReasoningModel: false },
+      ],
+      mistral: [
+        { id: "mistral-small-latest", displayName: "Mistral Small", isReasoningModel: false },
+        { id: "mistral-medium-latest", displayName: "Mistral Medium", isReasoningModel: false },
+        { id: "mistral-large-latest", displayName: "Mistral Large", isReasoningModel: false },
+        { id: "magistral-small-2506", displayName: "Magistral Small", isReasoningModel: true },
+        { id: "magistral-medium-2506", displayName: "Magistral Medium", isReasoningModel: true },
+      ],
+      ollama: [
+        { id: "llama4", displayName: "Llama 4", isReasoningModel: false },
+        { id: "llama3", displayName: "Llama 3", isReasoningModel: false },
+        { id: "qwq", displayName: "QWQ", isReasoningModel: false },
+        { id: "deepseek-r1", displayName: "DeepSeek R1", isReasoningModel: true },
+        { id: "mistral", displayName: "Mistral", isReasoningModel: false },
+      ],
+      xai: [
+        { id: "grok-4-0709", displayName: "Grok 4", isReasoningModel: true },
+        { id: "grok-3", displayName: "Grok 3", isReasoningModel: true },
+        { id: "grok-3-mini", displayName: "Grok 3 Mini", isReasoningModel: true },
+      ],
     };
   }
 
-  getProvider(providerName: string): Effect.Effect<LLMProvider, LLMConfigurationError> {
+  getProvider(
+    providerName: keyof typeof this.providerModels,
+  ): Effect.Effect<LLMProvider, LLMConfigurationError> {
     return Effect.try({
       try: () => {
         if (!this.providerModels[providerName]) {
@@ -62,10 +103,7 @@ class DefaultLiteLLMService implements LLMService {
         const provider: LLMProvider = {
           name: providerName,
           supportedModels: this.providerModels[providerName] || [],
-          defaultModel: this.providerModels[providerName]?.[0] || "",
-          supportsToolCalling: ["openai", "anthropic", "google", "mistral"].includes(providerName),
-          supportsStreaming: false,
-          supportsVision: ["openai", "anthropic", "google"].includes(providerName),
+          defaultModel: this.providerModels[providerName][0]?.id || "",
           authenticate: () =>
             Effect.try({
               try: () => {
@@ -177,15 +215,23 @@ class DefaultLiteLLMService implements LLMService {
           },
         );
 
-        // Convert our options format to LiteLLM/OpenAI format (non-streaming)
         const liteLLMOptions: Record<string, unknown> = {
           model: formattedModel,
           messages: convertedMessages,
-          temperature: options.temperature ?? null,
-          max_tokens: options.maxTokens ?? null,
-          // Explicitly set non-streaming to satisfy types
           stream: false as const,
         };
+
+        if (options.temperature) {
+          liteLLMOptions["temperature"] = options.temperature;
+        }
+
+        if (options.maxTokens) {
+          liteLLMOptions["max_tokens"] = options.maxTokens;
+        }
+
+        if (options.reasoning_effort) {
+          liteLLMOptions["reasoning_effort"] = options.reasoning_effort;
+        }
 
         if (options.tools && options.tools.length > 0) {
           liteLLMOptions["tools"] = options.tools;
@@ -194,9 +240,8 @@ class DefaultLiteLLMService implements LLMService {
           liteLLMOptions["tool_choice"] = options.toolChoice as unknown as Record<string, unknown>;
         }
 
-        // Call LiteLLM (treat response as unknown and narrow safely)
         const responseUnknown: unknown = await litellm.completion(
-          liteLLMOptions as unknown as Parameters<typeof litellm.completion>[0],
+          liteLLMOptions as unknown as HandlerParams,
         );
 
         function isRecord(value: unknown): value is Record<string, unknown> {
@@ -358,8 +403,8 @@ export function createLiteLLMServiceLayer(): Layer.Layer<
       const anthropicAPIKey = appConfig.llm?.anthropic?.api_key;
       if (anthropicAPIKey) apiKeys["anthropic"] = anthropicAPIKey;
 
-      const googleAPIKey = appConfig.llm?.google?.api_key;
-      if (googleAPIKey) apiKeys["google"] = googleAPIKey;
+      const geminiAPIKey = appConfig.llm?.gemini?.api_key;
+      if (geminiAPIKey) apiKeys["gemini"] = geminiAPIKey;
 
       const mistralAPIKey = appConfig.llm?.mistral?.api_key;
       if (mistralAPIKey) apiKeys["mistral"] = mistralAPIKey;

@@ -28,7 +28,11 @@ import { LoggerServiceTag, type LoggerService } from "../../services/logger";
 import { FileSystemContextServiceTag, type FileSystemContextService } from "../../services/shell";
 
 /**
- * CLI commands for AI agent management
+ * CLI commands for AI-powered chat agent management
+ *
+ * These commands handle conversational AI agents that can interact with users through
+ * natural language chat interfaces. They integrate with LLM providers and support
+ * interactive creation wizards, real-time chat, and tool usage.
  */
 
 interface AIAgentCreationAnswers {
@@ -37,6 +41,7 @@ interface AIAgentCreationAnswers {
   agentType: string;
   llmProvider: string;
   llmModel: string;
+  reasoningEffort?: "disable" | "low" | "medium" | "high";
   tools: string[];
 }
 
@@ -77,21 +82,19 @@ export function createAIAgentCommand(): Effect.Effect<
     const toolsByCategory = yield* toolRegistry.listToolsByCategory();
 
     // Determine provider-aware default model
-    const defaultProvider = providers[0] || "openai";
-    const providerInfo = yield* llmService.getProvider(defaultProvider);
-    const defaultModel =
-      providerInfo.defaultModel || providerInfo.supportedModels[0] || "gpt-4o-mini";
+    const llmProvider = providers[0] || "openai";
 
     // Get agent basic information
     const agentAnswers = yield* Effect.promise(() =>
-      promptForAgentInfo(providers, agentTypes, toolsByCategory, defaultProvider, defaultModel),
+      promptForAgentInfo(providers, agentTypes, toolsByCategory, llmProvider, llmService),
     );
 
     // Validate the chosen model against the chosen provider
     const chosenProvider = yield* llmService.getProvider(agentAnswers.llmProvider);
-    const selectedModel = chosenProvider.supportedModels.includes(agentAnswers.llmModel)
+    const modelIds: string[] = chosenProvider.supportedModels.map((model) => model.id);
+    const selectedModel = modelIds.includes(agentAnswers.llmModel)
       ? agentAnswers.llmModel
-      : chosenProvider.defaultModel || chosenProvider.supportedModels[0] || "gpt-4o-mini";
+      : chosenProvider.defaultModel;
 
     // Convert selected categories to actual tool names
     const selectedTools: string[] = [];
@@ -106,6 +109,7 @@ export function createAIAgentCommand(): Effect.Effect<
       agentType: agentAnswers.agentType,
       llmProvider: agentAnswers.llmProvider,
       llmModel: selectedModel,
+      ...(agentAnswers.reasoningEffort && { reasoningEffort: agentAnswers.reasoningEffort }),
       tools: selectedTools,
       environment: {},
     };
@@ -143,9 +147,10 @@ async function promptForAgentInfo(
   agentTypes: readonly string[],
   toolsByCategory: Record<string, readonly string[]>,
   defaultProvider: string,
-  defaultModel: string,
+  llmService: LLMService,
 ): Promise<AIAgentCreationAnswers> {
-  const questions = [
+  // First, get basic information and provider
+  const basicQuestions = [
     {
       type: "input",
       name: "name",
@@ -191,12 +196,59 @@ async function promptForAgentInfo(
       choices: providers,
       default: defaultProvider,
     },
+  ];
+
+  // @ts-expect-error - inquirer types are not matching correctly
+  const basicAnswers = (await inquirer.prompt(basicQuestions)) as Pick<
+    AIAgentCreationAnswers,
+    "name" | "description" | "agentType" | "llmProvider"
+  >;
+
+  // Now get the models for the chosen provider
+  const chosenProviderInfo = await Effect.runPromise(
+    llmService.getProvider(basicAnswers.llmProvider),
+  ).catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to get provider info: ${message}`);
+  });
+
+  const modelDefault = chosenProviderInfo.defaultModel;
+
+  // Check if the selected model is a reasoning model
+  const selectedModelInfo = chosenProviderInfo.supportedModels.find(
+    (model) => model.id === modelDefault,
+  );
+  const isReasoningModel = selectedModelInfo?.isReasoningModel ?? false;
+
+  const finalQuestions = [
     {
-      type: "input",
+      type: "list",
       name: "llmModel",
       message: "Which model would you like to use?",
-      default: defaultModel,
+      choices: chosenProviderInfo.supportedModels.map((model) => ({
+        name: model.displayName || model.id,
+        value: model.id,
+        short: model.displayName || model.id,
+      })) as Array<{ name: string; value: string; short: string }>,
+      default: modelDefault,
     },
+    // Only show reasoning effort question for reasoning models
+    ...(isReasoningModel
+      ? [
+          {
+            type: "list",
+            name: "reasoningEffort",
+            message: "What reasoning effort level would you like?",
+            choices: [
+              { name: "Disable - No reasoning effort (fastest)", value: "disable" },
+              { name: "Low - Faster responses, basic reasoning", value: "low" },
+              { name: "Medium - Balanced speed and reasoning depth", value: "medium" },
+              { name: "High - Deep reasoning, slower responses", value: "high" },
+            ],
+            default: "disable",
+          },
+        ]
+      : []),
     {
       type: "checkbox",
       name: "tools",
@@ -211,8 +263,16 @@ async function promptForAgentInfo(
   ];
 
   // @ts-expect-error - inquirer types are not matching correctly
-  const answers = (await inquirer.prompt(questions)) as AIAgentCreationAnswers;
-  return answers;
+  const finalAnswers = (await inquirer.prompt(finalQuestions)) as Pick<
+    AIAgentCreationAnswers,
+    "llmModel" | "reasoningEffort" | "tools"
+  >;
+
+  // Combine all answers
+  return {
+    ...basicAnswers,
+    ...finalAnswers,
+  };
 }
 
 /**

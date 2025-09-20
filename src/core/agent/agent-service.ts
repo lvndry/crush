@@ -89,7 +89,7 @@ export class DefaultAgentService implements AgentService {
           environment: {},
           agentType: "default",
           llmProvider: "openai",
-          llmModel: "gpt-4",
+          llmModel: "gpt-4o",
         };
 
         // Merge with provided config
