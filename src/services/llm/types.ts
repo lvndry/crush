@@ -124,16 +124,20 @@ export interface ChatCompletionOptions {
   tools?: ToolDefinition[];
   toolChoice?: "auto" | "none" | { type: "function"; function: { name: string } };
   stream?: boolean;
+  reasoning_effort?: "disable" | "low" | "medium" | "high";
+}
+
+export interface ModelInfo {
+  readonly id: string;
+  readonly displayName?: string;
+  readonly isReasoningModel?: boolean;
 }
 
 // LLM Provider interface
 export interface LLMProvider {
   readonly name: string;
-  readonly supportedModels: string[];
+  readonly supportedModels: ModelInfo[];
   readonly defaultModel: string;
-  readonly supportsToolCalling: boolean;
-  readonly supportsStreaming: boolean;
-  readonly supportsVision: boolean;
   readonly authenticate: () => Effect.Effect<void, LLMAuthenticationError>;
   readonly createChatCompletion: (
     options: ChatCompletionOptions,

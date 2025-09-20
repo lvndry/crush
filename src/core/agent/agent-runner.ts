@@ -196,6 +196,7 @@ export class AgentRunner {
               messages: messagesToSend,
               tools,
               toolChoice: "auto",
+              reasoning_effort: agent.config.reasoningEffort ?? "disable",
             });
             return result;
           }),

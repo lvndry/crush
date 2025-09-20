@@ -26,6 +26,7 @@ export interface AgentConfig {
   readonly agentType: string;
   readonly llmProvider: string;
   readonly llmModel: string;
+  readonly reasoningEffort?: "disable" | "low" | "medium" | "high";
   readonly tools?: readonly string[];
 }
 
@@ -205,7 +206,7 @@ export interface LLMConfig {
   readonly defaultProvider?: string;
   readonly openai?: LLMProviderConfig;
   readonly anthropic?: LLMProviderConfig;
-  readonly google?: LLMProviderConfig;
+  readonly gemini?: LLMProviderConfig;
   readonly mistral?: LLMProviderConfig;
   readonly contextManagement?: ContextManagementConfig;
 }
