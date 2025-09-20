@@ -34,6 +34,15 @@ interface AISDKConfig {
   apiKeys: Record<string, string>;
 }
 
+function safeParseJson(input: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(input) as Record<string, unknown>;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 function toCoreMessages(
   messages: ReadonlyArray<{
     role: "system" | "user" | "assistant" | "tool" | "function";
@@ -47,30 +56,35 @@ function toCoreMessages(
     }>;
   }>,
 ): ModelMessage[] {
-  return messages.map((message) => {
-    // Convert "function" role to "tool" role for AI SDK compatibility
-    const role = message.role === "function" ? "tool" : message.role;
-    const baseMessage: any = { role, content: message.content };
+  return messages.map((m) => {
+    const role = m.role === "function" ? "tool" : m.role;
 
-    if (message.name) {
-      baseMessage.name = message.name;
+    if (role === "tool") {
+      const toolMessage = {
+        role: "tool" as const,
+        content: m.content,
+        ...(m.name ? { name: m.name } : {}),
+        ...(m.tool_call_id ? { toolCallId: m.tool_call_id } : {}),
+      } as unknown as ModelMessage;
+
+      return toolMessage;
     }
 
-    if (message.tool_call_id) {
-      baseMessage.tool_call_id = message.tool_call_id;
+    if (role === "assistant") {
+      const assistantMessage: any = { role: "assistant", content: m.content };
+      if (m.tool_calls) {
+        assistantMessage.tool_calls = m.tool_calls.map((tc) => ({
+          type: "tool-call" as const,
+          toolCallId: tc.id,
+          toolName: tc.function.name,
+          input: safeParseJson(tc.function.arguments),
+        }));
+      }
+      return assistantMessage as ModelMessage;
     }
 
-    // Convert tool_calls format to match AI SDK expectations
-    if (message.tool_calls) {
-      baseMessage.tool_calls = message.tool_calls.map((tc) => ({
-        type: "tool-call" as const,
-        toolCallId: tc.id,
-        toolName: tc.function.name,
-        input: JSON.parse(tc.function.arguments) as Record<string, unknown>,
-      }));
-    }
-
-    return baseMessage as ModelMessage;
+    // system | user | assistant (without tool calls)
+    return { role: role, content: m.content } as ModelMessage;
   });
 }
 
@@ -224,7 +238,7 @@ class DefaultAISDKService implements LLMService {
           for (const toolDef of options.tools) {
             tools[toolDef.function.name] = tool({
               description: toolDef.function.description,
-              inputSchema: z.object(toolDef.function.parameters),
+              inputSchema: toolDef.function.parameters as unknown as z.ZodTypeAny,
             });
           }
         }

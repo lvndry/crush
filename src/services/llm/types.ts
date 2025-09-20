@@ -1,4 +1,5 @@
 import { Context, Effect } from "effect";
+import type z from "zod";
 
 /**
  * LLM service types and interfaces
@@ -82,7 +83,7 @@ export interface ToolDefinition {
   function: {
     name: string;
     description: string;
-    parameters: Record<string, unknown>;
+    parameters: z.ZodTypeAny;
   };
 }
 

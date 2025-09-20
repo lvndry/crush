@@ -1,6 +1,7 @@
 import { Effect } from "effect";
+import { z } from "zod";
 import { FileSystemContextServiceTag } from "../../../services/shell";
-import { defineTool, makeJsonSchemaValidator, withApprovalBoolean } from "./base-tool";
+import { defineTool, withApprovalBoolean } from "./base-tool";
 import { type ToolExecutionContext, type ToolExecutionResult } from "./tool-registry";
 
 /**
@@ -31,43 +32,50 @@ interface ExecuteCommandApprovedArgs extends Record<string, unknown> {
  * - Network access is available to executed commands
  * - File system access is available within the working directory context
  */
-export function createExecuteCommandTool() {
+export function createExecuteCommandTool(): ReturnType<typeof defineTool> {
   return defineTool({
     name: "executeCommand",
     description:
       "Execute a shell command on the system. This tool requires user approval for security reasons.",
-    parameters: withApprovalBoolean({
-      type: "object",
-      properties: {
-        command: {
-          type: "string",
-          description: "The shell command to execute (e.g., 'npm install', 'ls -la', 'git status')",
-        },
-        workingDirectory: {
-          type: "string",
-          description:
-            "Optional working directory to execute the command in. If not provided, uses the current working directory.",
-        },
-        timeout: {
-          type: "number",
-          description:
-            "Optional timeout in milliseconds (default: 30000). Commands that take longer will be terminated.",
-        },
-      },
-      required: ["command"],
-      additionalProperties: false,
-    }),
-    validate: makeJsonSchemaValidator<ExecuteCommandArgs>({
-      type: "object",
-      properties: {
-        command: { type: "string" },
-        confirm: { type: "boolean" },
-        workingDirectory: { type: "string" },
-        timeout: { type: "number" },
-      },
-      required: ["command", "confirm"],
-      additionalProperties: false,
-    }),
+    parameters: withApprovalBoolean(
+      z
+        .object({
+          command: z
+            .string()
+            .min(1, "command cannot be empty")
+            .describe("The shell command to execute (e.g., 'npm install', 'ls -la', 'git status')"),
+          workingDirectory: z
+            .string()
+            .optional()
+            .describe(
+              "Optional working directory to execute the command in. If not provided, uses the current working directory.",
+            ),
+          timeout: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe(
+              "Optional timeout in milliseconds (default: 30000). Commands that take longer will be terminated.",
+            ),
+        })
+        .strict(),
+    ),
+    validate: (args) => {
+      const schema = z
+        .object({
+          command: z.string().min(1),
+          confirm: z.boolean(),
+          workingDirectory: z.string().optional(),
+          timeout: z.number().int().positive().optional(),
+        })
+        .strict();
+      const result = schema.safeParse(args);
+      if (!result.success) {
+        return { valid: false, errors: result.error.issues.map((i) => i.message) } as const;
+      }
+      return { valid: true, value: result.data as ExecuteCommandArgs } as const;
+    },
     approval: {
       message: (args: Record<string, unknown>, context: ToolExecutionContext) =>
         Effect.gen(function* () {
@@ -124,41 +132,41 @@ This command will be executed on your system. Please review it carefully and con
 /**
  * Create a tool for executing approved shell commands
  */
-export function createExecuteCommandApprovedTool() {
+export function createExecuteCommandApprovedTool(): ReturnType<typeof defineTool> {
   return defineTool({
     name: "executeCommandApproved",
     description:
       "Execute an approved shell command. This is the internal tool called after user approval.",
     hidden: true,
-    parameters: {
-      type: "object",
-      properties: {
-        command: {
-          type: "string",
-          description: "The shell command to execute",
-        },
-        workingDirectory: {
-          type: "string",
-          description: "Working directory to execute the command in",
-        },
-        timeout: {
-          type: "number",
-          description: "Timeout in milliseconds (default: 30000)",
-        },
-      },
-      required: ["command"],
-      additionalProperties: false,
+    parameters: z
+      .object({
+        command: z.string().min(1).describe("The shell command to execute"),
+        workingDirectory: z
+          .string()
+          .optional()
+          .describe("Working directory to execute the command in"),
+        timeout: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe("Timeout in milliseconds (default: 30000)"),
+      })
+      .strict(),
+    validate: (args) => {
+      const schema = z
+        .object({
+          command: z.string().min(1),
+          workingDirectory: z.string().optional(),
+          timeout: z.number().int().positive().optional(),
+        })
+        .strict();
+      const result = schema.safeParse(args);
+      if (!result.success) {
+        return { valid: false, errors: result.error.issues.map((i) => i.message) } as const;
+      }
+      return { valid: true, value: result.data as ExecuteCommandApprovedArgs } as const;
     },
-    validate: makeJsonSchemaValidator<ExecuteCommandApprovedArgs>({
-      type: "object",
-      properties: {
-        command: { type: "string" },
-        workingDirectory: { type: "string" },
-        timeout: { type: "number" },
-      },
-      required: ["command"],
-      additionalProperties: false,
-    }),
     handler: (args: Record<string, unknown>, context: ToolExecutionContext) =>
       Effect.gen(function* () {
         const shell = yield* FileSystemContextServiceTag;

@@ -1,11 +1,12 @@
 import { FileSystem } from "@effect/platform";
 import { spawn } from "child_process";
 import { Effect } from "effect";
+import { z } from "zod";
 import {
   type FileSystemContextService,
   FileSystemContextServiceTag,
 } from "../../../services/shell";
-import { defineTool, makeJsonSchemaValidator } from "./base-tool";
+import { defineTool } from "./base-tool";
 import { type Tool, type ToolExecutionContext } from "./tool-registry";
 
 /**
@@ -43,32 +44,22 @@ function normalizeFilterPattern(pattern?: string): {
 
 // findPath - helps agent discover paths when unsure
 export function createFindPathTool(): Tool<FileSystem.FileSystem | FileSystemContextService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      name: {
-        type: "string",
-        description: "Name or partial name of the directory/file to find",
-      },
-      maxDepth: {
-        type: "number",
-        description: "Maximum search depth (default: 3)",
-        default: 3,
-      },
-      type: {
-        type: "string",
-        enum: ["directory", "file", "both"],
-        description: "Type of item to search for",
-        default: "both",
-      },
-      searchPath: {
-        type: "string",
-        description: "Directory to start search from (defaults to current directory)",
-      },
-    },
-    required: ["name"],
-  } as const;
+  const parameters = z
+    .object({
+      name: z.string().min(1).describe("Name or partial name of the directory/file to find"),
+      maxDepth: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe("Maximum search depth (default: 3)"),
+      type: z.enum(["directory", "file", "both"]).optional().describe("Type of item to search for"),
+      searchPath: z
+        .string()
+        .optional()
+        .describe("Directory to start search from (defaults to current directory)"),
+    })
+    .strict();
 
   return defineTool<
     FileSystem.FileSystem | FileSystemContextService,
@@ -77,7 +68,20 @@ export function createFindPathTool(): Tool<FileSystem.FileSystem | FileSystemCon
     name: "findPath",
     description: "Find directories or files by name using the system find command",
     parameters,
-    validate: makeJsonSchemaValidator(parameters),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({
+            valid: true,
+            value: result.data as unknown as {
+              name: string;
+              maxDepth?: number;
+              type?: "directory" | "file" | "both";
+              searchPath?: string;
+            },
+          } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (args, context) =>
       Effect.gen(function* () {
         const shell = yield* FileSystemContextServiceTag;
@@ -204,17 +208,17 @@ export function createFindPathTool(): Tool<FileSystem.FileSystem | FileSystemCon
 
 // pwd
 export function createPwdTool(): Tool<FileSystemContextService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {},
-    required: [],
-  } as const;
+  const parameters = z.object({}).strict();
   return defineTool<FileSystemContextService, Record<string, never>>({
     name: "pwd",
     description: "Print the current working directory for this agent session",
     parameters,
-    validate: makeJsonSchemaValidator(parameters),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({ valid: true, value: result.data as unknown as Record<string, never> } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (_args, context) =>
       Effect.gen(function* () {
         const shell = yield* FileSystemContextServiceTag;
@@ -226,29 +230,23 @@ export function createPwdTool(): Tool<FileSystemContextService> {
 
 // ls
 export function createLsTool(): Tool<FileSystem.FileSystem | FileSystemContextService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      path: {
-        type: "string",
-        description: "Directory path to list (defaults to current directory)",
-      },
-      showHidden: {
-        type: "boolean",
-        description: "Include hidden files (dotfiles)",
-        default: false,
-      },
-      recursive: { type: "boolean", description: "Recurse into sub-directories", default: false },
-      pattern: { type: "string", description: "Filter by substring or use 're:<regex>'" },
-      maxResults: {
-        type: "number",
-        description: "Maximum number of results to return",
-        default: 2000,
-      },
-    },
-    required: [],
-  } as const;
+  const parameters = z
+    .object({
+      path: z
+        .string()
+        .optional()
+        .describe("Directory path to list (defaults to current directory)"),
+      showHidden: z.boolean().optional().describe("Include hidden files (dotfiles)"),
+      recursive: z.boolean().optional().describe("Recurse into sub-directories"),
+      pattern: z.string().optional().describe("Filter by substring or use 're:<regex>'"),
+      maxResults: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe("Maximum number of results to return"),
+    })
+    .strict();
 
   return defineTool<
     FileSystem.FileSystem | FileSystemContextService,
@@ -263,7 +261,21 @@ export function createLsTool(): Tool<FileSystem.FileSystem | FileSystemContextSe
     name: "ls",
     description: "List directory contents with optional filtering and recursion",
     parameters,
-    validate: makeJsonSchemaValidator(parameters),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({
+            valid: true,
+            value: result.data as unknown as {
+              path?: string;
+              showHidden?: boolean;
+              recursive?: boolean;
+              pattern?: string;
+              maxResults?: number;
+            },
+          } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (args, context) =>
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
@@ -354,20 +366,22 @@ export function createLsTool(): Tool<FileSystem.FileSystem | FileSystemContextSe
 
 // cd
 export function createCdTool(): Tool<FileSystem.FileSystem | FileSystemContextService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      path: { type: "string", description: "Path to change directory to" },
-    },
-    required: ["path"],
-  } as const;
+  const parameters = z
+    .object({
+      path: z.string().min(1).describe("Path to change directory to"),
+    })
+    .strict();
 
   return defineTool<FileSystem.FileSystem | FileSystemContextService, { path: string }>({
     name: "cd",
     description: "Change the current working directory for this agent session",
     parameters,
-    validate: makeJsonSchemaValidator(parameters),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({ valid: true, value: result.data as unknown as { path: string } } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (args, context) =>
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
@@ -415,26 +429,20 @@ export function createCdTool(): Tool<FileSystem.FileSystem | FileSystemContextSe
 
 // readFile
 export function createReadFileTool(): Tool<FileSystem.FileSystem | FileSystemContextService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      path: { type: "string", description: "File path to read (relative to cwd allowed)" },
-      startLine: { type: "number", description: "1-based start line (inclusive)" },
-      endLine: { type: "number", description: "1-based end line (inclusive)" },
-      maxBytes: {
-        type: "number",
-        description: "Maximum number of bytes to return (content is truncated if exceeded)",
-        default: 131072,
-      },
-      encoding: {
-        type: "string",
-        description: "Text encoding (currently utf-8)",
-        default: "utf-8",
-      },
-    },
-    required: ["path"],
-  } as const;
+  const parameters = z
+    .object({
+      path: z.string().min(1).describe("File path to read (relative to cwd allowed)"),
+      startLine: z.number().int().positive().optional().describe("1-based start line (inclusive)"),
+      endLine: z.number().int().positive().optional().describe("1-based end line (inclusive)"),
+      maxBytes: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe("Maximum number of bytes to return (content is truncated if exceeded)"),
+      encoding: z.string().optional().describe("Text encoding (currently utf-8)"),
+    })
+    .strict();
 
   return defineTool<
     FileSystem.FileSystem | FileSystemContextService,
@@ -443,7 +451,21 @@ export function createReadFileTool(): Tool<FileSystem.FileSystem | FileSystemCon
     name: "readFile",
     description: "Read a text file with optional line range and size limit",
     parameters,
-    validate: makeJsonSchemaValidator(parameters),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({
+            valid: true,
+            value: result.data as unknown as {
+              path: string;
+              startLine?: number;
+              endLine?: number;
+              maxBytes?: number;
+              encoding?: string;
+            },
+          } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (args, context) =>
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
@@ -543,36 +565,31 @@ export function createReadFileTool(): Tool<FileSystem.FileSystem | FileSystemCon
 type WriteFileArgs = { path: string; content: string; encoding?: string; createDirs?: boolean };
 
 export function createWriteFileTool(): Tool<FileSystem.FileSystem | FileSystemContextService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      path: {
-        type: "string",
-        description:
+  const parameters = z
+    .object({
+      path: z
+        .string()
+        .min(1)
+        .describe(
           "File path to write to, will be created if it doesn't exist (relative to cwd allowed)",
-      },
-      content: { type: "string", description: "Content to write to the file" },
-      encoding: {
-        type: "string",
-        description: "Text encoding (currently utf-8)",
-        default: "utf-8",
-      },
-      createDirs: {
-        type: "boolean",
-        description: "Create parent directories if they don't exist",
-        default: false,
-      },
-    },
-    required: ["path", "content"],
-  } as const;
+        ),
+      content: z.string().describe("Content to write to the file"),
+      encoding: z.string().optional().describe("Text encoding (currently utf-8)"),
+      createDirs: z.boolean().optional().describe("Create parent directories if they don't exist"),
+    })
+    .strict();
 
   return defineTool<FileSystem.FileSystem | FileSystemContextService, WriteFileArgs>({
     name: "writeFile",
     description:
       "Write content to a file, creating it if it doesn't exist (requires user approval)",
     parameters,
-    validate: makeJsonSchemaValidator(parameters),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({ valid: true, value: result.data as unknown as WriteFileArgs } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     approval: {
       message: (args, context) =>
         Effect.gen(function* () {
@@ -601,35 +618,29 @@ export function createWriteFileTool(): Tool<FileSystem.FileSystem | FileSystemCo
 export function createExecuteWriteFileTool(): Tool<
   FileSystem.FileSystem | FileSystemContextService
 > {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      path: {
-        type: "string",
-        description: "File path to write to, will be created if it doesn't exist",
-      },
-      content: { type: "string", description: "Content to write to the file" },
-      encoding: {
-        type: "string",
-        description: "Text encoding (currently utf-8)",
-        default: "utf-8",
-      },
-      createDirs: {
-        type: "boolean",
-        description: "Create parent directories if they don't exist",
-        default: false,
-      },
-    },
-    required: ["path", "content"],
-  } as const;
+  const parameters = z
+    .object({
+      path: z
+        .string()
+        .min(1)
+        .describe("File path to write to, will be created if it doesn't exist"),
+      content: z.string().describe("Content to write to the file"),
+      encoding: z.string().optional().describe("Text encoding (currently utf-8)"),
+      createDirs: z.boolean().optional().describe("Create parent directories if they don't exist"),
+    })
+    .strict();
 
   return defineTool<FileSystem.FileSystem | FileSystemContextService, WriteFileArgs>({
     name: "executeWriteFile",
     description: "Execute writeFile after user approval",
     hidden: true,
     parameters,
-    validate: makeJsonSchemaValidator(parameters),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({ valid: true, value: result.data as unknown as WriteFileArgs } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (args, context) =>
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
@@ -664,23 +675,20 @@ export function createExecuteWriteFileTool(): Tool<
 
 // grep
 export function createGrepTool(): Tool<FileSystem.FileSystem | FileSystemContextService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      pattern: { type: "string", description: "Search pattern (literal or 're:<regex>')" },
-      path: { type: "string", description: "File or directory to search (defaults to cwd)" },
-      recursive: { type: "boolean", description: "Recurse into directories", default: true },
-      regex: { type: "boolean", description: "Treat pattern as regex (overrides re:<...>)" },
-      ignoreCase: { type: "boolean", description: "Case-insensitive match", default: false },
-      maxResults: { type: "number", description: "Max matches to return", default: 5000 },
-      filePattern: {
-        type: "string",
-        description: "File pattern to search in (e.g., '*.js', '*.ts')",
-      },
-    },
-    required: ["pattern"],
-  } as const;
+  const parameters = z
+    .object({
+      pattern: z.string().min(1).describe("Search pattern (literal or 're:<regex>')"),
+      path: z.string().optional().describe("File or directory to search (defaults to cwd)"),
+      recursive: z.boolean().optional().describe("Recurse into directories"),
+      regex: z.boolean().optional().describe("Treat pattern as regex (overrides re:<...>)"),
+      ignoreCase: z.boolean().optional().describe("Case-insensitive match"),
+      maxResults: z.number().int().positive().optional().describe("Max matches to return"),
+      filePattern: z
+        .string()
+        .optional()
+        .describe("File pattern to search in (e.g., '*.js', '*.ts')"),
+    })
+    .strict();
 
   return defineTool<
     FileSystem.FileSystem | FileSystemContextService,
@@ -697,7 +705,23 @@ export function createGrepTool(): Tool<FileSystem.FileSystem | FileSystemContext
     name: "grep",
     description: "Search for a pattern in files using the system grep command",
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({
+            valid: true,
+            value: result.data as unknown as {
+              pattern: string;
+              path?: string;
+              recursive?: boolean;
+              regex?: boolean;
+              ignoreCase?: boolean;
+              maxResults?: number;
+              filePattern?: string;
+            },
+          } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (args, context) =>
       Effect.gen(function* () {
         const shell = yield* FileSystemContextServiceTag;
@@ -851,37 +875,25 @@ export function createGrepTool(): Tool<FileSystem.FileSystem | FileSystemContext
 
 // find
 export function createFindTool(): Tool<FileSystem.FileSystem | FileSystemContextService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      path: { type: "string", description: "Start directory (defaults to smart search)" },
-      name: { type: "string", description: "Filter by name (substring or 're:<regex>')" },
-      type: {
-        type: "string",
-        enum: ["file", "dir", "all"],
-        description: "Type filter",
-        default: "all",
-      },
-      maxDepth: {
-        type: "number",
-        description: "Maximum depth to traverse (0=current dir)",
-        default: 25,
-      },
-      maxResults: { type: "number", description: "Maximum results to return", default: 5000 },
-      includeHidden: {
-        type: "boolean",
-        description: "Include dotfiles and dot-directories",
-        default: false,
-      },
-      smart: {
-        type: "boolean",
-        description: "Use smart hierarchical search (HOME first, then expand)",
-        default: true,
-      },
-    },
-    required: [],
-  } as const;
+  const parameters = z
+    .object({
+      path: z.string().optional().describe("Start directory (defaults to smart search)"),
+      name: z.string().optional().describe("Filter by name (substring or 're:<regex>')"),
+      type: z.enum(["file", "dir", "all"]).optional().describe("Type filter"),
+      maxDepth: z
+        .number()
+        .int()
+        .nonnegative()
+        .optional()
+        .describe("Maximum depth to traverse (0=current dir)"),
+      maxResults: z.number().int().positive().optional().describe("Maximum results to return"),
+      includeHidden: z.boolean().optional().describe("Include dotfiles and dot-directories"),
+      smart: z
+        .boolean()
+        .optional()
+        .describe("Use smart hierarchical search (HOME first, then expand)"),
+    })
+    .strict();
 
   return defineTool<
     FileSystem.FileSystem | FileSystemContextService,
@@ -899,7 +911,23 @@ export function createFindTool(): Tool<FileSystem.FileSystem | FileSystemContext
     description:
       "Find files and directories using the system find command with smart hierarchical search",
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({
+            valid: true,
+            value: result.data as unknown as {
+              path?: string;
+              name?: string;
+              type?: "file" | "dir" | "all";
+              maxDepth?: number;
+              maxResults?: number;
+              includeHidden?: boolean;
+              smart?: boolean;
+            },
+          } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (args, context) =>
       Effect.gen(function* () {
         const shell = yield* FileSystemContextServiceTag;
@@ -1076,19 +1104,12 @@ export function createFindTool(): Tool<FileSystem.FileSystem | FileSystemContext
 
 // mkdir (approval required)
 export function createMkdirTool(): Tool<FileSystem.FileSystem | FileSystemContextService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      path: { type: "string", description: "Directory path to create" },
-      recursive: {
-        type: "boolean",
-        description: "Create parent directories as needed",
-        default: true,
-      },
-    },
-    required: ["path"],
-  } as const;
+  const parameters = z
+    .object({
+      path: z.string().min(1).describe("Directory path to create"),
+      recursive: z.boolean().optional().describe("Create parent directories as needed"),
+    })
+    .strict();
 
   return defineTool<
     FileSystem.FileSystem | FileSystemContextService,
@@ -1097,7 +1118,15 @@ export function createMkdirTool(): Tool<FileSystem.FileSystem | FileSystemContex
     name: "mkdir",
     description: "Create a directory (requires user approval)",
     parameters,
-    validate: makeJsonSchemaValidator(parameters),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({
+            valid: true,
+            value: result.data as unknown as { path: string; recursive?: boolean },
+          } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     approval: {
       message: (args, context) =>
         Effect.gen(function* () {
@@ -1135,19 +1164,12 @@ export function createMkdirTool(): Tool<FileSystem.FileSystem | FileSystemContex
 }
 
 export function createExecuteMkdirTool(): Tool<FileSystem.FileSystem | FileSystemContextService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      path: { type: "string", description: "Directory path to create" },
-      recursive: {
-        type: "boolean",
-        description: "Create parent directories as needed",
-        default: true,
-      },
-    },
-    required: ["path"],
-  } as const;
+  const parameters = z
+    .object({
+      path: z.string().min(1).describe("Directory path to create"),
+      recursive: z.boolean().optional().describe("Create parent directories as needed"),
+    })
+    .strict();
 
   return defineTool<
     FileSystem.FileSystem | FileSystemContextService,
@@ -1157,7 +1179,15 @@ export function createExecuteMkdirTool(): Tool<FileSystem.FileSystem | FileSyste
     description: "Execute mkdir after user approval",
     hidden: true,
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({
+            valid: true,
+            value: result.data as unknown as { path: string; recursive?: boolean },
+          } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (args, context) =>
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
@@ -1195,20 +1225,25 @@ export function createExecuteMkdirTool(): Tool<FileSystem.FileSystem | FileSyste
 
 // stat - check if file/directory exists and get info
 export function createStatTool(): Tool<FileSystem.FileSystem | FileSystemContextService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      path: { type: "string", description: "File or directory path to check" },
-    },
-    required: ["path"],
-  } as const;
+  const parameters = z
+    .object({
+      path: z.string().min(1).describe("File or directory path to check"),
+    })
+    .strict();
 
   return defineTool<FileSystem.FileSystem | FileSystemContextService, { path: string }>({
     name: "stat",
     description: "Check if a file or directory exists and get its information",
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({
+            valid: true,
+            value: result.data as unknown as { path: string; recursive?: boolean; force?: boolean },
+          } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (args, context) =>
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
@@ -1256,20 +1291,13 @@ export function createStatTool(): Tool<FileSystem.FileSystem | FileSystemContext
 
 // rm (approval required)
 export function createRmTool(): Tool<FileSystem.FileSystem | FileSystemContextService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      path: { type: "string", description: "File or directory to remove" },
-      recursive: { type: "boolean", description: "Recursively remove directories", default: false },
-      force: {
-        type: "boolean",
-        description: "Ignore non-existent files and errors",
-        default: false,
-      },
-    },
-    required: ["path"],
-  } as const;
+  const parameters = z
+    .object({
+      path: z.string().min(1).describe("File or directory to remove"),
+      recursive: z.boolean().optional().describe("Recursively remove directories"),
+      force: z.boolean().optional().describe("Ignore non-existent files and errors"),
+    })
+    .strict();
 
   return defineTool<
     FileSystem.FileSystem | FileSystemContextService,
@@ -1278,7 +1306,15 @@ export function createRmTool(): Tool<FileSystem.FileSystem | FileSystemContextSe
     name: "rm",
     description: "Remove a file or directory (requires user approval)",
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({
+            valid: true,
+            value: result.data as unknown as { path: string; recursive?: boolean; force?: boolean },
+          } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     approval: {
       message: (args, context) =>
         Effect.gen(function* () {
@@ -1303,20 +1339,13 @@ export function createRmTool(): Tool<FileSystem.FileSystem | FileSystemContextSe
 }
 
 export function createExecuteRmTool(): Tool<FileSystem.FileSystem | FileSystemContextService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      path: { type: "string", description: "File or directory to remove" },
-      recursive: { type: "boolean", description: "Recursively remove directories", default: false },
-      force: {
-        type: "boolean",
-        description: "Ignore non-existent files and errors",
-        default: false,
-      },
-    },
-    required: ["path"],
-  } as const;
+  const parameters = z
+    .object({
+      path: z.string().min(1).describe("File or directory to remove"),
+      recursive: z.boolean().optional().describe("Recursively remove directories"),
+      force: z.boolean().optional().describe("Ignore non-existent files and errors"),
+    })
+    .strict();
 
   return defineTool<
     FileSystem.FileSystem | FileSystemContextService,
@@ -1326,7 +1355,15 @@ export function createExecuteRmTool(): Tool<FileSystem.FileSystem | FileSystemCo
     description: "Execute rm after user approval",
     hidden: true,
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({
+            valid: true,
+            value: result.data as unknown as { path: string; recursive?: boolean; force?: boolean },
+          } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (args, context) =>
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
@@ -1380,22 +1417,21 @@ export function createExecuteRmTool(): Tool<FileSystem.FileSystem | FileSystemCo
 
 // finddir - search for directories by name
 export function createFindDirTool(): Tool<FileSystem.FileSystem | FileSystemContextService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      name: {
-        type: "string",
-        description: "Directory name to search for (partial matches supported)",
-      },
-      path: {
-        type: "string",
-        description: "Starting path for search (defaults to current working directory)",
-      },
-      maxDepth: { type: "number", description: "Maximum search depth (default: 3)", default: 3 },
-    },
-    required: ["name"],
-  } as const;
+  const parameters = z
+    .object({
+      name: z.string().min(1).describe("Directory name to search for (partial matches supported)"),
+      path: z
+        .string()
+        .optional()
+        .describe("Starting path for search (defaults to current working directory)"),
+      maxDepth: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe("Maximum search depth (default: 3)"),
+    })
+    .strict();
 
   return defineTool<
     FileSystem.FileSystem | FileSystemContextService,
@@ -1404,7 +1440,15 @@ export function createFindDirTool(): Tool<FileSystem.FileSystem | FileSystemCont
     name: "finddir",
     description: "Search for directories by name with partial matching",
     parameters,
-    validate: makeJsonSchemaValidator(parameters),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({
+            valid: true,
+            value: result.data as unknown as { name: string; path?: string; maxDepth?: number },
+          } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (args, context) =>
       Effect.gen(function* () {
         const shell = yield* FileSystemContextServiceTag;

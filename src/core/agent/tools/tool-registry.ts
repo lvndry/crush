@@ -1,4 +1,5 @@
 import { Context, Effect, Layer } from "effect";
+import type z from "zod";
 import type { ConfigService } from "../../../services/config";
 import { type ToolDefinition } from "../../../services/llm/types";
 import {
@@ -29,7 +30,7 @@ export interface ToolExecutionResult {
 export interface Tool<R = never> {
   readonly name: string;
   readonly description: string;
-  readonly parameters: Record<string, unknown>;
+  readonly parameters: z.ZodTypeAny;
   /** If true, this tool is hidden from UI listings (but still usable programmatically). */
   readonly hidden: boolean;
   readonly execute: (
