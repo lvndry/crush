@@ -240,10 +240,6 @@ class DefaultLiteLLMService implements LLMService {
           liteLLMOptions["tool_choice"] = options.toolChoice as unknown as Record<string, unknown>;
         }
 
-        if (options.web_search_options) {
-          liteLLMOptions["web_search_options"] = options.web_search_options;
-        }
-
         const responseUnknown: unknown = await litellm.completion(
           liteLLMOptions as unknown as HandlerParams,
         );

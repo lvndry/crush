@@ -1,4 +1,5 @@
 import { Effect, Schedule } from "effect";
+
 import { AgentConfigService, type ConfigService } from "../../services/config";
 import {
   LLMRateLimitError,
@@ -127,7 +128,6 @@ export class AgentRunner {
       };
       let finished = false;
       let iterationsUsed = 0;
-      let webSearchOptionsEnabled = false;
 
       // Memory safeguard: prevent unbounded message growth
       const MAX_MESSAGES = 100;
@@ -198,9 +198,6 @@ export class AgentRunner {
               tools,
               toolChoice: "auto" as const,
               reasoning_effort: agent.config.reasoningEffort ?? "disable",
-              ...(webSearchOptionsEnabled
-                ? { web_search_options: { search_context_size: "low" as const } }
-                : {}),
             };
 
             const result = yield* llmService.createChatCompletion(provider, llmOptions);
@@ -309,15 +306,6 @@ export class AgentRunner {
 
                 // Execute the tool
                 const result = yield* executeTool(name, args, context);
-
-                // If web_search tool used fallback (provider === "web_search"),
-                // enable LLM web_search_options for subsequent completions
-                if (name === "web_search") {
-                  const parsedResult = result.result as { provider?: string } | undefined;
-                  if (parsedResult && parsedResult.provider === "web_search") {
-                    webSearchOptionsEnabled = true;
-                  }
-                }
 
                 // Log tool execution result in debug mode
                 yield* logger.debug("Tool execution result", {
