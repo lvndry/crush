@@ -125,6 +125,9 @@ export interface ChatCompletionOptions {
   toolChoice?: "auto" | "none" | { type: "function"; function: { name: string } };
   stream?: boolean;
   reasoning_effort?: "disable" | "low" | "medium" | "high";
+  web_search_options?: {
+    search_context_size?: "low" | "medium" | "high";
+  };
 }
 
 export interface ModelInfo {

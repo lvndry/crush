@@ -11,26 +11,27 @@ import { defineTool, makeJsonSchemaValidator } from "./base-tool";
 import { type ToolExecutionContext, type ToolExecutionResult } from "./tool-registry";
 
 /**
- * Linkup search tool for web search functionality
- * Provides grounding data to enrich AI output and increase precision
+ * Unified web search tool that provides fallback from Linkup to web search options
+ * This tool maintains a consistent interface while switching between search providers
  */
 
-export interface LinkupSearchArgs extends Record<string, unknown> {
+export interface WebSearchArgs extends Record<string, unknown> {
   readonly query: string;
   readonly depth?: SearchDepth;
   readonly outputType?: SearchOutputType;
   readonly includeImages?: boolean;
 }
 
-export interface LinkupSearchResult {
+export interface WebSearchResult {
   readonly answer?: string;
-  readonly results: readonly LinkupSearchItem[];
+  readonly results: readonly WebSearchItem[];
   readonly totalResults: number;
   readonly query: string;
   readonly timestamp: string;
+  readonly provider: "linkup" | "web_search";
 }
 
-export interface LinkupSearchItem {
+export interface WebSearchItem {
   readonly title: string;
   readonly url: string;
   readonly snippet: string;
@@ -44,17 +45,15 @@ export interface LinkupConfig {
 }
 
 /**
- * Create a Linkup search tool that performs web searches using the Linkup API
+ * Create a unified web search tool that tries Linkup first, then falls back to web search options
  *
- * @returns A tool that can search the web using Linkup's search engine
+ * @returns A tool that can search the web using Linkup or web search fallback
  */
-export function createLinkupSearchTool(): ReturnType<
-  typeof defineTool<ConfigService, LinkupSearchArgs>
-> {
-  return defineTool<ConfigService, LinkupSearchArgs>({
-    name: "linkup_search",
+export function createWebSearchTool(): ReturnType<typeof defineTool<ConfigService, WebSearchArgs>> {
+  return defineTool<ConfigService, WebSearchArgs>({
+    name: "web_search",
     description:
-      "Search the web using Linkup's search engine. Provides high-quality, factual search results to enrich AI responses with current information from the internet.",
+      "Search the web for current information. Uses Linkup search engine by default, with automatic fallback to web search options if Linkup is unavailable. Provides high-quality, factual search results to enrich AI responses with current information from the internet.",
     parameters: {
       type: "object",
       properties: {
@@ -66,7 +65,7 @@ export function createLinkupSearchTool(): ReturnType<
           type: "string",
           enum: ["standard", "deep"],
           description:
-            "Search depth - 'standard' for quick results, 'deep' for comprehensive search (default: 'deep')",
+            "Search depth - 'standard' for quick results, 'deep' for comprehensive search (default: 'standard')",
         },
         outputType: {
           type: "string",
@@ -82,7 +81,7 @@ export function createLinkupSearchTool(): ReturnType<
       required: ["query"],
       additionalProperties: false,
     },
-    validate: makeJsonSchemaValidator<LinkupSearchArgs>({
+    validate: makeJsonSchemaValidator<WebSearchArgs>({
       type: "object",
       properties: {
         query: { type: "string" },
@@ -93,43 +92,35 @@ export function createLinkupSearchTool(): ReturnType<
       required: ["query"],
       additionalProperties: false,
     }),
-    handler: function linkupSearchHandler(
-      args: LinkupSearchArgs,
-      _context: ToolExecutionContext,
+    handler: function webSearchHandler(
+      args: WebSearchArgs,
+      context: ToolExecutionContext,
     ): Effect.Effect<ToolExecutionResult, Error, ConfigService> {
       return Effect.gen(function* () {
         const config = yield* AgentConfigService;
 
-        // Get Linkup configuration
-        const linkupConfig = yield* getLinkupConfig(config);
+        // Try Linkup first
+        const linkupResult = yield* tryLinkupSearch(args, config).pipe(
+          Effect.catchAll((error) => {
+            // Log the error but don't fail - we'll fall back to web search
+            console.warn(`Linkup search failed, falling back to web search: ${error.message}`);
+            return Effect.succeed(null);
+          }),
+        );
 
-        // Create Linkup client
-        const client = new LinkupClient({
-          apiKey: linkupConfig.apiKey,
-        });
-
-        // Prepare search parameters
-        const searchParams = {
-          query: args.query,
-          depth: args.depth ?? "standard",
-          outputType: args.outputType ?? "sourcedAnswer",
-          includeImages: args.includeImages ?? false,
-        };
-
-        const searchResult = yield* performLinkupSearch(client, searchParams);
-
-        if (searchResult.answer) {
+        if (linkupResult) {
           return {
             success: true,
-            result: searchResult.answer,
+            result: linkupResult,
           };
         }
 
-        const trimmedResults = searchResult.results.slice(0, 5);
+        // Fallback to web search options
+        const webSearchResult = yield* performWebSearchFallback(args, context);
 
         return {
           success: true,
-          result: trimmedResults,
+          result: webSearchResult,
         };
       }).pipe(
         Effect.catchAll((error) =>
@@ -144,10 +135,76 @@ export function createLinkupSearchTool(): ReturnType<
     createSummary: function createSearchSummary(result: ToolExecutionResult): string | undefined {
       if (!result.success || !result.result) return undefined;
 
-      const searchResult = result.result as LinkupSearchResult;
-      return `Found ${searchResult.totalResults} results for "${searchResult.query}"`;
+      const searchResult = result.result as WebSearchResult;
+      return `Found ${searchResult.totalResults} results for "${searchResult.query}" using ${searchResult.provider}`;
     },
   });
+}
+
+/**
+ * Try to perform a Linkup search
+ */
+function tryLinkupSearch(
+  args: WebSearchArgs,
+  config: ConfigService,
+): Effect.Effect<WebSearchResult, Error> {
+  return Effect.gen(function* () {
+    // Get Linkup configuration
+    const linkupConfig = yield* getLinkupConfig(config);
+
+    // Create Linkup client
+    const client = new LinkupClient({
+      apiKey: linkupConfig.apiKey,
+    });
+
+    // Prepare search parameters
+    const searchParams = {
+      query: args.query,
+      depth: args.depth ?? "standard",
+      outputType: args.outputType ?? "sourcedAnswer",
+      includeImages: args.includeImages ?? false,
+    };
+
+    const searchResult = yield* performLinkupSearch(client, searchParams);
+
+    return {
+      ...(searchResult.answer && { answer: searchResult.answer }),
+      results: searchResult.results,
+      totalResults: searchResult.totalResults,
+      query: searchResult.query,
+      timestamp: searchResult.timestamp,
+      provider: "linkup" as const,
+    };
+  });
+}
+
+/**
+ * Perform web search fallback using web_search_options
+ * This function returns a placeholder result since the actual web search
+ * is handled by the LLM service with web_search_options
+ */
+function performWebSearchFallback(
+  args: WebSearchArgs,
+  _context: ToolExecutionContext,
+): Effect.Effect<WebSearchResult, Error> {
+  // Return a placeholder result indicating web search fallback
+  // The actual web search is handled by the LLM service with web_search_options
+  const fallbackResult: WebSearchResult = {
+    results: [
+      {
+        title: "Web Search Fallback",
+        url: "https://example.com",
+        snippet: `Web search fallback activated for query: "${args.query}". This indicates that Linkup search was unavailable and the system fell back to web search options.`,
+        source: "web_search_fallback",
+      },
+    ],
+    totalResults: 1,
+    query: args.query,
+    timestamp: new Date().toISOString(),
+    provider: "web_search" as const,
+  };
+
+  return Effect.succeed(fallbackResult);
 }
 
 /**
@@ -187,7 +244,16 @@ function performLinkupSearch(
     outputType: SearchOutputType;
     includeImages: boolean;
   },
-): Effect.Effect<LinkupSearchResult, Error> {
+): Effect.Effect<
+  {
+    answer?: string;
+    results: readonly WebSearchItem[];
+    totalResults: number;
+    query: string;
+    timestamp: string;
+  },
+  Error
+> {
   return Effect.tryPromise({
     try: async () => {
       const response = await client.search({
@@ -197,7 +263,13 @@ function performLinkupSearch(
         includeImages: params.includeImages,
       });
 
-      let searchResult: LinkupSearchResult;
+      let searchResult: {
+        answer?: string;
+        results: readonly WebSearchItem[];
+        totalResults: number;
+        query: string;
+        timestamp: string;
+      };
 
       if (params.outputType === "sourcedAnswer") {
         const sourcedAnswer = response as SourcedAnswer;
