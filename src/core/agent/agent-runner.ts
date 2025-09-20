@@ -1,12 +1,5 @@
 import { Effect, Schedule } from "effect";
 import { AgentConfigService, type ConfigService } from "../../services/config";
-// Context management imports temporarily disabled
-// import {
-//   estimateConversationTokens,
-//   getModelContextLimit,
-//   shouldSummarize,
-//   summarizeConversation,
-// } from "../../services/llm/context-manager";
 import {
   LLMRateLimitError,
   LLMServiceTag,
@@ -27,54 +20,6 @@ import {
 /**
  * Agent runner for executing agent conversations
  */
-
-// Context management function temporarily disabled - keeping code for later investigation
-// /**
-//  * Intelligently manage conversation context using token-based summarization
-//  * Preserves important context while staying within token limits
-//  */
-// function manageContext(
-//   messages: ChatMessage[],
-//   model: string,
-//   contextConfig?: {
-//     summarizationThreshold?: number;
-//     targetTokensRatio?: number;
-//     enableProactiveSummarization?: boolean;
-//     preserveRecentMessages?: number;
-//     maxRecentTokens?: number;
-//     summarizeToolResults?: boolean;
-//   },
-// ): ChatMessage[] {
-//   // Skip if proactive summarization is disabled
-//   if (contextConfig?.enableProactiveSummarization === false) {
-//     return messages;
-//   }
-//
-//   // Use configured threshold or default to 90% (more conservative to preserve tool results)
-//   const threshold = contextConfig?.summarizationThreshold ?? 0.9;
-//
-//   // Check if we need to summarize based on token count
-//   if (!shouldSummarize(messages, model, threshold)) {
-//     return messages;
-//   }
-//
-//   // Calculate target tokens using configured ratio or default to 80% (more conservative)
-//   const maxTokens = getModelContextLimit(model);
-//   const targetRatio = contextConfig?.targetTokensRatio ?? 0.8;
-//   const targetTokens = Math.floor(maxTokens * targetRatio);
-//
-//   // Use the enhanced summarization with all new parameters
-//   const summarizedMessages = summarizeConversation(
-//     messages,
-//     model,
-//     targetTokens,
-//     contextConfig?.maxRecentTokens ?? 8000, // Default to 8K tokens for recent context
-//     contextConfig?.preserveRecentMessages ?? 10, // Default to 10 recent messages
-//     contextConfig?.summarizeToolResults ?? false, // Default to not summarizing tool results
-//   );
-//
-//   return summarizedMessages;
-// }
 
 export interface AgentRunnerOptions {
   readonly agent: Agent;
@@ -109,7 +54,7 @@ export class AgentRunner {
     options: AgentRunnerOptions,
   ): Effect.Effect<
     AgentResponse,
-    Error,
+    LLMRateLimitError | Error,
     LLMService | ToolRegistry | LoggerService | ConfigService
   > {
     return Effect.gen(function* () {
@@ -136,8 +81,7 @@ export class AgentRunner {
 
       // The approval system in base-tool.ts automatically handles execute-* tool mapping
       // No need for manual mapping here as the tool registry handles this internally
-      const expandedToolNamesSet = new Set<string>(agentToolNames);
-      const expandedToolNames = Array.from(expandedToolNamesSet);
+      const expandedToolNames = Array.from(agentToolNames);
 
       // Validate that all agent tools exist in the registry
       const invalidTools = agentToolNames.filter((toolName) => !allToolNames.includes(toolName));
@@ -147,18 +91,25 @@ export class AgentRunner {
         );
       }
 
-      // Build messages for the agent with only its specified tools
+      // Get tool definitions for only the agent's specified tools
+      const allTools = yield* toolRegistry.getToolDefinitions();
+      const tools = allTools.filter((tool) => expandedToolNames.includes(tool.function.name));
+
+      // Build a map of available tool descriptions for prompt clarity
+      const availableTools: Record<string, string> = {};
+      for (const tool of tools) {
+        availableTools[tool.function.name] = tool.function.description;
+      }
+
+      // Build messages for the agent with only its specified tools and descriptions
       const messages = yield* agentPromptBuilder.buildAgentMessages(agentType, {
         agentName: agent.name,
         agentDescription: agent.description,
         userInput,
         conversationHistory: history,
         toolNames: agentToolNames,
+        availableTools,
       });
-
-      // Get tool definitions for only the agent's specified tools
-      const allTools = yield* toolRegistry.getToolDefinitions();
-      const tools = allTools.filter((tool) => expandedToolNames.includes(tool.function.name));
 
       // Create execution context
       const context: ToolExecutionContext = {
@@ -173,67 +124,17 @@ export class AgentRunner {
         content: "",
         conversationId: actualConversationId,
       };
+      let finished = false;
+      let iterationsUsed = 0;
+
+      // Memory safeguard: prevent unbounded message growth
+      const MAX_MESSAGES = 100;
 
       // Determine the LLM provider and model to use
       const provider = agent.config.llmProvider;
       const model = agent.config.llmModel;
 
       for (let i = 0; i < maxIterations; i++) {
-        // Context management temporarily disabled - keeping code for later investigation
-        // const contextConfig = appConfig.llm?.contextManagement ?? undefined;
-        // const managedMessages = manageContext(currentMessages, model, contextConfig);
-        //
-        // // Log context management if it occurred
-        // if (managedMessages.length !== currentMessages.length) {
-        //   yield* logger.info(
-        //     `Context managed: ${currentMessages.length} → ${managedMessages.length} messages`,
-        //     {
-        //       agentId: agent.id,
-        //       conversationId: actualConversationId,
-        //       iteration: i + 1,
-        //       model,
-        //       originalTokens: estimateConversationTokens(currentMessages),
-        //       managedTokens: estimateConversationTokens(managedMessages),
-        //       threshold: contextConfig?.summarizationThreshold ?? 0.75,
-        //     },
-        //   );
-        // }
-        //
-        // currentMessages.length = 0; // Clear array
-        // currentMessages.push(...managedMessages);
-        //
-        // // Safety: if context management resulted in an empty message list, rebuild a minimal prompt
-        // if (currentMessages.length === 0) {
-        //   const minimalSystem = yield* agentPromptBuilder.buildSystemPrompt(agentType, {
-        //     agentName: agent.name,
-        //     agentDescription: agent.description,
-        //     userInput,
-        //     conversationHistory: history,
-        //     toolNames: agentToolNames,
-        //   });
-        //   const minimalUser = yield* agentPromptBuilder.buildUserPrompt(agentType, {
-        //     agentName: agent.name,
-        //     agentDescription: agent.description,
-        //     userInput,
-        //     conversationHistory: history,
-        //     toolNames: agentToolNames,
-        //   });
-        //
-        //   currentMessages.push({ role: "system", content: minimalSystem });
-        //   if (minimalUser && minimalUser.trim().length > 0) {
-        //     currentMessages.push({ role: "user", content: minimalUser });
-        //   }
-        //
-        //   yield* logger.warn(
-        //     "Message list was empty after context management; rebuilt minimal prompt",
-        //     {
-        //       agentId: agent.id,
-        //       conversationId: actualConversationId,
-        //       iteration: i + 1,
-        //     },
-        //   );
-        // }
-
         // Log user-friendly progress for info level
         if (i === 0) {
           const message = MarkdownRenderer.formatThinking(agent.name, true);
@@ -301,55 +202,6 @@ export class AgentRunner {
             Schedule.intersect(Schedule.recurs(maxRetries)),
             Schedule.whileInput((error) => error instanceof LLMRateLimitError),
           ),
-        ).pipe(
-          Effect.tapError((_error) =>
-            Effect.gen(function* () {
-              // const logger = yield* LoggerServiceTag;
-              // Context management error handling temporarily disabled
-              // if (error instanceof LLMRateLimitError) {
-              //   // If this is a "request too large" error, try more aggressive context management
-              //   if (
-              //     error.message.includes("Request too large") ||
-              //     error.message.includes("tokens per min")
-              //   ) {
-              //     // Use configured aggressive threshold or default to 40%
-              //     const maxTokens = getModelContextLimit(model);
-              //     const aggressiveRatio =
-              //       appConfig.llm?.contextManagement?.aggressiveThreshold ?? 0.4;
-              //     const aggressiveTargetTokens = Math.floor(maxTokens * aggressiveRatio);
-              //     const contextConfig = appConfig.llm?.contextManagement;
-              //     messagesToSend = summarizeConversation(
-              //       messagesToSend,
-              //       model,
-              //       aggressiveTargetTokens,
-              //       contextConfig?.maxRecentTokens,
-              //       contextConfig?.preserveRecentMessages,
-              //       contextConfig?.summarizeToolResults,
-              //     );
-              //
-              //     yield* logger.warn(
-              //       `Request too large, applying aggressive context management and retrying...`,
-              //       {
-              //         agentId: agent.id,
-              //         conversationId: actualConversationId,
-              //         iteration: i + 1,
-              //         messageCount: messagesToSend.length,
-              //         targetTokens: aggressiveTargetTokens,
-              //         aggressiveRatio,
-              //         error: error.message,
-              //       },
-              //     );
-              //   } else {
-              //     yield* logger.warn(`Rate limit hit, retrying...`, {
-              //       agentId: agent.id,
-              //       conversationId: actualConversationId,
-              //       iteration: i + 1,
-              //       error: error.message,
-              //     });
-              //   }
-              // }
-            }),
-          ),
         );
 
         // Add the assistant's response to the conversation (including tool calls, if any)
@@ -366,6 +218,24 @@ export class AgentRunner {
               }
             : {}),
         });
+
+        // Memory safeguard: trim messages if they exceed the limit
+        if (currentMessages.length > MAX_MESSAGES) {
+          // Keep the system message and the most recent messages
+          const systemMessage = currentMessages[0];
+          if (systemMessage) {
+            const recentMessages = currentMessages.slice(-(MAX_MESSAGES - 1));
+            currentMessages.length = 0;
+            currentMessages.push(systemMessage, ...recentMessages);
+          }
+
+          yield* logger.warn("Message history trimmed to prevent memory issues", {
+            agentId: agent.id,
+            conversationId: actualConversationId,
+            maxMessages: MAX_MESSAGES,
+            trimmedCount: currentMessages.length,
+          });
+        }
 
         // Log assistant response if log level is debug
         if (appConfig.logging.level === "debug") {
@@ -404,10 +274,20 @@ export class AgentRunner {
               const { name, arguments: argsString } = toolCall.function;
 
               try {
-                // Parse the arguments safely
-                const parsed = JSON.parse(argsString) as unknown;
+                // Parse the arguments safely with proper error handling
+                let parsed: unknown;
+                try {
+                  parsed = JSON.parse(argsString);
+                } catch (parseError) {
+                  throw new Error(
+                    `Invalid JSON in tool arguments: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
+                  );
+                }
+
                 const args: Record<string, unknown> =
-                  parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
+                  parsed && typeof parsed === "object" && !Array.isArray(parsed)
+                    ? (parsed as Record<string, unknown>)
+                    : {};
 
                 // Log tool call arguments in debug mode
                 yield* logger.debug("Tool call arguments", {
@@ -448,17 +328,27 @@ export class AgentRunner {
                   throw error;
                 }
 
-                // Otherwise, include the tool execution error in the conversation
+                // Log the tool execution error for debugging
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                yield* logger.error("Tool execution failed", {
+                  agentId: agent.id,
+                  conversationId: actualConversationId,
+                  toolName: name,
+                  toolCallId: toolCall.id,
+                  error: errorMessage,
+                });
+
+                // Include the tool execution error in the conversation
                 currentMessages.push({
                   role: "tool",
                   name,
-                  content: `Error: ${error instanceof Error ? error.message : String(error)}`,
+                  content: `Error: ${errorMessage}`,
                   tool_call_id: toolCall.id,
                 });
 
                 // Store the error
                 toolResults[name] = {
-                  error: `${error instanceof Error ? error.message : String(error)}`,
+                  error: errorMessage,
                 };
               }
             }
@@ -482,10 +372,15 @@ export class AgentRunner {
           totalIterations: i + 1,
           hasContent: !!completion.content,
         });
+
+        // Mark loop as finished and break
+        iterationsUsed = i + 1;
+        finished = true;
         break;
       }
 
-      if (response.content === "" && !response.toolCalls) {
+      // Post-loop diagnostics
+      if (!finished) {
         const warningMessage = MarkdownRenderer.formatWarning(
           agent.name,
           `reached maximum iterations (${maxIterations})`,
@@ -494,6 +389,19 @@ export class AgentRunner {
           agentId: agent.id,
           conversationId: actualConversationId,
           maxIterations,
+        });
+      } else if (
+        (!response.content || response.content.trim().length === 0) &&
+        !response.toolCalls
+      ) {
+        const emptyMessage = MarkdownRenderer.formatWarning(
+          agent.name,
+          "model returned an empty response",
+        );
+        yield* logger.warn(emptyMessage, {
+          agentId: agent.id,
+          conversationId: actualConversationId,
+          totalIterations: iterationsUsed,
         });
       }
 

@@ -23,6 +23,7 @@ export interface LinkupSearchArgs extends Record<string, unknown> {
 }
 
 export interface LinkupSearchResult {
+  readonly answer?: string;
   readonly results: readonly LinkupSearchItem[];
   readonly totalResults: number;
   readonly query: string;
@@ -110,17 +111,25 @@ export function createLinkupSearchTool(): ReturnType<
         // Prepare search parameters
         const searchParams = {
           query: args.query,
-          depth: args.depth ?? "deep",
+          depth: args.depth ?? "standard",
           outputType: args.outputType ?? "sourcedAnswer",
           includeImages: args.includeImages ?? false,
         };
 
-        // Perform the search using the official SDK
         const searchResult = yield* performLinkupSearch(client, searchParams);
+
+        if (searchResult.answer) {
+          return {
+            success: true,
+            result: searchResult.answer,
+          };
+        }
+
+        const trimmedResults = searchResult.results.slice(0, 5);
 
         return {
           success: true,
-          result: searchResult,
+          result: trimmedResults,
         };
       }).pipe(
         Effect.catchAll((error) =>
@@ -170,9 +179,6 @@ function getLinkupConfig(config: ConfigService): Effect.Effect<LinkupConfig, Err
   });
 }
 
-/**
- * Perform the actual Linkup search using the official SDK
- */
 function performLinkupSearch(
   client: LinkupClient,
   params: {
@@ -191,16 +197,14 @@ function performLinkupSearch(
         includeImages: params.includeImages,
       });
 
-      // Transform the SDK response to our expected format based on output type
       let searchResult: LinkupSearchResult;
 
       if (params.outputType === "sourcedAnswer") {
         const sourcedAnswer = response as SourcedAnswer;
         searchResult = {
+          answer: sourcedAnswer.answer,
           results: sourcedAnswer.sources.map((source) => {
-            // Handle different source types
             if ("snippet" in source) {
-              // Source type
               return {
                 title: source.name || "",
                 url: source.url || "",
@@ -208,7 +212,6 @@ function performLinkupSearch(
                 source: source.name,
               };
             } else {
-              // TextSearchResult or ImageSearchResult type
               return {
                 title: source.name || "",
                 url: source.url || "",
@@ -223,6 +226,7 @@ function performLinkupSearch(
         };
       } else if (params.outputType === "searchResults") {
         const searchResults = response as SearchResults;
+
         searchResult = {
           results: searchResults.results.map((result) => ({
             title: result.name || "",
@@ -235,8 +239,7 @@ function performLinkupSearch(
           timestamp: new Date().toISOString(),
         };
       } else {
-        // For structured output, create a basic result
-        searchResult = {
+        return {
           results: [],
           totalResults: 0,
           query: params.query,

@@ -22,6 +22,25 @@ export interface BaseToolConfig<R, Args extends Record<string, unknown>> {
   readonly parameters: Record<string, unknown>;
   /** If true, hide this tool from UI listings while keeping it callable. */
   readonly hidden?: boolean;
+  /**
+   * Optional function to validate the tool arguments before execution.
+   *
+   * This validator runs after the LLM provides arguments but before the handler
+   * is called. It provides runtime type checking and custom validation logic
+   * beyond what JSON Schema can express. The validator should return a result
+   * indicating whether the arguments are valid and provide any error messages
+   * for invalid inputs.
+   *
+   * @example
+   * ```typescript
+   * validate: (args) => {
+   *   if (args.email && !args.email.includes('@')) {
+   *     return { valid: false, errors: ['Invalid email format'] };
+   *   }
+   *   return { valid: true, value: args };
+   * }
+   * ```
+   */
   readonly validate?: ToolValidator<Args>;
   /**
    * Optional approval requirement for destructive tools.
@@ -51,11 +70,63 @@ export interface BaseToolConfig<R, Args extends Record<string, unknown>> {
       readonly buildArgs: (args: Args) => Record<string, unknown>;
     };
   };
+  /**
+   * The main function that handles the tool execution logic.
+   *
+   * This is the core implementation of the tool that performs the actual work.
+   * It receives validated arguments and execution context, and returns an Effect
+   * that represents the asynchronous operation. The handler should handle all
+   * business logic, external API calls, file operations, or other side effects
+   * required by the tool.
+   *
+   * The function must return a ToolExecutionResult that indicates success or failure,
+   * along with any relevant data or error messages. All side effects should be
+   * wrapped in Effect to ensure proper error handling and resource management.
+   *
+   * @param args - The validated arguments passed to the tool
+   * @param context - The execution context containing environment, logger, and other services
+   * @returns An Effect that resolves to a ToolExecutionResult
+   *
+   * @example
+   * ```typescript
+   * handler: (args, context) => Effect.gen(function* () {
+   *   const logger = yield* context.logger;
+   *   yield* logger.info(`Processing request: ${args.id}`);
+   *
+   *   const result = yield* processRequest(args);
+   *   return { success: true, result };
+   * })
+   * ```
+   */
   readonly handler: (
     args: Args,
     context: ToolExecutionContext,
   ) => Effect.Effect<ToolExecutionResult, Error, R>;
-  /** Optional function to create a summary of the tool execution result */
+  /**
+   * Optional function to create a human-readable summary of the tool execution result.
+   *
+   * This function is called after the tool execution completes successfully and is used
+   * to generate a concise, user-friendly summary of what the tool accomplished. The
+   * summary is typically displayed to the user or logged for audit purposes. If not
+   * provided, a default summary will be generated based on the tool name and success status.
+   *
+   * The function receives the complete ToolExecutionResult and should return a string
+   * that clearly describes the outcome. Return undefined to use the default summary
+   * generation logic.
+   *
+   * @param result - The complete execution result from the tool handler
+   * @returns A human-readable summary string, or undefined to use default summary
+   *
+   * @example
+   * ```typescript
+   * createSummary: (result) => {
+   *   if (result.success && result.result) {
+   *     return `Successfully processed ${result.result.count} items`;
+   *   }
+   *   return `Tool execution ${result.success ? 'succeeded' : 'failed'}`;
+   * }
+   * ```
+   */
   readonly createSummary?: (result: ToolExecutionResult) => string | undefined;
 }
 
@@ -109,8 +180,9 @@ export function defineTool<R, Args extends Record<string, unknown>>(
         if (config.approval) {
           // Return an approval request payload
           return Effect.gen(function* () {
-            const approvalMessage = yield* config.approval!.message(validated, context);
-            const execute = config.approval?.execute;
+            const approval = config.approval as NonNullable<typeof config.approval>;
+            const approvalMessage = yield* approval.message(validated, context);
+            const execute = approval.execute;
             return {
               success: false,
               result: {
@@ -125,7 +197,7 @@ export function defineTool<R, Args extends Record<string, unknown>>(
                   : {}),
               },
               error:
-                config.approval?.errorMessage ??
+                approval.errorMessage ??
                 "Approval required: This action requires user confirmation.",
             } as ToolExecutionResult;
           });
