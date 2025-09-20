@@ -59,7 +59,7 @@ export class AgentRunner {
     LLMService | ToolRegistry | LoggerService | ConfigService
   > {
     return Effect.gen(function* () {
-      const { agent, userInput, conversationId, userId, maxIterations = 5 } = options;
+      const { agent, userInput, conversationId, userId, maxIterations = 8 } = options;
 
       // Get services
       const llmService = yield* LLMServiceTag;

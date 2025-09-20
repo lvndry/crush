@@ -1,49 +1,84 @@
 import { Context, Effect, Layer } from "effect";
+import { AgentConfigService, type ConfigService } from "./config";
 
 /**
  * Structured logging service using Effect's Logger
  */
 
 export interface LoggerService {
-  readonly debug: (message: string, meta?: Record<string, unknown>) => Effect.Effect<void>;
-  readonly info: (message: string, meta?: Record<string, unknown>) => Effect.Effect<void>;
-  readonly warn: (message: string, meta?: Record<string, unknown>) => Effect.Effect<void>;
-  readonly error: (message: string, meta?: Record<string, unknown>) => Effect.Effect<void>;
+  readonly debug: (
+    message: string,
+    meta?: Record<string, unknown>,
+  ) => Effect.Effect<void, never, ConfigService>;
+  readonly info: (
+    message: string,
+    meta?: Record<string, unknown>,
+  ) => Effect.Effect<void, never, ConfigService>;
+  readonly warn: (
+    message: string,
+    meta?: Record<string, unknown>,
+  ) => Effect.Effect<void, never, ConfigService>;
+  readonly error: (
+    message: string,
+    meta?: Record<string, unknown>,
+  ) => Effect.Effect<void, never, ConfigService>;
 }
 
 export class LoggerServiceImpl implements LoggerService {
   constructor() {}
 
-  debug(message: string, meta?: Record<string, unknown>): Effect.Effect<void> {
-    return Effect.sync(() => {
-      const line = formatLogLine("debug", message, meta);
+  debug(
+    message: string,
+    meta?: Record<string, unknown>,
+  ): Effect.Effect<void, never, ConfigService> {
+    return Effect.gen(function* () {
+      const config = yield* AgentConfigService;
+      const loggingConfig = yield* config.get<{ format: "json" | "pretty" }>("logging");
+      const format = loggingConfig?.format ?? "pretty";
+
+      const line = formatLogLine("debug", message, meta, format);
 
       console.debug(line);
       console.log();
     });
   }
 
-  info(message: string, meta?: Record<string, unknown>): Effect.Effect<void> {
-    return Effect.sync(() => {
-      const line = formatLogLine("info", message, meta);
+  info(message: string, meta?: Record<string, unknown>): Effect.Effect<void, never, ConfigService> {
+    return Effect.gen(function* () {
+      const config = yield* AgentConfigService;
+      const loggingConfig = yield* config.get<{ format: "json" | "pretty" }>("logging");
+      const format = loggingConfig?.format ?? "pretty";
+
+      const line = formatLogLine("info", message, meta, format);
 
       console.info(line);
       console.log();
     });
   }
 
-  warn(message: string, meta?: Record<string, unknown>): Effect.Effect<void> {
-    return Effect.sync(() => {
-      const line = formatLogLine("warn", message, meta);
+  warn(message: string, meta?: Record<string, unknown>): Effect.Effect<void, never, ConfigService> {
+    return Effect.gen(function* () {
+      const config = yield* AgentConfigService;
+      const loggingConfig = yield* config.get<{ format: "json" | "pretty" }>("logging");
+      const format = loggingConfig?.format ?? "pretty";
+
+      const line = formatLogLine("warn", message, meta, format);
 
       console.warn(line);
       console.log();
     });
   }
 
-  error(message: string, meta?: Record<string, unknown>): Effect.Effect<void> {
-    return Effect.sync(() => {
-      const line = formatLogLine("error", message, meta);
+  error(
+    message: string,
+    meta?: Record<string, unknown>,
+  ): Effect.Effect<void, never, ConfigService> {
+    return Effect.gen(function* () {
+      const config = yield* AgentConfigService;
+      const loggingConfig = yield* config.get<{ format: "json" | "pretty" }>("logging");
+      const format = loggingConfig?.format ?? "pretty";
+
+      const line = formatLogLine("error", message, meta, format);
 
       console.error(line);
       console.log();
@@ -53,13 +88,27 @@ export class LoggerServiceImpl implements LoggerService {
 
 type LogLevel = "debug" | "info" | "warn" | "error";
 
-function formatLogLine(level: LogLevel, message: string, meta?: Record<string, unknown>): string {
+function formatLogLine(
+  level: LogLevel,
+  message: string,
+  meta?: Record<string, unknown>,
+  format: "json" | "pretty" = "pretty",
+): string {
   const now = new Date();
   const ts = now.toISOString();
   const color = selectColor(level);
   const levelLabel = padLevel(level.toUpperCase());
   const emoji = selectEmoji(level);
-  const metaText = meta && Object.keys(meta).length > 0 ? dim(" " + JSON.stringify(meta)) : "";
+
+  let metaText = "";
+  if (meta && Object.keys(meta).length > 0) {
+    if (format === "pretty") {
+      metaText = dim(" " + prettyPrintJson(meta));
+    } else {
+      metaText = dim(" " + JSON.stringify(meta));
+    }
+  }
+
   const body = indentMultiline(message);
   return `${dim(ts)} ${color(levelLabel)} ${emoji} ${body}${metaText}`;
 }
@@ -101,6 +150,18 @@ function indentMultiline(text: string): string {
   return lines.map((line, idx) => (idx === 0 ? line : "  " + line)).join("\n");
 }
 
+function prettyPrintJson(obj: Record<string, unknown>): string {
+  try {
+    const jsonString = JSON.stringify(obj, null, 2);
+    // Add indentation to each line except the first
+    const lines = jsonString.split("\n");
+    return lines.map((line, idx) => (idx === 0 ? line : "  " + line)).join("\n");
+  } catch {
+    // Fallback to regular JSON.stringify if pretty printing fails
+    return JSON.stringify(obj);
+  }
+}
+
 // ANSI color helpers (no dependency)
 function wrap(open: string, close: string): (text: string) => string {
   const enabled = process.stdout.isTTY === true;
@@ -115,7 +176,7 @@ const red = wrap("\u001B[31m", "\u001B[39m");
 
 export const LoggerServiceTag = Context.GenericTag<LoggerService>("LoggerService");
 
-export function createLoggerLayer(): Layer.Layer<LoggerService> {
+export function createLoggerLayer(): Layer.Layer<LoggerService, never, ConfigService> {
   return Layer.succeed(LoggerServiceTag, new LoggerServiceImpl());
 }
 
@@ -124,7 +185,7 @@ export function logAgentOperation(
   agentId: string,
   operation: string,
   meta?: Record<string, unknown>,
-): Effect.Effect<void, never, LoggerService> {
+): Effect.Effect<void, never, LoggerService | ConfigService> {
   return Effect.gen(function* () {
     const logger = yield* LoggerServiceTag;
     yield* logger.info(`Agent ${agentId}: ${operation}`, {
@@ -139,7 +200,7 @@ export function logTaskExecution(
   taskId: string,
   status: "started" | "completed" | "failed",
   meta?: Record<string, unknown>,
-): Effect.Effect<void, never, LoggerService> {
+): Effect.Effect<void, never, LoggerService | ConfigService> {
   return Effect.gen(function* () {
     const logger = yield* LoggerServiceTag;
     yield* logger.info(`Task ${taskId}: ${status}`, {
@@ -154,7 +215,7 @@ export function logAutomationEvent(
   automationId: string,
   event: string,
   meta?: Record<string, unknown>,
-): Effect.Effect<void, never, LoggerService> {
+): Effect.Effect<void, never, LoggerService | ConfigService> {
   return Effect.gen(function* () {
     const logger = yield* LoggerServiceTag;
     yield* logger.info(`Automation ${automationId}: ${event}`, {
@@ -170,7 +231,7 @@ export function logToolExecutionStart(
   toolName: string,
   agentId: string,
   conversationId?: string,
-): Effect.Effect<void, never, LoggerService> {
+): Effect.Effect<void, never, LoggerService | ConfigService> {
   return Effect.gen(function* () {
     const logger = yield* LoggerServiceTag;
     const toolEmoji = getToolEmoji(toolName);
@@ -189,7 +250,7 @@ export function logToolExecutionSuccess(
   durationMs: number,
   conversationId?: string,
   resultSummary?: string,
-): Effect.Effect<void, never, LoggerService> {
+): Effect.Effect<void, never, LoggerService | ConfigService> {
   return Effect.gen(function* () {
     const logger = yield* LoggerServiceTag;
     const toolEmoji = getToolEmoji(toolName);
@@ -214,7 +275,7 @@ export function logToolExecutionError(
   durationMs: number,
   error: string,
   conversationId?: string,
-): Effect.Effect<void, never, LoggerService> {
+): Effect.Effect<void, never, LoggerService | ConfigService> {
   return Effect.gen(function* () {
     const logger = yield* LoggerServiceTag;
     const toolEmoji = getToolEmoji(toolName);
@@ -238,7 +299,7 @@ export function logToolExecutionApproval(
   durationMs: number,
   approvalMessage: string,
   conversationId?: string,
-): Effect.Effect<void, never, LoggerService> {
+): Effect.Effect<void, never, LoggerService | ConfigService> {
   return Effect.gen(function* () {
     const logger = yield* LoggerServiceTag;
     const toolEmoji = getToolEmoji(toolName);

@@ -51,7 +51,5 @@ export const GMAIL_PROMPT_V2 = `You are {agentName}, an AI assistant specialized
 - Include all necessary recipients
 - Format content appropriately
 
-{toolInstructions}
-
 Always ask for approval before sending emails or performing destructive operations.
 `;

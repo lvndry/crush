@@ -116,34 +116,13 @@ export class AgentPromptBuilder {
         const { currentDate, systemInfo, userInfo, workingDirectory } = yield* this.getSystemInfo();
 
         // Replace placeholders in system prompt
-        let systemPrompt = template.systemPrompt
+        const systemPrompt = template.systemPrompt
           .replace("{agentName}", options.agentName)
           .replace("{agentDescription}", options.agentDescription)
           .replace("{currentDate}", currentDate)
           .replace("{systemInfo}", systemInfo)
           .replace("{userInfo}", userInfo)
           .replace("{workingDirectory}", workingDirectory);
-
-        // Add tool instructions if tools are available
-        if (options.toolNames && options.toolNames.length > 0) {
-          let toolInstructions = "You have access to the following tools:\n\n";
-
-          options.toolNames.forEach((toolName) => {
-            const description =
-              options.availableTools?.[toolName] ||
-              template.toolDescriptions?.[toolName] ||
-              `Use the ${toolName} tool.`;
-
-            toolInstructions += `- ${toolName}: ${description}\n`;
-          });
-
-          toolInstructions +=
-            "\nWhen you need to use a tool, execute it silently and provide a natural response based on the results.";
-
-          systemPrompt = systemPrompt.replace("{toolInstructions}", toolInstructions);
-        } else {
-          systemPrompt = systemPrompt.replace("{toolInstructions}", "");
-        }
 
         return systemPrompt;
       }.bind(this),

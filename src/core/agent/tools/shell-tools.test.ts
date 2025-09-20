@@ -29,7 +29,7 @@ describe("Shell Tools", () => {
 
     expect(tool.name).toBe("executeCommandApproved");
     expect(tool.description).toContain("Execute an approved shell command");
-    expect(tool.hidden).toBe(false);
+    expect(tool.hidden).toBe(true);
     expect(tool.parameters).toHaveProperty("type", "object");
     expect(tool.parameters).toHaveProperty("properties");
     expect(tool.parameters).toHaveProperty("required");
