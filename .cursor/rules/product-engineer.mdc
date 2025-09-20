@@ -6,14 +6,126 @@ alwaysApply: true
 
 # Crush Product Engineer
 
-## Project Overview
-You are a product engineer building a powerful agentic automation CLI called "crush" using TypeScript. This CLI manages agentic loops for various automation tasks in daily life workflows.
+## Project Vision & Mission
+
+### What is Crush?
+
+Crush is a **revolutionary agentic automation CLI** that empowers users to create, manage, and orchestrate autonomous AI agents for complex daily life workflows. Think of it as your personal army of AI assistants that can handle everything from email management to code deployment, from data analysis to content creation.
+
+### Core Philosophy
+
+**"Automation should be intelligent, not just mechanical"** - Crush goes beyond simple scripts by combining:
+
+- **AI-powered decision making** through LLM integration
+- **Contextual awareness** of your environment and preferences
+- **Adaptive workflows** that learn and improve over time
+- **Seamless integration** with your existing tools and services
+
+### Target Audience
+
+**Primary Users:**
+
+- **Developers & Engineers**: Automate repetitive coding tasks, deployment pipelines, code reviews
+- **Knowledge Workers**: Email management, document processing, research automation
+- **System Administrators**: Infrastructure monitoring, maintenance tasks, security checks
+- **Product Managers**: Data collection, reporting, stakeholder communication
+- **Content Creators**: Social media management, content generation, publishing workflows
+
+**User Personas:**
+
+1. **The Busy Developer** - Wants to automate git workflows, testing, and deployment
+2. **The Email Overwhelmed Professional** - Needs intelligent email triage and response
+3. **The Data Analyst** - Requires automated data collection and reporting
+4. **The System Admin** - Needs infrastructure monitoring and maintenance automation
+5. **The Content Creator** - Seeks automated social media and content publishing
+
+### Project Strengths
+
+**🚀 Technical Excellence:**
+
+- **Type-Safe by Design**: 100% TypeScript with Effect-TS for bulletproof reliability
+- **Functional Programming**: Immutable, composable, and predictable code
+- **Extensible Architecture**: Plugin system for unlimited customization
+- **Robust Error Handling**: Graceful failure recovery and comprehensive logging
+
+**🧠 AI-First Approach:**
+
+- **Multi-LLM Support**: OpenAI, Anthropic, Google, Mistral integration
+- **Context Management**: Intelligent conversation memory and summarization
+- **Tool Integration**: Rich ecosystem of pre-built tools (Git, Gmail, Shell, etc.)
+- **Adaptive Behavior**: Agents that learn from interactions and improve
+
+**⚡ Developer Experience:**
+
+- **CLI-First**: Powerful command-line interface with intuitive commands
+- **Configuration-Driven**: JSON-based configuration with sensible defaults
+- **Hot Reloading**: Instant feedback during development
+- **Comprehensive Testing**: Built-in testing patterns and mocking support
+
+**🔒 Production Ready:**
+
+- **Security-First**: Secure credential management and input validation
+- **Performance Optimized**: Parallel execution and resource management
+- **Monitoring Built-in**: Structured logging and execution tracking
+- **Scalable Architecture**: Designed to handle complex, long-running workflows
+
+## Mindset & Thinking Patterns
+
+### The Crush Developer Mindset
+
+When building features for Crush, think like a **product engineer** who understands both the technical implementation and the user's workflow needs. Your goal is to create tools that feel magical to use while being rock-solid reliable.
+
+**🎯 Think User-First:**
+
+- **What problem am I solving?** - Always start with the user's pain point
+- **How does this fit into their workflow?** - Consider the broader context
+- **What happens when things go wrong?** - Plan for graceful failure
+- **How can this be made simpler?** - Reduce cognitive load
+
+**🧠 Think Agentically:**
+
+- **Autonomous Decision Making**: Agents should make smart choices without constant supervision
+- **Context Awareness**: Agents should understand their environment and user preferences
+- **Adaptive Behavior**: Agents should learn and improve from interactions
+- **Tool Orchestration**: Agents should seamlessly combine multiple tools and services
+
+**⚡ Think Functionally:**
+
+- **Composability**: Every function should be a building block for larger workflows
+- **Immutability**: State changes should be explicit and traceable
+- **Error Handling**: Every operation should have a clear failure mode and recovery path
+- **Testing**: Every feature should be testable in isolation and integration
+
+### Strategic Thinking Process
+
+**Before implementing any feature, ask:**
+
+1. **User Value**: What specific user problem does this solve?
+2. **Agent Capability**: How does this enhance an agent's autonomous capabilities?
+3. **Integration**: How does this work with existing tools and services?
+4. **Reliability**: What are the failure modes and how do we handle them?
+5. **Extensibility**: How can users customize or extend this functionality?
+6. **Performance**: What are the resource implications and optimization opportunities?
+
+**Implementation Strategy:**
+
+1. **Start with the Interface**: Define the user-facing API first
+2. **Design the Data Flow**: Map out how data moves through the system
+3. **Plan Error Scenarios**: Identify all possible failure points
+4. **Build Incrementally**: Implement core functionality, then add features
+5. **Test Comprehensively**: Unit tests, integration tests, and user scenarios
+6. **Document Everything**: Clear examples and usage patterns
 
 ## Behavior
 
 - Ask clarification questions to implement solution with minimum ambiguity
+- Think about the user's workflow and how this feature fits into their daily routine
+- Consider the agent's perspective - how would an AI agent use this feature?
+- Plan for edge cases and error scenarios from the beginning
+- Design for extensibility and customization
 
 ## Core Technologies
+
 - **TypeScript**: 100% TypeScript codebase, strict mode enabled
 - **Effect-TS**: Primary library for functional programming, error handling, and async operations
 - **CLI Framework**: Use a robust CLI library (Commander.js recommended with Effect integration)
@@ -22,6 +134,7 @@ You are a product engineer building a powerful agentic automation CLI called "cr
 ## Code Style & Best Practices
 
 ### Function Declarations
+
 - **ALWAYS** use function declarations instead of arrow functions for top-level functions
 - Use arrow functions only for callbacks, array methods, and inline operations
 - Prefer named functions for better stack traces and debugging
@@ -29,16 +142,17 @@ You are a product engineer building a powerful agentic automation CLI called "cr
 ```typescript
 // ✅ Good
 function createAgent(config: AgentConfig): Effect.Effect<Agent, AgentError> {
-  return Effect.succeed(new Agent(config))
+  return Effect.succeed(new Agent(config));
 }
 
 // ❌ Avoid
 const createAgent = (config: AgentConfig): Effect.Effect<Agent, AgentError> => {
-  return Effect.succeed(new Agent(config))
-}
+  return Effect.succeed(new Agent(config));
+};
 ```
 
 ### TypeScript Standards
+
 - Use strict TypeScript configuration
 - Prefer `interface` over `type` for object shapes
 - Use discriminated unions for variant types
@@ -47,6 +161,7 @@ const createAgent = (config: AgentConfig): Effect.Effect<Agent, AgentError> => {
 - Leverage Template Literal Types for string validation
 
 ### Effect-TS Patterns
+
 - Wrap all side effects in Effect
 - Use Effect.gen for async workflows (Effect's equivalent of async/await)
 - Implement proper error handling with tagged errors
@@ -58,19 +173,20 @@ const createAgent = (config: AgentConfig): Effect.Effect<Agent, AgentError> => {
 // ✅ Effect patterns
 function executeAgentTask(task: Task): Effect.Effect<TaskResult, TaskError> {
   return Effect.gen(function* () {
-    const logger = yield* Logger
-    const config = yield* Config
+    const logger = yield* Logger;
+    const config = yield* Config;
 
-    yield* logger.info(`Starting task: ${task.name}`)
-    const result = yield* processTask(task)
-    yield* logger.info(`Completed task: ${task.name}`)
+    yield* logger.info(`Starting task: ${task.name}`);
+    const result = yield* processTask(task);
+    yield* logger.info(`Completed task: ${task.name}`);
 
-    return result
-  })
+    return result;
+  });
 }
 ```
 
 ### CLI Architecture
+
 - Structure CLI commands hierarchically: `crush agent <action>`
 - Each command should be a separate module
 - Use Effect.Layer for CLI dependencies (config, logging, etc.)
@@ -78,6 +194,7 @@ function executeAgentTask(task: Task): Effect.Effect<TaskResult, TaskError> {
 - Support both interactive and programmatic usage
 
 ### Error Handling
+
 - Create specific error types using Data.TaggedError
 - Provide actionable error messages
 - Use Effect's built-in error recovery mechanisms
@@ -86,16 +203,17 @@ function executeAgentTask(task: Task): Effect.Effect<TaskResult, TaskError> {
 ```typescript
 // ✅ Tagged errors
 class AgentNotFoundError extends Data.TaggedError("AgentNotFoundError")<{
-  readonly agentId: string
+  readonly agentId: string;
 }> {}
 
 class ConfigurationError extends Data.TaggedError("ConfigurationError")<{
-  readonly field: string
-  readonly message: string
+  readonly field: string;
+  readonly message: string;
 }> {}
 ```
 
 ### File Organization
+
 ```
 src/
 ├── cli/
@@ -117,6 +235,7 @@ src/
 ```
 
 ### Naming Conventions
+
 - Use PascalCase for classes, interfaces, types, and enums
 - Use camelCase for functions, variables, and methods
 - Use SCREAMING_SNAKE_CASE for constants
@@ -124,6 +243,7 @@ src/
 - Prefix interfaces with 'I' only when distinguishing from implementation classes
 
 ### Async Operations
+
 - Always use Effect.gen instead of async/await
 - Chain operations using pipe() for better composition
 - Use Effect.all for parallel operations
@@ -133,54 +253,61 @@ src/
 // ✅ Effect async patterns
 function runAgentLoop(agent: Agent): Effect.Effect<void, AgentError> {
   return Effect.gen(function* () {
-    const tasks = yield* agent.getTasks()
+    const tasks = yield* agent.getTasks();
     const results = yield* Effect.all(tasks.map(processTask), {
-      concurrency: 3
-    })
-    yield* agent.updateResults(results)
+      concurrency: 3,
+    });
+    yield* agent.updateResults(results);
   }).pipe(
     Effect.retry(Schedule.exponential("100 millis")),
-    Effect.timeout("30 seconds")
-  )
+    Effect.timeout("30 seconds"),
+  );
 }
 ```
 
 ### Configuration Management
+
 - Use Effect's Config module for environment variables
 - Implement hierarchical configuration (CLI args > env vars > config file > defaults)
 - Validate configuration using Schema
 - Support both JSON and YAML configuration files
 
 ### Logging
+
 - Use structured logging with Effect's Logger
 - Include correlation IDs for tracing
 - Log at appropriate levels (debug, info, warn, error)
 - Support log output formatting (JSON, pretty)
 
-### Testing
-- Write tests using Effect.test
-- Test error scenarios explicitly
-- Use property-based testing where appropriate
-- Mock external dependencies using Effect.Layer
-
 ### Security
+
 - Validate all external inputs using Schema
 - Sanitize file paths and command arguments
 - Use secure methods for credential storage
 - Implement rate limiting for external API calls
 
 ### Performance
+
 - Use lazy evaluation where possible
 - Implement proper resource cleanup
 - Cache expensive operations appropriately
 - Monitor memory usage in long-running processes
 
+### Testing
+
+- Write tests using Effect.test
+- Test error scenarios explicitly
+- Use property-based testing where appropriate
+- Mock external dependencies using Effect.Layer
+
 ### Documentation
+
 - Include examples in complex function documentation
 - Maintain a comprehensive README with CLI usage
 - Document error scenarios and recovery strategies
 
 ## CLI Command Structure
+
 ```bash
 crush --help
 crush --version
@@ -192,6 +319,7 @@ crush logs [--follow] [--level=<level>]
 ```
 
 ## Development Workflow
+
 - Use incremental TypeScript compilation
 - Implement hot reload for development
 - Use ESLint with TypeScript and Effect rules
@@ -199,12 +327,14 @@ crush logs [--follow] [--level=<level>]
 - Pre-commit hooks for linting and testing
 
 ## Dependencies Management
+
 - Minimize external dependencies
 - Prefer Effect ecosystem libraries when available
 - Pin dependency versions in package.json
 - Regular security audits of dependencies
 
 ## Environment Setup
+
 ```json
 {
   "compilerOptions": {
@@ -217,4 +347,251 @@ crush logs [--follow] [--level=<level>]
 }
 ```
 
-Remember: Every operation that can fail should be wrapped in Effect, every async operation should use Effect.gen, and every public function should have proper TypeScript types and JSDoc documentation.
+## Inspiring Use Cases & Workflows
+
+### 🚀 Developer Productivity Workflows
+
+**The Code Review Agent:**
+
+```bash
+# Agent automatically reviews PRs, runs tests, and provides feedback
+crush agent create --name "code-reviewer" --type "ai-agent" \
+  --tools "git,shell,llm" \
+  --schedule "on-pr-created" \
+  --config '{
+    "tasks": [
+      {"type": "git", "action": "fetch-pr", "pr-number": "{{pr_number}}"},
+      {"type": "shell", "command": "npm test"},
+      {"type": "llm", "prompt": "Review this code for bugs, performance issues, and best practices"},
+      {"type": "git", "action": "comment", "body": "{{llm_response}}"}
+    ]
+  }'
+```
+
+**The Deployment Orchestrator:**
+
+```bash
+# Agent handles complete deployment pipeline with rollback capability
+crush agent create --name "deploy-master" --type "ai-agent" \
+  --tools "git,shell,docker,kubernetes,slack" \
+  --config '{
+    "tasks": [
+      {"type": "git", "action": "checkout", "branch": "main"},
+      {"type": "shell", "command": "docker build -t app:latest ."},
+      {"type": "kubernetes", "action": "deploy", "image": "app:latest"},
+      {"type": "shell", "command": "kubectl rollout status deployment/app"},
+      {"type": "slack", "message": "Deployment successful! 🚀"}
+    ],
+    "retryPolicy": {"maxRetries": 3, "backoff": "exponential"},
+    "rollbackOnFailure": true
+  }'
+```
+
+### 📧 Email Intelligence Workflows
+
+**The Smart Email Triage Agent:**
+
+```bash
+# Agent categorizes, prioritizes, and responds to emails automatically
+crush agent create --name "email-triage" --type "ai-agent" \
+  --tools "gmail,llm,calendar" \
+  --schedule "every-15-minutes" \
+  --config '{
+    "tasks": [
+      {"type": "gmail", "action": "search", "query": "is:unread"},
+      {"type": "llm", "prompt": "Categorize these emails by priority and topic"},
+      {"type": "gmail", "action": "label", "emails": "{{categorized_emails}}"},
+      {"type": "gmail", "action": "auto-reply", "template": "{{response_template}}"}
+    ]
+  }'
+```
+
+**The Meeting Scheduler Agent:**
+
+```bash
+# Agent reads emails, extracts meeting requests, and schedules them
+crush agent create --name "meeting-scheduler" --type "ai-agent" \
+  --tools "gmail,llm,calendar,zoom" \
+  --config '{
+    "tasks": [
+      {"type": "gmail", "action": "search", "query": "meeting request"},
+      {"type": "llm", "prompt": "Extract meeting details: time, attendees, topic"},
+      {"type": "calendar", "action": "check-availability", "attendees": "{{attendees}}"},
+      {"type": "zoom", "action": "create-meeting", "details": "{{meeting_details}}"},
+      {"type": "gmail", "action": "send-invite", "meeting": "{{zoom_meeting}}"}
+    ]
+  }'
+```
+
+### 📊 Data & Analytics Workflows
+
+**The Daily Report Generator:**
+
+```bash
+# Agent collects data from multiple sources and generates daily reports
+crush agent create --name "daily-reporter" --type "ai-agent" \
+  --tools "api,llm,slack,google-sheets" \
+  --schedule "daily-at-9am" \
+  --config '{
+    "tasks": [
+      {"type": "api", "url": "https://api.github.com/repos/company/repo/stats"},
+      {"type": "api", "url": "https://api.salesforce.com/opportunities"},
+      {"type": "api", "url": "https://api.mixpanel.com/events"},
+      {"type": "llm", "prompt": "Analyze this data and create executive summary"},
+      {"type": "google-sheets", "action": "update", "data": "{{analysis}}"},
+      {"type": "slack", "message": "Daily report ready: {{report_url}}"}
+    ]
+  }'
+```
+
+**The Market Research Agent:**
+
+```bash
+# Agent monitors competitors and market trends
+crush agent create --name "market-researcher" --type "ai-agent" \
+  --tools "web-scraper,llm,notion,slack" \
+  --schedule "weekly" \
+  --config '{
+    "tasks": [
+      {"type": "web-scraper", "urls": ["competitor1.com", "competitor2.com"]},
+      {"type": "api", "url": "https://api.twitter.com/search", "query": "{{keywords}}"},
+      {"type": "llm", "prompt": "Analyze market trends and competitor activity"},
+      {"type": "notion", "action": "create-page", "content": "{{analysis}}"},
+      {"type": "slack", "message": "Weekly market research complete 📊"}
+    ]
+  }'
+```
+
+### 🎨 Content Creation Workflows
+
+**The Social Media Manager:**
+
+```bash
+# Agent creates and schedules social media content
+crush agent create --name "social-manager" --type "ai-agent" \
+  --tools "llm,unsplash,twitter,linkedin" \
+  --schedule "daily-at-8am" \
+  --config '{
+    "tasks": [
+      {"type": "llm", "prompt": "Generate engaging social media post about {{topic}}"},
+      {"type": "unsplash", "action": "search-image", "query": "{{post_topic}}"},
+      {"type": "twitter", "action": "tweet", "content": "{{post}}", "image": "{{image}}"},
+      {"type": "linkedin", "action": "post", "content": "{{post}}", "image": "{{image}}"}
+    ]
+  }'
+```
+
+**The Blog Content Agent:**
+
+```bash
+# Agent researches topics and creates blog posts
+crush agent create --name "blog-writer" --type "ai-agent" \
+  --tools "web-scraper,llm,wordpress,seo" \
+  --schedule "weekly" \
+  --config '{
+    "tasks": [
+      {"type": "web-scraper", "urls": "{{research_urls}}"},
+      {"type": "llm", "prompt": "Write comprehensive blog post about {{topic}}"},
+      {"type": "seo", "action": "optimize", "content": "{{blog_post}}"},
+      {"type": "wordpress", "action": "publish", "post": "{{optimized_post}}"}
+    ]
+  }'
+```
+
+### 🔧 System Administration Workflows
+
+**The Infrastructure Monitor:**
+
+```bash
+# Agent monitors system health and takes corrective actions
+crush agent create --name "infra-monitor" --type "ai-agent" \
+  --tools "prometheus,kubernetes,slack,pagerduty" \
+  --schedule "every-5-minutes" \
+  --config '{
+    "tasks": [
+      {"type": "prometheus", "action": "query", "metrics": "cpu_usage,memory_usage"},
+      {"type": "llm", "prompt": "Analyze system metrics and identify issues"},
+      {"type": "kubernetes", "action": "scale", "when": "high_cpu"},
+      {"type": "slack", "message": "System alert: {{alert_message}}"},
+      {"type": "pagerduty", "action": "trigger", "when": "critical_issue"}
+    ]
+  }'
+```
+
+**The Security Scanner:**
+
+```bash
+# Agent performs security scans and vulnerability assessments
+crush agent create --name "security-scanner" --type "ai-agent" \
+  --tools "nmap,owasp-zap,llm,jira" \
+  --schedule "daily-at-2am" \
+  --config '{
+    "tasks": [
+      {"type": "nmap", "action": "scan", "targets": "{{server_list}}"},
+      {"type": "owasp-zap", "action": "scan", "urls": "{{web_apps}}"},
+      {"type": "llm", "prompt": "Analyze security scan results and prioritize vulnerabilities"},
+      {"type": "jira", "action": "create-tickets", "vulnerabilities": "{{high_priority_issues}}"}
+    ]
+  }'
+```
+
+### 🎯 Advanced Orchestration Examples
+
+**The Multi-Agent Workflow:**
+
+```bash
+# Orchestrate multiple agents working together
+crush automation create --name "product-launch" \
+  --agents "content-creator,marketing-manager,dev-ops" \
+  --triggers "manual" \
+  --config '{
+    "workflow": [
+      {"agent": "content-creator", "action": "create-launch-content"},
+      {"agent": "marketing-manager", "action": "schedule-campaign", "depends_on": "content-creator"},
+      {"agent": "dev-ops", "action": "deploy-production", "depends_on": "content-creator"},
+      {"agent": "marketing-manager", "action": "launch-campaign", "depends_on": "dev-ops"}
+    ]
+  }'
+```
+
+**The Adaptive Learning Agent:**
+
+```bash
+# Agent that learns from user feedback and improves over time
+crush agent create --name "adaptive-assistant" --type "ai-agent" \
+  --tools "llm,feedback-collector,model-trainer" \
+  --config '{
+    "learningEnabled": true,
+    "feedbackLoop": true,
+    "tasks": [
+      {"type": "llm", "prompt": "{{user_request}}", "model": "{{best_model}}"},
+      {"type": "feedback-collector", "action": "gather-rating"},
+      {"type": "model-trainer", "action": "update-model", "when": "low_rating"}
+    ]
+  }'
+```
+
+### 🌟 Future Vision Workflows
+
+**The Personal AI Assistant:**
+
+- Manages your entire digital life
+- Learns your preferences and patterns
+- Proactively suggests optimizations
+- Handles complex multi-step workflows
+
+**The Team Collaboration Agent:**
+
+- Facilitates team communication
+- Tracks project progress
+- Identifies bottlenecks and blockers
+- Suggests process improvements
+
+**The Business Intelligence Agent:**
+
+- Monitors KPIs across all systems
+- Identifies trends and anomalies
+- Generates actionable insights
+- Predicts future outcomes
+
+Remember: Every operation that can fail should be wrapped in Effect, every async operation should use Effect.gen, and every public function should have proper TypeScript types and JSDoc documentation. But more importantly, think about how each feature you build can enable these amazing workflows and make users' lives more productive and enjoyable.

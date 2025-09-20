@@ -17,7 +17,11 @@ export interface FileSystemContextService {
     key: { agentId: string; conversationId?: string },
     name: string,
     maxDepth?: number,
-  ) => Effect.Effect<string[], Error, FileSystem.FileSystem>;
+  ) => Effect.Effect<
+    { results: readonly string[]; warnings?: readonly string[] },
+    Error,
+    FileSystem.FileSystem
+  >;
   readonly resolvePathForMkdir: (
     key: { agentId: string; conversationId?: string },
     path: string,
@@ -96,7 +100,7 @@ export function createFileSystemContextServiceLayer(): Layer.Layer<
         startPath: string,
         targetName: string,
         maxDepth: number,
-      ): Effect.Effect<string[], Error, FileSystem.FileSystem> {
+      ): Effect.Effect<{ results: readonly string[]; warnings?: readonly string[] }, Error, never> {
         return Effect.gen(function* () {
           // Use system find command for efficiency
           const command = `find ${escapeForShell(startPath)} -maxdepth ${maxDepth} -type d -iname "*${targetName}*"`;
@@ -149,17 +153,30 @@ export function createFileSystemContextServiceLayer(): Layer.Layer<
             ),
           );
 
-          if (result.exitCode !== 0) {
-            return [];
-          }
-
           // Parse results and sort
           const results = result.stdout
             .split("\n")
             .filter((line) => line.trim())
             .sort();
 
-          return results;
+          const warnings: string[] = [];
+
+          // If no results and exit code is non-zero, capture the error for LLM interpretation
+          if (result.exitCode !== 0 && result.stderr) {
+            warnings.push(`Find command encountered issues: ${result.stderr}`);
+          }
+
+          // If we got no results but no explicit error, provide context
+          if (results.length === 0 && result.exitCode === 0) {
+            warnings.push(
+              `No directories found matching "${targetName}" in ${startPath} (max depth: ${maxDepth})`,
+            );
+          }
+
+          return {
+            results,
+            ...(warnings.length > 0 && { warnings }),
+          };
         });
       }
 
@@ -219,12 +236,12 @@ export function createFileSystemContextServiceLayer(): Layer.Layer<
                 if (targetName) {
                   // Search for directories with similar names
                   const found = yield* findDirectoryByName(base, targetName, 3);
-                  if (found.length > 0) {
-                    const suggestion = found[0];
+                  if (found.results.length > 0) {
+                    const suggestion = found.results[0];
                     throw new Error(
                       `Path not found: ${resolved}\n` +
                         `Did you mean: ${suggestion}?\n` +
-                        `Found ${found.length} similar directory${found.length > 1 ? "ies" : "y"}: ${found.join(", ")}`,
+                        `Found ${found.results.length} similar directory${found.results.length > 1 ? "ies" : "y"}: ${found.results.join(", ")}`,
                     );
                   }
                 }

@@ -225,19 +225,32 @@ describe("FileSystemContextService", () => {
     it("should find directories by name", async () => {
       const testEffect = Effect.gen(function* () {
         const shell = yield* FileSystemContextServiceTag;
-        // Set working directory to root to search for system directories
-        yield* shell.setCwd({ agentId: "test" }, "/");
+        // Create a controlled test environment
+        const testDir = "/tmp/crush-test-find-controlled";
+        const fs = yield* Effect.promise(() => import("fs/promises"));
+
+        // Create test directory structure
+        yield* Effect.promise(() => fs.mkdir(`${testDir}/bin`, { recursive: true }));
+        yield* Effect.promise(() => fs.mkdir(`${testDir}/sbin`, { recursive: true }));
+        yield* Effect.promise(() => fs.mkdir(`${testDir}/other`, { recursive: true }));
+
+        // Set working directory to our test directory
+        yield* shell.setCwd({ agentId: "test" }, testDir);
         const found = yield* shell.findDirectory({ agentId: "test" }, "bin", 2);
+
+        // Clean up
+        yield* Effect.promise(() => fs.rm(testDir, { recursive: true, force: true }));
+
         return found;
       });
 
-      const result = await Effect.runPromise(
+      const result = (await Effect.runPromise(
         testEffect.pipe(Effect.provide(createTestLayer())) as any,
-      );
+      )) as { results: string[]; warnings?: string[] };
 
-      // Should find /usr/bin and possibly other bin directories
-      expect((result as string[]).length).toBeGreaterThan(0);
-      expect((result as string[]).some((path: string) => path.includes("/bin"))).toBe(true);
+      // Should find our test bin directory
+      expect(result.results.length).toBeGreaterThan(0);
+      expect(result.results.some((path: string) => path.includes("bin"))).toBe(true);
     });
 
     it("should return empty array when no directories found", async () => {
@@ -251,11 +264,71 @@ describe("FileSystemContextService", () => {
         return found;
       });
 
-      const result = await Effect.runPromise(
+      const result = (await Effect.runPromise(
         testEffect.pipe(Effect.provide(createTestLayer())) as any,
-      );
+      )) as { results: string[]; warnings?: string[] };
 
-      expect(result).toEqual([]);
+      expect(result.results).toEqual([]);
+      expect(result.warnings).toBeDefined();
+      expect(result.warnings![0]).toContain("No directories found matching");
+    });
+
+    it("should find directories in current working directory", async () => {
+      const testEffect = Effect.gen(function* () {
+        const shell = yield* FileSystemContextServiceTag;
+        // Create a test directory structure
+        const testDir = "/tmp/crush-test-find";
+        yield* Effect.promise(() =>
+          import("fs/promises").then((fs) => fs.mkdir(`${testDir}/subdir`, { recursive: true })),
+        );
+
+        // Set working directory to our test directory
+        yield* shell.setCwd({ agentId: "test" }, testDir);
+        const found = yield* shell.findDirectory({ agentId: "test" }, "subdir", 2);
+
+        // Clean up
+        yield* Effect.promise(() =>
+          import("fs/promises").then((fs) => fs.rm(testDir, { recursive: true, force: true })),
+        );
+
+        return found;
+      });
+
+      const result = (await Effect.runPromise(
+        testEffect.pipe(Effect.provide(createTestLayer())) as any,
+      )) as { results: string[]; warnings?: string[] };
+
+      expect(result.results.length).toBeGreaterThan(0);
+      expect(result.results.some((path: string) => path.includes("subdir"))).toBe(true);
+    });
+
+    it("should handle permission errors gracefully", async () => {
+      const testEffect = Effect.gen(function* () {
+        const shell = yield* FileSystemContextServiceTag;
+        // Try to search from root, which may have permission issues in CI
+        yield* shell.setCwd({ agentId: "test" }, "/");
+        const found = yield* shell.findDirectory({ agentId: "test" }, "bin", 1);
+        return found;
+      });
+
+      const result = (await Effect.runPromise(
+        testEffect.pipe(Effect.provide(createTestLayer())) as any,
+      )) as { results: string[]; warnings?: string[] };
+
+      // Should return an object with results and potentially warnings
+      expect(result).toHaveProperty("results");
+      expect(Array.isArray(result.results)).toBe(true);
+
+      // If we get results, they should be valid paths
+      if (result.results.length > 0) {
+        expect(result.results.every((path: string) => typeof path === "string")).toBe(true);
+      }
+
+      // If there are permission issues, we should get warnings
+      if (result.warnings) {
+        expect(Array.isArray(result.warnings)).toBe(true);
+        expect(result.warnings.every((warning: string) => typeof warning === "string")).toBe(true);
+      }
     });
   });
 
