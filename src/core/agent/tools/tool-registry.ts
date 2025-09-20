@@ -40,10 +40,16 @@ export interface Tool<R = never> {
 }
 
 export interface ToolRegistry {
-  readonly registerTool: (tool: Tool<unknown>) => Effect.Effect<void, never>;
+  readonly registerTool: (tool: Tool<unknown>, category?: string) => Effect.Effect<void, never>;
+  readonly registerForCategory: (
+    category: string,
+  ) => (tool: Tool<unknown>) => Effect.Effect<void, never>;
   readonly getTool: (name: string) => Effect.Effect<Tool<unknown>, Error>;
   readonly listTools: () => Effect.Effect<readonly string[], never>;
   readonly getToolDefinitions: () => Effect.Effect<readonly ToolDefinition[], never>;
+  readonly listToolsByCategory: () => Effect.Effect<Record<string, readonly string[]>, never>;
+  readonly getToolsInCategory: (category: string) => Effect.Effect<readonly string[], never>;
+  readonly listCategories: () => Effect.Effect<readonly string[], never>;
   readonly executeTool: (
     name: string,
     args: Record<string, unknown>,
@@ -53,15 +59,24 @@ export interface ToolRegistry {
 
 class DefaultToolRegistry implements ToolRegistry {
   private tools: Map<string, Tool<unknown>>;
+  private toolCategories: Map<string, string>;
 
   constructor() {
     this.tools = new Map<string, Tool<unknown>>();
+    this.toolCategories = new Map<string, string>();
   }
 
-  registerTool(tool: Tool<unknown>): Effect.Effect<void, never> {
+  registerTool(tool: Tool<unknown>, category?: string): Effect.Effect<void, never> {
     return Effect.sync(() => {
       this.tools.set(tool.name, tool);
+      if (category) {
+        this.toolCategories.set(tool.name, category);
+      }
     });
+  }
+
+  registerForCategory(category: string): (tool: Tool<unknown>) => Effect.Effect<void, never> {
+    return (tool: Tool<unknown>) => this.registerTool(tool, category);
   }
 
   getTool(name: string): Effect.Effect<Tool<unknown>, Error> {
@@ -103,6 +118,61 @@ class DefaultToolRegistry implements ToolRegistry {
       });
 
       return definitions;
+    });
+  }
+
+  listToolsByCategory(): Effect.Effect<Record<string, readonly string[]>, never> {
+    return Effect.sync(() => {
+      const categories: Record<string, string[]> = {};
+
+      this.tools.forEach((tool, toolName) => {
+        if (!tool.hidden) {
+          const category = this.toolCategories.get(toolName) || "Other";
+          if (!categories[category]) {
+            categories[category] = [];
+          }
+          categories[category].push(toolName);
+        }
+      });
+
+      // Sort tool names within each category
+      Object.keys(categories).forEach((category) => {
+        const tools = categories[category];
+        if (tools) {
+          tools.sort();
+        }
+      });
+
+      return categories;
+    });
+  }
+
+  getToolsInCategory(category: string): Effect.Effect<readonly string[], never> {
+    return Effect.sync(() => {
+      const tools: string[] = [];
+
+      this.tools.forEach((tool, toolName) => {
+        if (!tool.hidden && this.toolCategories.get(toolName) === category) {
+          tools.push(toolName);
+        }
+      });
+
+      return tools.sort();
+    });
+  }
+
+  listCategories(): Effect.Effect<readonly string[], never> {
+    return Effect.sync(() => {
+      const categories = new Set<string>();
+
+      this.tools.forEach((tool, toolName) => {
+        if (!tool.hidden) {
+          const category = this.toolCategories.get(toolName) || "Other";
+          categories.add(category);
+        }
+      });
+
+      return Array.from(categories).sort();
     });
   }
 
@@ -206,35 +276,27 @@ export function registerTool(tool: Tool<unknown>): Effect.Effect<void, never, To
 }
 
 /**
- * Execute a tool by name with the provided arguments
+ * Create a category-scoped tool registration function
  *
- * Finds the specified tool in the registry and executes it with the given arguments
- * and context. Provides comprehensive logging of the execution process including
- * start, success, and error states.
+ * Returns a function that registers tools under a specific category.
+ * This provides a clean API for registering multiple tools in the same category
+ * without having to pass the category to each registration call.
  *
- * @param name - The name of the tool to execute
- * @param args - The arguments to pass to the tool
- * @param context - The execution context containing agent and conversation information
- * @returns An Effect that resolves to the tool execution result
- *
- * @throws {Error} When the tool is not found or execution fails
+ * @param category - The category name for the tools
+ * @returns A function that registers tools under the specified category
  *
  * @example
  * ```typescript
- * const result = yield* executeTool(
- *   "gmail_list_emails",
- *   { query: "is:unread" },
- *   { agentId: "agent-123", conversationId: "conv-456" }
- * );
+ * const registerTool = yield* registerForCategory("Email");
+ * yield* registerTool(createListEmailsTool());
+ * yield* registerTool(createSendEmailTool());
  * ```
  */
-export function executeTool(
-  name: string,
-  args: Record<string, unknown>,
-  context: ToolExecutionContext,
-): Effect.Effect<ToolExecutionResult, Error, ToolRegistry | LoggerService> {
+export function registerForCategory(
+  category: string,
+): Effect.Effect<(tool: Tool<unknown>) => Effect.Effect<void, never>, never, ToolRegistry> {
   return Effect.gen(function* () {
     const registry = yield* ToolRegistryTag;
-    return yield* registry.executeTool(name, args, context);
+    return registry.registerForCategory(category);
   });
 }

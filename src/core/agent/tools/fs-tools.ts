@@ -1423,8 +1423,8 @@ export function createFindDirTool(): Tool<FileSystem.FileSystem | FileSystemCont
           result: {
             searchTerm: args.name,
             startPath,
-            found: found,
-            count: found.length,
+            found: found.results,
+            count: found.results.length,
           },
         };
       }),

@@ -63,7 +63,7 @@ export function registerAllTools(): Effect.Effect<void, Error, ToolRegistry> {
     yield* registerFileTools();
     yield* registerShellTools();
     yield* registerGitTools();
-    yield* registerWebTools();
+    yield* registerSearchTools();
   });
 }
 
@@ -71,6 +71,7 @@ export function registerAllTools(): Effect.Effect<void, Error, ToolRegistry> {
 export function registerGmailTools(): Effect.Effect<void, Error, ToolRegistry> {
   return Effect.gen(function* () {
     const registry = yield* ToolRegistryTag;
+    const registerTool = registry.registerForCategory("Gmail");
 
     // Create Gmail tools
     const listEmailsTool = createListEmailsTool();
@@ -97,28 +98,28 @@ export function registerGmailTools(): Effect.Effect<void, Error, ToolRegistry> {
     const batchModifyEmailsTool = createBatchModifyEmailsTool();
 
     // Register Gmail tools
-    yield* registry.registerTool(listEmailsTool);
-    yield* registry.registerTool(getEmailTool);
-    yield* registry.registerTool(searchEmailsTool);
-    yield* registry.registerTool(sendEmailTool);
-    yield* registry.registerTool(trashEmailTool);
-    yield* registry.registerTool(deleteEmailTool);
+    yield* registerTool(listEmailsTool);
+    yield* registerTool(getEmailTool);
+    yield* registerTool(searchEmailsTool);
+    yield* registerTool(sendEmailTool);
+    yield* registerTool(trashEmailTool);
+    yield* registerTool(deleteEmailTool);
 
     // Register execution tools
-    yield* registry.registerTool(executeTrashEmailTool);
-    yield* registry.registerTool(executeDeleteEmailTool);
-    yield* registry.registerTool(executeDeleteLabelTool);
+    yield* registerTool(executeTrashEmailTool);
+    yield* registerTool(executeDeleteEmailTool);
+    yield* registerTool(executeDeleteLabelTool);
 
     // Register Gmail label management tools
-    yield* registry.registerTool(listLabelsTool);
-    yield* registry.registerTool(createLabelTool);
-    yield* registry.registerTool(updateLabelTool);
-    yield* registry.registerTool(deleteLabelTool);
+    yield* registerTool(listLabelsTool);
+    yield* registerTool(createLabelTool);
+    yield* registerTool(updateLabelTool);
+    yield* registerTool(deleteLabelTool);
 
     // Register Gmail email organization tools
-    yield* registry.registerTool(addLabelsToEmailTool);
-    yield* registry.registerTool(removeLabelsFromEmailTool);
-    yield* registry.registerTool(batchModifyEmailsTool);
+    yield* registerTool(addLabelsToEmailTool);
+    yield* registerTool(removeLabelsFromEmailTool);
+    yield* registerTool(batchModifyEmailsTool);
   });
 }
 
@@ -126,6 +127,7 @@ export function registerGmailTools(): Effect.Effect<void, Error, ToolRegistry> {
 export function registerFileTools(): Effect.Effect<void, Error, ToolRegistry> {
   return Effect.gen(function* () {
     const registry = yield* ToolRegistryTag;
+    const registerTool = registry.registerForCategory("File Management");
 
     const pwd = createPwdTool();
     const ls = createLsTool();
@@ -143,21 +145,21 @@ export function registerFileTools(): Effect.Effect<void, Error, ToolRegistry> {
     const writeFile = createWriteFileTool();
     const executeWriteFile = createExecuteWriteFileTool();
 
-    yield* registry.registerTool(pwd);
-    yield* registry.registerTool(ls);
-    yield* registry.registerTool(cd);
-    yield* registry.registerTool(grep);
-    yield* registry.registerTool(readFile);
-    yield* registry.registerTool(writeFile);
-    yield* registry.registerTool(find);
-    yield* registry.registerTool(finddir);
-    yield* registry.registerTool(findPath);
-    yield* registry.registerTool(stat);
-    yield* registry.registerTool(mkdir);
-    yield* registry.registerTool(executeMkdir);
-    yield* registry.registerTool(rm);
-    yield* registry.registerTool(executeRm);
-    yield* registry.registerTool(executeWriteFile);
+    yield* registerTool(pwd);
+    yield* registerTool(ls);
+    yield* registerTool(cd);
+    yield* registerTool(grep);
+    yield* registerTool(readFile);
+    yield* registerTool(writeFile);
+    yield* registerTool(find);
+    yield* registerTool(finddir);
+    yield* registerTool(findPath);
+    yield* registerTool(stat);
+    yield* registerTool(mkdir);
+    yield* registerTool(executeMkdir);
+    yield* registerTool(rm);
+    yield* registerTool(executeRm);
+    yield* registerTool(executeWriteFile);
   });
 }
 
@@ -165,12 +167,13 @@ export function registerFileTools(): Effect.Effect<void, Error, ToolRegistry> {
 export function registerShellTools(): Effect.Effect<void, Error, ToolRegistry> {
   return Effect.gen(function* () {
     const registry = yield* ToolRegistryTag;
+    const registerTool = registry.registerForCategory("Shell Commands");
 
     const executeCommandTool = createExecuteCommandTool();
     const executeCommandApprovedTool = createExecuteCommandApprovedTool();
 
-    yield* registry.registerTool(executeCommandTool);
-    yield* registry.registerTool(executeCommandApprovedTool);
+    yield* registerTool(executeCommandTool);
+    yield* registerTool(executeCommandApprovedTool);
   });
 }
 
@@ -178,6 +181,7 @@ export function registerShellTools(): Effect.Effect<void, Error, ToolRegistry> {
 export function registerGitTools(): Effect.Effect<void, Error, ToolRegistry> {
   return Effect.gen(function* () {
     const registry = yield* ToolRegistryTag;
+    const registerTool = registry.registerForCategory("Git");
 
     // Safe Git operations (no approval needed)
     const gitStatusTool = createGitStatusTool();
@@ -193,28 +197,29 @@ export function registerGitTools(): Effect.Effect<void, Error, ToolRegistry> {
     const gitCheckoutTool = createGitCheckoutTool();
 
     // Register safe tools
-    yield* registry.registerTool(gitStatusTool);
-    yield* registry.registerTool(gitLogTool);
-    yield* registry.registerTool(gitDiffTool);
-    yield* registry.registerTool(gitBranchTool);
+    yield* registerTool(gitStatusTool);
+    yield* registerTool(gitLogTool);
+    yield* registerTool(gitDiffTool);
+    yield* registerTool(gitBranchTool);
 
     // Register approval-required tools
-    yield* registry.registerTool(gitAddTool);
-    yield* registry.registerTool(gitCommitTool);
-    yield* registry.registerTool(gitPushTool);
-    yield* registry.registerTool(gitPullTool);
-    yield* registry.registerTool(gitCheckoutTool);
+    yield* registerTool(gitAddTool);
+    yield* registerTool(gitCommitTool);
+    yield* registerTool(gitPushTool);
+    yield* registerTool(gitPullTool);
+    yield* registerTool(gitCheckoutTool);
   });
 }
 
 // Register web tools (Linkup search)
-export function registerWebTools(): Effect.Effect<void, Error, ToolRegistry> {
+export function registerSearchTools(): Effect.Effect<void, Error, ToolRegistry> {
   return Effect.gen(function* () {
     const registry = yield* ToolRegistryTag;
+    const registerTool = registry.registerForCategory("Search");
 
     const linkupSearchTool = createLinkupSearchTool();
 
-    yield* registry.registerTool(linkupSearchTool);
+    yield* registerTool(linkupSearchTool);
   });
 }
 

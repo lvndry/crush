@@ -14,6 +14,7 @@ import {
   ValidationError,
 } from "../../core/types/errors";
 import type { Agent, AgentConfig } from "../../core/types/index";
+import { MarkdownRenderer } from "../../core/utils/markdown-renderer";
 import type { ConfigService } from "../../services/config";
 import type { ChatMessage } from "../../services/llm/types";
 import {
@@ -71,9 +72,9 @@ export function createAIAgentCommand(): Effect.Effect<
     // Get available agent types
     const agentTypes = yield* agentPromptBuilder.listTemplates();
 
-    // Get available tools
+    // Get available tools by category
     const toolRegistry = yield* ToolRegistryTag;
-    const tools = yield* toolRegistry.listTools();
+    const toolsByCategory = yield* toolRegistry.listToolsByCategory();
 
     // Determine provider-aware default model
     const defaultProvider = providers[0] || "openai";
@@ -83,7 +84,7 @@ export function createAIAgentCommand(): Effect.Effect<
 
     // Get agent basic information
     const agentAnswers = yield* Effect.promise(() =>
-      promptForAgentInfo(providers, agentTypes, tools, defaultProvider, defaultModel),
+      promptForAgentInfo(providers, agentTypes, toolsByCategory, defaultProvider, defaultModel),
     );
 
     // Validate the chosen model against the chosen provider
@@ -92,13 +93,20 @@ export function createAIAgentCommand(): Effect.Effect<
       ? agentAnswers.llmModel
       : chosenProvider.defaultModel || chosenProvider.supportedModels[0] || "gpt-4o-mini";
 
+    // Convert selected categories to actual tool names
+    const selectedTools: string[] = [];
+    for (const category of agentAnswers.tools) {
+      const toolsInCategory = toolsByCategory[category] || [];
+      selectedTools.push(...toolsInCategory);
+    }
+
     // Build agent configuration
     const config: AgentConfig = {
       tasks: [],
       agentType: agentAnswers.agentType,
       llmProvider: agentAnswers.llmProvider,
       llmModel: selectedModel,
-      tools: agentAnswers.tools,
+      tools: selectedTools,
       environment: {},
     };
 
@@ -117,7 +125,8 @@ export function createAIAgentCommand(): Effect.Effect<
     console.log(`   Type: ${config.agentType}`);
     console.log(`   LLM Provider: ${config.llmProvider}`);
     console.log(`   LLM Model: ${config.llmModel}`);
-    console.log(`   Tools: ${config.tools?.join(", ") || "None"}`);
+    console.log(`   Tool Categories: ${agentAnswers.tools.join(", ") || "None"}`);
+    console.log(`   Total Tools: ${selectedTools.length}`);
     console.log(`   Status: ${agent.status}`);
     console.log(`   Created: ${agent.createdAt.toISOString()}`);
 
@@ -132,7 +141,7 @@ export function createAIAgentCommand(): Effect.Effect<
 async function promptForAgentInfo(
   providers: readonly string[],
   agentTypes: readonly string[],
-  tools: readonly string[],
+  toolsByCategory: Record<string, readonly string[]>,
   defaultProvider: string,
   defaultModel: string,
 ): Promise<AIAgentCreationAnswers> {
@@ -191,8 +200,12 @@ async function promptForAgentInfo(
     {
       type: "checkbox",
       name: "tools",
-      message: "Which tools should this agent have access to?",
-      choices: tools,
+      message: "Which tool categories should this agent have access to?",
+      choices: Object.entries(toolsByCategory).map(([category, tools]) => ({
+        name: `${category} (${tools.length} ${tools.length === 1 ? "tool" : "tools"})`,
+        value: category,
+        short: category,
+      })),
       default: [],
     },
   ];
@@ -340,8 +353,7 @@ function startChatLoop(
 
         // Display the response
         console.log();
-        console.log(`🤖 ${agent.name}:`);
-        console.log(response.content);
+        console.log(MarkdownRenderer.formatAgentResponse(agent.name, response.content));
         console.log();
       } catch (error) {
         console.log();

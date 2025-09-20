@@ -17,6 +17,7 @@ import { createAgentServiceLayer } from "./core/agent/agent-service";
 import { createToolRegistrationLayer } from "./core/agent/tools/register-tools";
 import { createToolRegistryLayer } from "./core/agent/tools/tool-registry";
 import { handleError } from "./core/utils/error-handler";
+import { MarkdownRenderer } from "./core/utils/markdown-renderer";
 import { AgentConfigService, createConfigLayer } from "./services/config";
 import { createGmailServiceLayer } from "./services/gmail";
 import { createLiteLLMServiceLayer } from "./services/llm/litellm-service";
@@ -115,6 +116,8 @@ function createAppLayer() {
  */
 function main() {
   return Effect.sync(() => {
+    MarkdownRenderer.initialize();
+
     const program = new Command();
 
     program.name("crush").description("A powerful agentic automation CLI").version("0.1.0");

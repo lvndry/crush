@@ -162,6 +162,7 @@ export class FileStorageService implements StorageService {
             if (error instanceof Error && error.message.includes("ENOENT")) {
               return new StorageNotFoundError({ path });
             }
+
             return new StorageError({
               operation: "delete",
               path,
