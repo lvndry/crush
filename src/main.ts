@@ -48,7 +48,7 @@ import { StorageServiceTag } from "./services/storage/service";
 function createAppLayer() {
   const fileSystemLayer = NodeFileSystem.layer;
   const configLayer = createConfigLayer().pipe(Layer.provide(fileSystemLayer));
-  const loggerLayer = createLoggerLayer();
+  const loggerLayer = createLoggerLayer().pipe(Layer.provide(configLayer));
 
   const storageLayer = Layer.effect(
     StorageServiceTag,
@@ -137,8 +137,8 @@ function main() {
       .action(() => {
         void Effect.runPromise(
           listAgentsCommand().pipe(
-            Effect.provide(createAppLayer()),
             Effect.catchAll((error) => handleError(error)),
+            Effect.provide(createAppLayer()),
           ),
         );
       });
@@ -149,8 +149,8 @@ function main() {
       .action(() => {
         void Effect.runPromise(
           createAIAgentCommand().pipe(
-            Effect.provide(createAppLayer()),
             Effect.catchAll((error) => handleError(error)),
+            Effect.provide(createAppLayer()),
           ),
         );
       });
@@ -182,8 +182,8 @@ function main() {
         ) => {
           void Effect.runPromise(
             createAgentCommand(name, options.description || "", options).pipe(
-              Effect.provide(createAppLayer()),
               Effect.catchAll((error) => handleError(error)),
+              Effect.provide(createAppLayer()),
             ),
           );
         },
@@ -197,8 +197,8 @@ function main() {
       .action((agentId: string, options: { watch?: boolean; dryRun?: boolean }) => {
         void Effect.runPromise(
           runAgentCommand(agentId, options).pipe(
-            Effect.provide(createAppLayer()),
             Effect.catchAll((error) => handleError(error)),
+            Effect.provide(createAppLayer()),
           ),
         );
       });
@@ -209,8 +209,8 @@ function main() {
       .action((agentId: string) => {
         void Effect.runPromise(
           getAgentCommand(agentId).pipe(
-            Effect.provide(createAppLayer()),
             Effect.catchAll((error) => handleError(error)),
+            Effect.provide(createAppLayer()),
           ),
         );
       });
@@ -221,8 +221,8 @@ function main() {
       .action((agentId: string) => {
         void Effect.runPromise(
           deleteAgentCommand(agentId).pipe(
-            Effect.provide(createAppLayer()),
             Effect.catchAll((error) => handleError(error)),
+            Effect.provide(createAppLayer()),
           ),
         );
       });
@@ -233,8 +233,8 @@ function main() {
       .action((agentId: string) => {
         void Effect.runPromise(
           chatWithAIAgentCommand(agentId).pipe(
-            Effect.provide(createAppLayer()),
             Effect.catchAll((error) => handleError(error)),
+            Effect.provide(createAppLayer()),
           ),
         );
       });
@@ -326,8 +326,8 @@ function main() {
       .action(() => {
         void Effect.runPromise(
           gmailLoginCommand().pipe(
-            Effect.provide(createAppLayer()),
             Effect.catchAll((error) => handleError(error)),
+            Effect.provide(createAppLayer()),
           ),
         );
       });
@@ -338,8 +338,8 @@ function main() {
       .action(() => {
         void Effect.runPromise(
           gmailLogoutCommand().pipe(
-            Effect.provide(createAppLayer()),
             Effect.catchAll((error) => handleError(error)),
+            Effect.provide(createAppLayer()),
           ),
         );
       });
@@ -350,8 +350,8 @@ function main() {
       .action(() => {
         void Effect.runPromise(
           gmailStatusCommand().pipe(
-            Effect.provide(createAppLayer()),
             Effect.catchAll((error) => handleError(error)),
+            Effect.provide(createAppLayer()),
           ),
         );
       });

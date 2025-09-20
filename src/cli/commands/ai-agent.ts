@@ -262,7 +262,11 @@ export function chatWithAIAgentCommand(
 function initializeSession(
   agent: Agent,
   conversationId: string,
-): Effect.Effect<void, Error, FileSystemContextService | LoggerService | FileSystem.FileSystem> {
+): Effect.Effect<
+  void,
+  Error,
+  FileSystemContextService | LoggerService | FileSystem.FileSystem | ConfigService
+> {
   return Effect.gen(function* () {
     const agentKey = { agentId: agent.id, conversationId };
     const fileSystemContext = yield* FileSystemContextServiceTag;
