@@ -19,6 +19,7 @@ export class LoggerServiceImpl implements LoggerService {
       const line = formatLogLine("debug", message, meta);
 
       console.debug(line);
+      console.log();
     });
   }
 
@@ -27,6 +28,7 @@ export class LoggerServiceImpl implements LoggerService {
       const line = formatLogLine("info", message, meta);
 
       console.info(line);
+      console.log();
     });
   }
 
@@ -35,6 +37,7 @@ export class LoggerServiceImpl implements LoggerService {
       const line = formatLogLine("warn", message, meta);
 
       console.warn(line);
+      console.log();
     });
   }
 
@@ -43,6 +46,7 @@ export class LoggerServiceImpl implements LoggerService {
       const line = formatLogLine("error", message, meta);
 
       console.error(line);
+      console.log();
     });
   }
 }

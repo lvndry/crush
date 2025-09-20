@@ -1,4 +1,5 @@
 import { Effect } from "effect";
+import * as os from "os";
 import { type ChatMessage } from "../../services/llm/types";
 import { DEFAULT_PROMPT_V2 } from "./prompts/default/v2";
 import { GMAIL_PROMPT_V2 } from "./prompts/gmail/v2";
@@ -56,6 +57,30 @@ export class AgentPromptBuilder {
   }
 
   /**
+   * Get current system information including date and OS details
+   */
+  private getSystemInfo(): Effect.Effect<
+    { currentDate: string; systemInfo: string; userInfo: string; workingDirectory: string },
+    never
+  > {
+    return Effect.sync(() => {
+      const currentDate = new Date().toISOString();
+      const platform = os.platform();
+      const arch = os.arch();
+      const release = os.release();
+      const hostname = os.hostname();
+      const username = os.userInfo().username;
+      const shell = process.env["SHELL"] || "unknown";
+      const workingDirectory = process.cwd();
+
+      const systemInfo = `${platform} ${release} (${arch}) on ${hostname}`;
+      const userInfo = `${username} using ${shell.split("/").pop() || "shell"}`;
+
+      return { currentDate, systemInfo, userInfo, workingDirectory };
+    });
+  }
+
+  /**
    * Get a prompt template by name
    */
   getTemplate(name: string): Effect.Effect<AgentPromptTemplate, Error> {
@@ -88,11 +113,16 @@ export class AgentPromptBuilder {
     return Effect.gen(
       function* (this: AgentPromptBuilder) {
         const template = yield* this.getTemplate(templateName);
+        const { currentDate, systemInfo, userInfo, workingDirectory } = yield* this.getSystemInfo();
 
         // Replace placeholders in system prompt
         let systemPrompt = template.systemPrompt
           .replace("{agentName}", options.agentName)
-          .replace("{agentDescription}", options.agentDescription);
+          .replace("{agentDescription}", options.agentDescription)
+          .replace("{currentDate}", currentDate)
+          .replace("{systemInfo}", systemInfo)
+          .replace("{userInfo}", userInfo)
+          .replace("{workingDirectory}", workingDirectory);
 
         // Add tool instructions if tools are available
         if (options.toolNames && options.toolNames.length > 0) {
