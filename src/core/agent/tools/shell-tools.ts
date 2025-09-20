@@ -129,6 +129,7 @@ export function createExecuteCommandApprovedTool() {
     name: "executeCommandApproved",
     description:
       "Execute an approved shell command. This is the internal tool called after user approval.",
+    hidden: true,
     parameters: {
       type: "object",
       properties: {

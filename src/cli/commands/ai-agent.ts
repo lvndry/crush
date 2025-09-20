@@ -242,6 +242,7 @@ export function chatWithAIAgentCommand(
     console.log(`   Description: ${agent.description}`);
     console.log();
     console.log("Type 'exit' or 'quit' to end the conversation.");
+    console.log("Type '/help' to see available special commands.");
     console.log();
 
     // Start the chat loop with error logging
@@ -270,6 +271,149 @@ function initializeSession(
     yield* logger.info(`Initialized agent working directory to: ${process.cwd()}`);
   });
 }
+/**
+ * Special command types
+ */
+type SpecialCommand = {
+  type: "new" | "help" | "status" | "clear" | "tools" | "unknown";
+  args: string[];
+};
+
+/**
+ * Parse special commands from user input
+ */
+function parseSpecialCommand(input: string): SpecialCommand {
+  const trimmed = input.trim();
+
+  if (!trimmed.startsWith("/")) {
+    return { type: "unknown", args: [] };
+  }
+
+  const parts = trimmed.slice(1).split(/\s+/);
+  const command = parts[0]?.toLowerCase() || "";
+  const args = parts.slice(1);
+
+  switch (command) {
+    case "new":
+      return { type: "new", args };
+    case "help":
+      return { type: "help", args };
+    case "status":
+      return { type: "status", args };
+    case "clear":
+      return { type: "clear", args };
+    case "tools":
+      return { type: "tools", args };
+    default:
+      return { type: "unknown", args: [command, ...args] };
+  }
+}
+
+/**
+ * Handle special commands
+ */
+function handleSpecialCommand(
+  command: SpecialCommand,
+  agent: Agent,
+  conversationId: string | undefined,
+  conversationHistory: ChatMessage[],
+): Effect.Effect<
+  { shouldContinue: boolean; newConversationId?: string | undefined; newHistory?: ChatMessage[] },
+  never,
+  ToolRegistry
+> {
+  return Effect.gen(function* () {
+    switch (command.type) {
+      case "new":
+        console.log("🆕 Starting new conversation...");
+        console.log("   • Conversation context cleared");
+        console.log("   • Fresh start with the agent");
+        console.log();
+        return {
+          shouldContinue: true,
+          newConversationId: undefined,
+          newHistory: [],
+        };
+
+      case "help":
+        console.log("📖 Available special commands:");
+        console.log("   /new     - Start a new conversation (clear context)");
+        console.log("   /status  - Show current conversation status");
+        console.log("   /tools   - List all available tools by category");
+        console.log("   /clear   - Clear the screen");
+        console.log("   /help    - Show this help message");
+        console.log("   exit     - Exit the chat");
+        console.log();
+        return { shouldContinue: true };
+
+      case "status":
+        console.log("📊 Conversation Status:");
+        console.log(`   Agent: ${agent.name} (${agent.id})`);
+        console.log(`   Conversation ID: ${conversationId || "Not started"}`);
+        console.log(`   Messages in history: ${conversationHistory.length}`);
+        console.log(`   Agent type: ${agent.config.agentType}`);
+        console.log(`   LLM: ${agent.config.llmProvider}/${agent.config.llmModel}`);
+        console.log(`   Tools: ${agent.config.tools?.length || 0} available`);
+        console.log();
+        return { shouldContinue: true };
+
+      case "tools": {
+        const toolRegistry = yield* ToolRegistryTag;
+        const toolsByCategory = yield* toolRegistry.listToolsByCategory();
+
+        console.log("🔧 Available Tools by Category:");
+        console.log();
+
+        if (Object.keys(toolsByCategory).length === 0) {
+          console.log("   No tools available.");
+        } else {
+          // Sort categories alphabetically
+          const sortedCategories = Object.keys(toolsByCategory).sort();
+
+          for (const category of sortedCategories) {
+            const tools = toolsByCategory[category];
+            if (tools && tools.length > 0) {
+              console.log(
+                `   📁 ${category} (${tools.length} ${tools.length === 1 ? "tool" : "tools"}):`,
+              );
+              for (const tool of tools) {
+                console.log(`      • ${tool}`);
+              }
+              console.log();
+            }
+          }
+
+          // Show total count
+          const totalTools = Object.values(toolsByCategory).reduce(
+            (sum, tools) => sum + (tools?.length || 0),
+            0,
+          );
+          console.log(`   Total: ${totalTools} tools across ${sortedCategories.length} categories`);
+        }
+        console.log();
+        return { shouldContinue: true };
+      }
+
+      case "clear":
+        console.clear();
+        console.log(`🤖 Chat with ${agent.name} - Screen cleared`);
+        console.log("Type 'exit' or 'quit' to end the conversation.");
+        console.log("Type '/help' to see available commands.");
+        console.log();
+        return { shouldContinue: true };
+
+      case "unknown":
+        console.log(`❓ Unknown command: /${command.args.join(" ")}`);
+        console.log("Type '/help' to see available commands.");
+        console.log();
+        return { shouldContinue: true };
+
+      default:
+        return { shouldContinue: true };
+    }
+  });
+}
+
 /**
  * Chat loop for interacting with the AI agent
  */
@@ -314,7 +458,29 @@ function startChatLoop(
 
       // Ignore empty messages with a gentle hint
       if (!userMessage || userMessage.trim().length === 0) {
-        console.log("(Tip) Type a message and press Enter, or 'exit' to quit.");
+        console.log(
+          "(Tip) Type a message and press Enter, '/help' for commands, or 'exit' to quit.",
+        );
+        continue;
+      }
+
+      // Check for special commands
+      const specialCommand = parseSpecialCommand(userMessage);
+      if (specialCommand.type !== "unknown") {
+        const commandResult = yield* handleSpecialCommand(
+          specialCommand,
+          agent,
+          conversationId,
+          conversationHistory,
+        );
+
+        if (commandResult.newConversationId !== undefined) {
+          conversationId = commandResult.newConversationId;
+        }
+        if (commandResult.newHistory !== undefined) {
+          conversationHistory = commandResult.newHistory;
+        }
+
         continue;
       }
 
