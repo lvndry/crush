@@ -28,7 +28,11 @@ import { LoggerServiceTag, type LoggerService } from "../../services/logger";
 import { FileSystemContextServiceTag, type FileSystemContextService } from "../../services/shell";
 
 /**
- * CLI commands for AI agent management
+ * CLI commands for AI-powered chat agent management
+ *
+ * These commands handle conversational AI agents that can interact with users through
+ * natural language chat interfaces. They integrate with LLM providers and support
+ * interactive creation wizards, real-time chat, and tool usage.
  */
 
 interface AIAgentCreationAnswers {
@@ -77,14 +81,11 @@ export function createAIAgentCommand(): Effect.Effect<
     const toolsByCategory = yield* toolRegistry.listToolsByCategory();
 
     // Determine provider-aware default model
-    const defaultProvider = providers[0] || "openai";
-    const providerInfo = yield* llmService.getProvider(defaultProvider);
-    const defaultModel =
-      providerInfo.defaultModel || providerInfo.supportedModels[0] || "gpt-4o-mini";
+    const llmProvider = providers[0] || "openai";
 
     // Get agent basic information
     const agentAnswers = yield* Effect.promise(() =>
-      promptForAgentInfo(providers, agentTypes, toolsByCategory, defaultProvider, defaultModel),
+      promptForAgentInfo(providers, agentTypes, toolsByCategory, llmProvider, llmService),
     );
 
     // Validate the chosen model against the chosen provider
@@ -143,9 +144,10 @@ async function promptForAgentInfo(
   agentTypes: readonly string[],
   toolsByCategory: Record<string, readonly string[]>,
   defaultProvider: string,
-  defaultModel: string,
+  llmService: LLMService,
 ): Promise<AIAgentCreationAnswers> {
-  const questions = [
+  // First, get basic information and provider
+  const basicQuestions = [
     {
       type: "input",
       name: "name",
@@ -191,11 +193,29 @@ async function promptForAgentInfo(
       choices: providers,
       default: defaultProvider,
     },
+  ];
+
+  // @ts-expect-error - inquirer types are not matching correctly
+  const basicAnswers = (await inquirer.prompt(basicQuestions)) as Pick<
+    AIAgentCreationAnswers,
+    "name" | "description" | "agentType" | "llmProvider"
+  >;
+
+  // Now get the models for the chosen provider
+  const chosenProviderInfo = await Effect.runPromise(
+    llmService.getProvider(basicAnswers.llmProvider),
+  );
+
+  const modelDefault =
+    chosenProviderInfo.defaultModel || chosenProviderInfo.supportedModels[0] || "gpt-4o-mini";
+
+  const finalQuestions = [
     {
-      type: "input",
+      type: "list",
       name: "llmModel",
       message: "Which model would you like to use?",
-      default: defaultModel,
+      choices: chosenProviderInfo.supportedModels,
+      default: modelDefault,
     },
     {
       type: "checkbox",
@@ -211,8 +231,16 @@ async function promptForAgentInfo(
   ];
 
   // @ts-expect-error - inquirer types are not matching correctly
-  const answers = (await inquirer.prompt(questions)) as AIAgentCreationAnswers;
-  return answers;
+  const finalAnswers = (await inquirer.prompt(finalQuestions)) as Pick<
+    AIAgentCreationAnswers,
+    "llmModel" | "tools"
+  >;
+
+  // Combine all answers
+  return {
+    ...basicAnswers,
+    ...finalAnswers,
+  };
 }
 
 /**
