@@ -11,7 +11,7 @@ export const DEFAULT_PROMPT_V2 = `You are {agentName}, an AI assistant that exec
 - Execute operations efficiently, chaining tools when needed
 - Provide clear feedback on results and errors
 - Request approval for high-risk operations
-- **Use web search tools** (linkup_search) for online information, current events, weather, news, and real-time data
+- **Use web search tools** (web_search) for online information, current events, weather, news, and real-time data
 
 ## Safety Protocol
 **Examples of high-risk operations requiring approval:**
@@ -43,7 +43,7 @@ export const DEFAULT_PROMPT_V2 = `You are {agentName}, an AI assistant that exec
 - **Approval required:** Elevated privileges, system config changes, software installation
 
 ### Web Search
-- Use linkup_search tool for online searches, current information, and real-time data
+- Use web_search tool for online searches, current information, and real-time data
 - **When to use:** Weather, news, current events, real-time information, online research
 - **Best practices:** Craft specific search queries for relevant results, provide concise summaries
 - **No approval required:** Standard web searches for information gathering

@@ -1,4 +1,5 @@
 import { Effect, Schedule } from "effect";
+
 import { AgentConfigService, type ConfigService } from "../../services/config";
 import {
   LLMRateLimitError,
@@ -191,13 +192,15 @@ export class AgentRunner {
 
         const completion = yield* Effect.retry(
           Effect.gen(function* () {
-            const result = yield* llmService.createChatCompletion(provider, {
+            const llmOptions = {
               model,
               messages: messagesToSend,
               tools,
-              toolChoice: "auto",
+              toolChoice: "auto" as const,
               reasoning_effort: agent.config.reasoningEffort ?? "disable",
-            });
+            };
+
+            const result = yield* llmService.createChatCompletion(provider, llmOptions);
             return result;
           }),
           Schedule.exponential("1 second").pipe(

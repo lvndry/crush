@@ -227,53 +227,6 @@ export interface LinkupConfig {
   readonly timeout?: number;
 }
 
-// Schema definitions for runtime validation
-export const AgentSchema = Schema.Struct({
-  id: Schema.String,
-  name: Schema.String,
-  description: Schema.String,
-  config: Schema.Struct({
-    tasks: Schema.Array(
-      Schema.Struct({
-        id: Schema.String,
-        name: Schema.String,
-        description: Schema.String,
-        type: Schema.Literal("command", "script", "api", "file", "webhook", "custom", "gmail"),
-        config: Schema.Record({ key: Schema.String, value: Schema.Unknown }),
-        dependencies: Schema.optional(Schema.Array(Schema.String)),
-        retryCount: Schema.optional(Schema.Number),
-        maxRetries: Schema.optional(Schema.Number),
-      }),
-    ),
-    schedule: Schema.optional(
-      Schema.Struct({
-        type: Schema.Literal("cron", "interval", "once"),
-        value: Schema.Union(Schema.String, Schema.Number),
-        timezone: Schema.optional(Schema.String),
-        enabled: Schema.Boolean,
-      }),
-    ),
-    retryPolicy: Schema.optional(
-      Schema.Struct({
-        maxRetries: Schema.Number,
-        backoff: Schema.Literal("linear", "exponential", "fixed"),
-        delay: Schema.Number,
-        maxDelay: Schema.optional(Schema.Number),
-      }),
-    ),
-    timeout: Schema.optional(Schema.Number),
-    environment: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.String })),
-    // LLM agent fields
-    agentType: Schema.optional(Schema.String),
-    llmProvider: Schema.optional(Schema.String),
-    llmModel: Schema.optional(Schema.String),
-    tools: Schema.optional(Schema.Array(Schema.String)),
-  }),
-  status: Schema.Literal("idle", "running", "paused", "error", "completed"),
-  createdAt: Schema.Date,
-  updatedAt: Schema.Date,
-});
-
 export const TaskSchema = Schema.Struct({
   id: Schema.String,
   name: Schema.String,
