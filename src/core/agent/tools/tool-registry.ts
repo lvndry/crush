@@ -1,4 +1,5 @@
 import { Context, Effect, Layer } from "effect";
+import type { ConfigService } from "../../../services/config";
 import { type ToolDefinition } from "../../../services/llm/types";
 import {
   type LoggerService,
@@ -54,7 +55,7 @@ export interface ToolRegistry {
     name: string,
     args: Record<string, unknown>,
     context: ToolExecutionContext,
-  ) => Effect.Effect<ToolExecutionResult, Error, ToolRegistry | LoggerService>;
+  ) => Effect.Effect<ToolExecutionResult, Error, ToolRegistry | LoggerService | ConfigService>;
 }
 
 class DefaultToolRegistry implements ToolRegistry {
@@ -180,7 +181,7 @@ class DefaultToolRegistry implements ToolRegistry {
     name: string,
     args: Record<string, unknown>,
     context: ToolExecutionContext,
-  ): Effect.Effect<ToolExecutionResult, Error, ToolRegistry | LoggerService> {
+  ): Effect.Effect<ToolExecutionResult, Error, ToolRegistry | LoggerService | ConfigService> {
     return Effect.gen(
       function* (this: DefaultToolRegistry) {
         const start = Date.now();

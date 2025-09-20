@@ -59,7 +59,7 @@ export class AgentRunner {
     LLMService | ToolRegistry | LoggerService | ConfigService
   > {
     return Effect.gen(function* () {
-      const { agent, userInput, conversationId, userId, maxIterations = 5 } = options;
+      const { agent, userInput, conversationId, userId, maxIterations = 8 } = options;
 
       // Get services
       const llmService = yield* LLMServiceTag;
@@ -441,7 +441,7 @@ export function executeTool(
   name: string,
   args: Record<string, unknown>,
   context: ToolExecutionContext,
-): Effect.Effect<ToolExecutionResult, Error, ToolRegistry | LoggerService> {
+): Effect.Effect<ToolExecutionResult, Error, ToolRegistry | LoggerService | ConfigService> {
   return Effect.gen(function* () {
     const registry = yield* ToolRegistryTag;
     return yield* registry.executeTool(name, args, context);
