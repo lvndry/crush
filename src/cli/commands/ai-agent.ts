@@ -200,7 +200,7 @@ async function promptForAgentInfo(
     {
       type: "checkbox",
       name: "tools",
-      message: "Which tool categories should this agent have access to?",
+      message: "Which tools should this agent have access to?",
       choices: Object.entries(toolsByCategory).map(([category, tools]) => ({
         name: `${category} (${tools.length} ${tools.length === 1 ? "tool" : "tools"})`,
         value: category,
