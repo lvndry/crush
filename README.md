@@ -95,8 +95,6 @@ Jazz looks for configuration files in the following order:
 Create a `.jazz/config.json` in your home directory:
 
 ```json
-// ~/.jazz/config.js
-
 {
   "google": {
     "clientId": "your-google-client-id.apps.googleusercontent.com",
@@ -176,6 +174,24 @@ jazz auth gmail logout
 ```
 
 **Token Storage**: Authentication tokens are automatically stored in `.jazz/google/gmail-token.json` and managed securely by Jazz.
+
+### Linkup Integration
+
+Jazz integrates with [Linkup](https://www.linkup.so/) to provide powerful search capabilities across your connected services and data sources.
+
+#### 🔍 Linkup Search Tool
+
+The Linkup search tool allows agents to search on the web
+
+#### Configuration
+
+```json
+{
+  "linkup": {
+    "api_key": "<your_linkup_api_key>"
+  }
+}
+```
 
 ```bash
 # Run with verbose logging to see configuration details
