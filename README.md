@@ -21,35 +21,15 @@ Jazz is a command-line tool designed to help you create, manage, and execute aut
 
 ## 🚀 Quick Start
 
-### Prerequisites
-
-- Node.js 18.0.0 or higher
-- Bun (recommended) or npm/yarn
-
 ### Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/lvndry/jazz.git
-cd jazz
+bun add -g jazz-cli
 
-# Install dependencies
-bun install
-
-# Build the project
-bun run build
-
-# Install globally (optional)
-bun run build && npm link
-
-# Alternative: Run directly without global installation
-bun run src/main.ts
+jazz --help
 ```
 
 ### Basic Usage
-
-> [!TIP]
-> If you haven't installed `jazz` globally with `npm link`, you can run commands directly using: `bun run src/main.ts` from the root of the repository.
 
 ```bash
 # Create your first agent
@@ -76,15 +56,17 @@ Jazz uses a JSON configuration file to manage application settings, API keys, an
 
 Jazz looks for configuration files in the following order:
 
-1. **Environment Variable**: `JAZZ_CONFIG_PATH` (if set)
+1. **Environment Variable**: `JAZZ_CONFIG_PATH`
 2. **Current Directory**: `./jazz.config.json`
 3. **Home Directory**: `~/.jazz/config.json`
 
 ### Basic Configuration
 
-Create a `jazz.config.json` file in your project root or home directory:
+Create a `.jazz/config.json` in your home directory:
 
 ```json
+// ~/.jazz/config.js
+
 {
   "google": {
     "clientId": "your-google-client-id.apps.googleusercontent.com",

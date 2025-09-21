@@ -1,9 +1,8 @@
 {
-  "name": "jazz",
+  "name": "jazz-cli",
   "version": "0.1.0",
   "description": "A powerful agentic automation CLI for managing agentic loops in daily life workflows",
   "main": "dist/main.js",
-  "type": "module",
   "bin": {
     "jazz": "./dist/main.js"
   },
@@ -36,6 +35,14 @@
     "url": "https://github.com/lvndry"
   },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lvndry/jazz.git"
+  },
+  "homepage": "https://github.com/lvndry/jazz#readme",
+  "bugs": {
+    "url": "https://github.com/lvndry/jazz/issues"
+  },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.17",
     "@ai-sdk/google": "^2.0.14",
@@ -74,6 +81,12 @@
     "typescript": "^5.9.2"
   },
   "engines": {
-    "node": ">=18.0.0"
-  }
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ]
 }
