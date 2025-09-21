@@ -4,7 +4,6 @@
     "clientSecret": "1234567890"
   },
   "llm": {
-    "defaultProvider": "openai",
     "openai": {
       "api_key": "sk-openai-..."
     },
@@ -15,7 +14,7 @@
       "api_key": "AIza-..."
     },
     "mistral": {
-      "api_key": "mist-..."
+      "api_key": "Mb9hE..."
     }
   },
   "linkup": {

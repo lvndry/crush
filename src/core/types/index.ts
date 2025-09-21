@@ -203,7 +203,6 @@ export interface LLMProviderConfig {
 }
 
 export interface LLMConfig {
-  readonly defaultProvider?: string;
   readonly openai?: LLMProviderConfig;
   readonly anthropic?: LLMProviderConfig;
   readonly gemini?: LLMProviderConfig;

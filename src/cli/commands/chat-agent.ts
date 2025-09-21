@@ -81,12 +81,9 @@ export function createAIAgentCommand(): Effect.Effect<
     const toolRegistry = yield* ToolRegistryTag;
     const toolsByCategory = yield* toolRegistry.listToolsByCategory();
 
-    // Determine provider-aware default model
-    const llmProvider = providers[0] || "openai";
-
     // Get agent basic information
     const agentAnswers = yield* Effect.promise(() =>
-      promptForAgentInfo(providers, agentTypes, toolsByCategory, llmProvider, llmService),
+      promptForAgentInfo(providers, agentTypes, toolsByCategory, llmService),
     );
 
     // Validate the chosen model against the chosen provider
@@ -146,7 +143,6 @@ async function promptForAgentInfo(
   providers: readonly string[],
   agentTypes: readonly string[],
   toolsByCategory: Record<string, readonly string[]>,
-  defaultProvider: string,
   llmService: LLMService,
 ): Promise<AIAgentCreationAnswers> {
   // First, get basic information and provider
@@ -194,7 +190,7 @@ async function promptForAgentInfo(
       name: "llmProvider",
       message: "Which LLM provider would you like to use?",
       choices: providers,
-      default: defaultProvider,
+      default: providers[0],
     },
   ];
 

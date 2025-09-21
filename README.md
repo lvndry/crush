@@ -91,7 +91,6 @@ Create a `jazz.config.json` file in your project root or home directory:
     "clientSecret": "your-google-client-secret"
   },
   "llm": {
-    "defaultProvider": "openai",
     "openai": {
       "api_key": "sk-your-openai-api-key"
     },
@@ -133,7 +132,6 @@ Configure model providers for AI agents:
 ```json
 {
   "llm": {
-    "defaultProvider": "openai",
     "openai": {
       "api_key": "sk-your-openai-api-key"
     },

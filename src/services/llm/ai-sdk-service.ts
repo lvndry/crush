@@ -34,7 +34,6 @@ import {
 } from "./types";
 
 interface AISDKConfig {
-  defaultProvider: string;
   apiKeys: Record<string, string>;
 }
 
@@ -419,9 +418,7 @@ export function createAISDKServiceLayer(): Layer.Layer<
         );
       }
 
-      const defaultProvider = appConfig.llm?.defaultProvider || (providers[0] as string);
-
-      const cfg: AISDKConfig = { defaultProvider, apiKeys };
+      const cfg: AISDKConfig = { apiKeys };
       return new DefaultAISDKService(cfg);
     }),
   );
