@@ -1,4 +1,4 @@
-# Contributing to crush
+# Contributing to jazz
 
 Thanks for your interest in contributing! This guide explains how to set up your environment, follow the code style, write tests, and submit changes.
 
@@ -113,4 +113,4 @@ CI runs lint and build on pushes to `main` and on pull requests (see `.github/wo
 
 By contributing, you agree that your contributions are licensed under the MIT License included in this repository.
 
-Thanks again for helping improve crush! If you have questions, open an issue or discussion.
+Thanks again for helping improve jazz! If you have questions, open an issue or discussion.

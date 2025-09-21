@@ -104,7 +104,7 @@ export function requireConfigValue<T>(key: string): Effect.Effect<T, never, Conf
 // -----------------
 
 function defaultConfig(): AppConfig {
-  const storage: StorageConfig = { type: "file", path: "./.crush" };
+  const storage: StorageConfig = { type: "file", path: "./.jazz" };
   const logging: LoggingConfig = { level: "info", format: "pretty", output: "console" };
   const security: SecurityConfig = {};
   const performance: PerformanceConfig = {
@@ -167,11 +167,11 @@ function loadConfigFile(fs: FileSystem.FileSystem): Effect.Effect<
   never
 > {
   return Effect.gen(function* () {
-    const envConfigPath = process.env["CRUSH_CONFIG_PATH"];
+    const envConfigPath = process.env["JAZZ_CONFIG_PATH"];
     const candidates: readonly string[] = [
       envConfigPath ? expandHome(envConfigPath) : "",
-      `${process.cwd()}/crush.config.json`,
-      `${expandHome("~/.crush")}/config.json`,
+      `${process.cwd()}/jazz.config.json`,
+      `${expandHome("~/.jazz")}/config.json`,
     ].filter(Boolean);
 
     for (const path of candidates) {

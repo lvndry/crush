@@ -1,6 +1,6 @@
 # Examples and Tutorials
 
-This document provides practical examples and tutorials for using Crush in real-world scenarios.
+This document provides practical examples and tutorials for using Jazz in real-world scenarios.
 
 ## 🚀 Quick Start Examples
 
@@ -10,16 +10,16 @@ Create a simple agent that performs a basic task:
 
 ```bash
 # Create your first agent
-crush agent create hello-world --description "My first Crush agent"
+jazz agent create hello-world --description "My first Jazz agent"
 
 # List agents to see what was created
-crush agent list
+jazz agent list
 
 # Get details about the agent
-crush agent get <agent-id>
+jazz agent get <agent-id>
 
 # Run the agent (dry run to see what would happen)
-crush agent run <agent-id> --dry-run
+jazz agent run <agent-id> --dry-run
 ```
 
 **Expected Output:**
@@ -28,14 +28,14 @@ crush agent run <agent-id> --dry-run
 ✅ Agent created successfully!
    ID: 1724243d-344e-42ec-97e8-e53a2c8fd9d8
    Name: hello-world
-   Description: My first Crush agent
+   Description: My first Jazz agent
    Status: idle
    Created: 2024-01-15T10:30:00.000Z
 
 Found 1 agent(s):
 
 1. hello-world (1724243d-344e-42ec-97e8-e53a2c8fd9d8)
-   Description: My first Crush agent
+   Description: My first Jazz agent
    Status: idle
    Tasks: 0
    Created: 2024-01-15T10:30:00.000Z
@@ -47,7 +47,7 @@ Found 1 agent(s):
 Create an agent with custom timeout and retry settings:
 
 ```bash
-crush agent create robust-agent \
+jazz agent create robust-agent \
   --description "Agent with custom retry policy" \
   --timeout 60000 \
   --max-retries 5 \
@@ -76,7 +76,7 @@ Create an agent that performs daily database backups:
 
 ```bash
 # Create the backup agent
-crush agent create db-backup \
+jazz agent create db-backup \
   --description "Daily database backup agent" \
   --timeout 1800000 \
   --max-retries 3 \
@@ -156,7 +156,7 @@ Create an agent that processes incoming data files:
 
 ```bash
 # Create the data processing agent
-crush agent create data-processor \
+jazz agent create data-processor \
   --description "Process incoming data files" \
   --timeout 3600000 \
   --max-retries 2
@@ -290,7 +290,7 @@ Create an agent that monitors API health and performance:
 
 ```bash
 # Create the API monitoring agent
-crush agent create api-monitor \
+jazz agent create api-monitor \
   --description "Monitor API health and performance" \
   --timeout 300000 \
   --max-retries 5 \
@@ -441,16 +441,16 @@ Create a configuration file for production:
 {
   "storage": {
     "type": "file",
-    "path": "/var/lib/crush/data"
+    "path": "/var/lib/jazz/data"
   },
   "logging": {
     "level": "info",
     "format": "json",
     "output": "both",
-    "filePath": "/var/log/crush/crush.log"
+    "filePath": "/var/log/jazz/jazz.log"
   },
   "security": {
-    "encryptionKey": "${CRUSH_ENCRYPTION_KEY}",
+    "encryptionKey": "${JAZZ_ENCRYPTION_KEY}",
     "rateLimit": {
       "requests": 1000,
       "window": 60000
@@ -473,22 +473,22 @@ Create multiple agents that work together:
 
 ```bash
 # Create data collection agent
-crush agent create data-collector \
+jazz agent create data-collector \
   --description "Collect data from various sources" \
   --timeout 1800000
 
 # Create data processor agent
-crush agent create data-processor \
+jazz agent create data-processor \
   --description "Process collected data" \
   --timeout 3600000
 
 # Create report generator agent
-crush agent create report-generator \
+jazz agent create report-generator \
   --description "Generate reports from processed data" \
   --timeout 900000
 
 # Create notification agent
-crush agent create notifier \
+jazz agent create notifier \
   --description "Send notifications and alerts" \
   --timeout 300000
 ```
@@ -497,10 +497,10 @@ crush agent create notifier \
 
 ```bash
 # Run agents in sequence
-crush agent run <data-collector-id>
-crush agent run <data-processor-id>
-crush agent run <report-generator-id>
-crush agent run <notifier-id>
+jazz agent run <data-collector-id>
+jazz agent run <data-processor-id>
+jazz agent run <report-generator-id>
+jazz agent run <notifier-id>
 ```
 
 ### Example 2: Environment-Specific Agents
@@ -509,17 +509,17 @@ Create agents for different environments:
 
 ```bash
 # Development environment
-crush agent create dev-backup \
+jazz agent create dev-backup \
   --description "Development database backup" \
   --timeout 300000
 
 # Staging environment
-crush agent create staging-backup \
+jazz agent create staging-backup \
   --description "Staging database backup" \
   --timeout 600000
 
 # Production environment
-crush agent create prod-backup \
+jazz agent create prod-backup \
   --description "Production database backup" \
   --timeout 1800000
 ```
@@ -530,17 +530,17 @@ Create agents for different time-based operations:
 
 ```bash
 # Daily operations
-crush agent create daily-cleanup \
+jazz agent create daily-cleanup \
   --description "Daily cleanup operations" \
   --timeout 900000
 
 # Weekly operations
-crush agent create weekly-backup \
+jazz agent create weekly-backup \
   --description "Weekly backup operations" \
   --timeout 3600000
 
 # Monthly operations
-crush agent create monthly-report \
+jazz agent create monthly-report \
   --description "Monthly report generation" \
   --timeout 1800000
 ```
@@ -551,26 +551,26 @@ crush agent create monthly-report \
 
 ```bash
 # Enable verbose logging
-crush --verbose agent create test-agent --description "Test agent for debugging"
+jazz --verbose agent create test-agent --description "Test agent for debugging"
 
 # Check agent details
-crush agent get <agent-id>
+jazz agent get <agent-id>
 
 # Run in dry-run mode
-crush agent run <agent-id> --dry-run
+jazz agent run <agent-id> --dry-run
 ```
 
 ### Example 2: Handling Errors
 
 ```bash
 # Try to create agent with invalid name
-crush agent create "invalid name with spaces"
+jazz agent create "invalid name with spaces"
 
 # Expected error:
 # ❌ Validation error: Agent name can only contain letters, numbers, underscores, and hyphens
 
 # Try to get non-existent agent
-crush agent get non-existent-id
+jazz agent get non-existent-id
 
 # Expected error:
 # ❌ Agent with ID "non-existent-id" not found
@@ -580,7 +580,7 @@ crush agent get non-existent-id
 
 ```bash
 # Try to create agent with invalid timeout
-crush agent create test-agent --timeout 500
+jazz agent create test-agent --timeout 500
 
 # Expected error:
 # ❌ Configuration error: Timeout must be between 1000ms and 3600000ms (1 hour)
@@ -592,46 +592,46 @@ crush agent create test-agent --timeout 500
 
 ```bash
 # List all agents with their status
-crush agent list
+jazz agent list
 
 # Get detailed information about a specific agent
-crush agent get <agent-id>
+jazz agent get <agent-id>
 
 # Monitor agent execution
-crush agent run <agent-id> --watch
+jazz agent run <agent-id> --watch
 ```
 
 ### Example 2: Log Monitoring
 
 ```bash
 # View recent logs
-crush logs
+jazz logs
 
 # Follow logs in real-time
-crush logs --follow
+jazz logs --follow
 
 # View only error logs
-crush logs --level error
+jazz logs --level error
 
 # View debug logs
-crush logs --level debug --follow
+jazz logs --level debug --follow
 ```
 
 ## 🔧 Integration Examples
 
 ### Example 1: Shell Script Integration
 
-Create a shell script that uses Crush:
+Create a shell script that uses jazz:
 
 ```bash
 #!/bin/bash
 
-# backup.sh - Database backup script using Crush
+# backup.sh - Database backup script using jazz
 
 echo "Starting database backup process..."
 
 # Create backup agent
-AGENT_ID=$(crush agent create db-backup \
+AGENT_ID=$(jazz agent create db-backup \
   --description "Automated database backup" \
   --timeout 1800000 \
   --max-retries 3 | grep "ID:" | cut -d' ' -f3)
@@ -639,14 +639,14 @@ AGENT_ID=$(crush agent create db-backup \
 echo "Created backup agent: $AGENT_ID"
 
 # Run backup
-crush agent run $AGENT_ID
+jazz agent run $AGENT_ID
 
 # Check exit code
 if [ $? -eq 0 ]; then
     echo "Backup completed successfully"
 
     # Clean up agent
-    crush agent delete $AGENT_ID
+    jazz agent delete $AGENT_ID
     echo "Cleaned up backup agent"
 else
     echo "Backup failed"
@@ -656,11 +656,11 @@ fi
 
 ### Example 2: CI/CD Integration
 
-Create a CI/CD pipeline that uses Crush:
+Create a CI/CD pipeline that uses jazz:
 
 ```yaml
 # .github/workflows/deploy.yml
-name: Deploy with Crush
+name: Deploy with jazz
 
 on:
   push:
@@ -678,25 +678,25 @@ jobs:
         with:
           node-version: "18"
 
-      - name: Install Crush
-        run: npm install -g crush
+      - name: Install jazz
+        run: npm install -g jazz
 
       - name: Create deployment agent
         run: |
-          crush agent create deploy-agent \
+          jazz agent create deploy-agent \
             --description "Deployment automation agent" \
             --timeout 1800000
 
       - name: Run deployment
         run: |
-          AGENT_ID=$(crush agent list | grep "deploy-agent" | cut -d'(' -f2 | cut -d')' -f1)
-          crush agent run $AGENT_ID
+          AGENT_ID=$(jazz agent list | grep "deploy-agent" | cut -d'(' -f2 | cut -d')' -f1)
+          jazz agent run $AGENT_ID
 
       - name: Cleanup
         if: always()
         run: |
-          AGENT_ID=$(crush agent list | grep "deploy-agent" | cut -d'(' -f2 | cut -d')' -f1)
-          crush agent delete $AGENT_ID
+          AGENT_ID=$(jazz agent list | grep "deploy-agent" | cut -d'(' -f2 | cut -d')' -f1)
+          jazz agent delete $AGENT_ID
 ```
 
 ## 📚 Best Practices Examples
@@ -705,22 +705,22 @@ jobs:
 
 ```bash
 # Good naming examples
-crush agent create daily-backup
-crush agent create api-monitor
-crush agent create data-processor
-crush agent create report-generator
+jazz agent create daily-backup
+jazz agent create api-monitor
+jazz agent create data-processor
+jazz agent create report-generator
 
 # Bad naming examples (avoid)
-crush agent create "my agent"  # Spaces not allowed
-crush agent create agent1      # Not descriptive
-crush agent create test        # Too generic
+jazz agent create "my agent"  # Spaces not allowed
+jazz agent create agent1      # Not descriptive
+jazz agent create test        # Too generic
 ```
 
 ### Example 2: Configuration Best Practices
 
 ```bash
 # Good configuration
-crush agent create robust-agent \
+jazz agent create robust-agent \
   --description "Agent with proper timeout and retry settings" \
   --timeout 300000 \
   --max-retries 3 \
@@ -728,7 +728,7 @@ crush agent create robust-agent \
   --retry-backoff exponential
 
 # Bad configuration (avoid)
-crush agent create bad-agent \
+jazz agent create bad-agent \
   --timeout 500 \        # Too short
   --max-retries 20 \     # Too many retries
   --retry-delay 10       # Too short delay
@@ -743,16 +743,16 @@ crush agent create bad-agent \
 set -e  # Exit on any error
 
 # Create agent with error handling
-if ! crush agent create my-agent --description "My agent"; then
+if ! jazz agent create my-agent --description "My agent"; then
     echo "Failed to create agent"
     exit 1
 fi
 
 # Run agent with error handling
-if ! crush agent run <agent-id>; then
+if ! jazz agent run <agent-id>; then
     echo "Agent execution failed"
     # Cleanup on failure
-    crush agent delete <agent-id>
+    jazz agent delete <agent-id>
     exit 1
 fi
 

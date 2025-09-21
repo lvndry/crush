@@ -1,4 +1,4 @@
-# Crush TODO
+# Jazz TODO
 
 ## 🎯 Current Priority: Task Execution Engine
 
@@ -6,7 +6,7 @@
 
 ### ✅ **Storage System (Complete)**
 
-- Agents are persisted to `./.crush/agents/` as JSON files
+- Agents are persisted to `./.jazz/agents/` as JSON files
 - Full CRUD operations working
 - File-based and in-memory storage implementations
 - Automatic directory creation and error handling
@@ -52,7 +52,7 @@
 - [x] Error handling with tagged errors
 - [x] Basic CLI structure and commands
 - [x] **Agent Creation CLI Command**
-  - [x] Implement `crush agent create` command
+  - [x] Implement `jazz agent create` command
   - [x] Add agent validation using Schema
   - [x] Generate unique agent IDs
   - [x] Store agents in storage service
@@ -294,7 +294,7 @@
 
 ### Ideas not in roadmap yet
 
-- Being able to create agents from config file `crush agent create --config agent.json`
+- Being able to create agents from config file `jazz agent create --config agent.json`
 - Right authentification info are stored and shared by all agents. But maybe we'd like to have one auth per agent. For example one agent connected to gmail account 1 and an other for gmail account 2 ?
 - Might want to load the configuration from a .mjs instead of a .json
 - Might want to seperate config from secrets

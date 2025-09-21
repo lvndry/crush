@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "crush",
+      "name": "jazz",
       "dependencies": {
         "@ai-sdk/anthropic": "^2.0.17",
         "@ai-sdk/google": "^2.0.14",

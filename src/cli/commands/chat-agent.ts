@@ -58,7 +58,7 @@ export function createAIAgentCommand(): Effect.Effect<
   AgentService | LLMService | ToolRegistry
 > {
   return Effect.gen(function* () {
-    console.log("🤖 Welcome to the Crush AI Agent Creation Wizard!");
+    console.log("🤖 Welcome to the Jazz AI Agent Creation Wizard!");
     console.log("Let's create a new AI agent step by step.\n");
 
     // Get available LLM providers and models
@@ -135,7 +135,7 @@ export function createAIAgentCommand(): Effect.Effect<
     console.log(`   Created: ${agent.createdAt.toISOString()}`);
 
     console.log("\nYou can now chat with your agent using:");
-    console.log(`crush agent chat ${agent.id}`);
+    console.log(`jazz agent chat ${agent.id}`);
   });
 }
 

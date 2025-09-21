@@ -36,5 +36,5 @@ coverage/
 
 # Data files
 data/
-.crush/
-crush.config.json
+.jazz/
+jazz.config.json

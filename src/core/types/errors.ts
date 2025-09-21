@@ -1,7 +1,7 @@
 import { Data } from "effect";
 
 /**
- * Tagged error types for the Crush automation CLI
+ * Tagged error types for the jazz automation CLI
  * Using Effect's Data.TaggedError for proper error handling
  */
 
@@ -212,7 +212,7 @@ export class GmailTaskError extends Data.TaggedError("GmailTaskError")<{
   readonly suggestion?: string;
 }> {}
 
-export type CrushError =
+export type JazzError =
   | AgentNotFoundError
   | AgentAlreadyExistsError
   | AgentExecutionError

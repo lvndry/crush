@@ -1,10 +1,10 @@
 # Architecture Overview
 
-This document provides a comprehensive overview of the Crush CLI architecture, design patterns, and system components.
+This document provides a comprehensive overview of the Jazz CLI architecture, design patterns, and system components.
 
 ## 🏗️ System Architecture
 
-Crush follows a layered architecture pattern with clear separation of concerns, built on functional programming principles using Effect-TS.
+Jazz follows a layered architecture pattern with clear separation of concerns, built on functional programming principles using Effect-TS.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -169,7 +169,7 @@ The foundation layer providing functional programming primitives.
 
 ```mermaid
 graph TD
-    A[User: crush agent create] --> B[CLI Command Handler]
+    A[User: jazz agent create] --> B[CLI Command Handler]
     B --> C[Validate Input]
     C --> D[Agent Service]
     D --> E[Generate UUID]
@@ -262,7 +262,7 @@ function createAppLayer(config: AppConfig) {
   );
 
   const storageLayer = createFileStorageLayer(
-    config.storage.path || "./.crush",
+    config.storage.path || "./.jazz",
   ).pipe(Layer.provide(baseLayer));
 
   return Layer.mergeAll(
@@ -292,9 +292,9 @@ export interface AppConfig {
 
 Configuration can be overridden via environment variables:
 
-- `CRUSH_STORAGE_PATH`: Storage directory path
-- `CRUSH_LOG_LEVEL`: Logging level (debug, info, warn, error)
-- `CRUSH_LOG_FORMAT`: Log format (json, pretty)
+- `JAZZ_STORAGE_PATH`: Storage directory path
+- `JAZZ_LOG_LEVEL`: Logging level (debug, info, warn, error)
+- `JAZZ_LOG_FORMAT`: Log format (json, pretty)
 
 ## 🚀 Performance Considerations
 

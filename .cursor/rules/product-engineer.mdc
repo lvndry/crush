@@ -4,17 +4,17 @@ globs:
 alwaysApply: true
 ---
 
-# Crush Product Engineer
+# Jazz Product Engineer
 
 ## Project Vision & Mission
 
-### What is Crush?
+### What is Jazz?
 
-Crush is a **revolutionary agentic automation CLI** that empowers users to create, manage, and orchestrate autonomous AI agents for complex daily life workflows. Think of it as your personal army of AI assistants that can handle everything from email management to code deployment, from data analysis to content creation.
+Jazz is a **revolutionary agentic automation CLI** that empowers users to create, manage, and orchestrate autonomous AI agents for complex daily life workflows. Think of it as your personal army of AI assistants that can handle everything from email management to code deployment, from data analysis to content creation.
 
 ### Core Philosophy
 
-**"Automation should be intelligent, not just mechanical"** - Crush goes beyond simple scripts by combining:
+**"Automation should be intelligent, not just mechanical"** - Jazz goes beyond simple scripts by combining:
 
 - **AI-powered decision making** through LLM integration
 - **Contextual awareness** of your environment and preferences
@@ -71,9 +71,9 @@ Crush is a **revolutionary agentic automation CLI** that empowers users to creat
 
 ## Mindset & Thinking Patterns
 
-### The Crush Developer Mindset
+### The Jazz Developer Mindset
 
-When building features for Crush, think like a **product engineer** who understands both the technical implementation and the user's workflow needs. Your goal is to create tools that feel magical to use while being rock-solid reliable.
+When building features for Jazz, think like a **product engineer** who understands both the technical implementation and the user's workflow needs. Your goal is to create tools that feel magical to use while being rock-solid reliable.
 
 **🎯 Think User-First:**
 
@@ -188,7 +188,7 @@ function executeAgentTask(task: Task): Effect.Effect<TaskResult, TaskError> {
 
 ### CLI Architecture
 
-- Structure CLI commands hierarchically: `crush agent <action>`
+- Structure CLI commands hierarchically: `jazz agent <action>`
 - Each command should be a separate module
 - Use Effect.Layer for CLI dependencies (config, logging, etc.)
 - Implement proper help text and validation
@@ -310,13 +310,13 @@ function runAgentLoop(agent: Agent): Effect.Effect<void, AgentError> {
 ## CLI Command Structure
 
 ```bash
-crush --help
-crush --version
-crush config <set|get|list>
-crush agent <list|create|update|delete|run>
-crush agent run <agent-id> [--watch] [--dry-run]
-crush loop <start|stop|status> <loop-id>
-crush logs [--follow] [--level=<level>]
+jazz --help
+jazz --version
+jazz config <set|get|list>
+jazz agent <list|create|update|delete|run>
+jazz agent run <agent-id> [--watch] [--dry-run]
+jazz loop <start|stop|status> <loop-id>
+jazz logs [--follow] [--level=<level>]
 ```
 
 ## Development Workflow
@@ -356,7 +356,7 @@ crush logs [--follow] [--level=<level>]
 
 ```bash
 # Agent automatically reviews PRs, runs tests, and provides feedback
-crush agent create --name "code-reviewer" --type "ai-agent" \
+jazz agent create --name "code-reviewer" --type "ai-agent" \
   --tools "git,shell,llm" \
   --schedule "on-pr-created" \
   --config '{
@@ -373,7 +373,7 @@ crush agent create --name "code-reviewer" --type "ai-agent" \
 
 ```bash
 # Agent handles complete deployment pipeline with rollback capability
-crush agent create --name "deploy-master" --type "ai-agent" \
+jazz agent create --name "deploy-master" --type "ai-agent" \
   --tools "git,shell,docker,kubernetes,slack" \
   --config '{
     "tasks": [
@@ -394,7 +394,7 @@ crush agent create --name "deploy-master" --type "ai-agent" \
 
 ```bash
 # Agent categorizes, prioritizes, and responds to emails automatically
-crush agent create --name "email-triage" --type "ai-agent" \
+jazz agent create --name "email-triage" --type "ai-agent" \
   --tools "gmail,llm,calendar" \
   --schedule "every-15-minutes" \
   --config '{
@@ -411,7 +411,7 @@ crush agent create --name "email-triage" --type "ai-agent" \
 
 ```bash
 # Agent reads emails, extracts meeting requests, and schedules them
-crush agent create --name "meeting-scheduler" --type "ai-agent" \
+jazz agent create --name "meeting-scheduler" --type "ai-agent" \
   --tools "gmail,llm,calendar,zoom" \
   --config '{
     "tasks": [
@@ -430,7 +430,7 @@ crush agent create --name "meeting-scheduler" --type "ai-agent" \
 
 ```bash
 # Agent collects data from multiple sources and generates daily reports
-crush agent create --name "daily-reporter" --type "ai-agent" \
+jazz agent create --name "daily-reporter" --type "ai-agent" \
   --tools "api,llm,slack,google-sheets" \
   --schedule "daily-at-9am" \
   --config '{
@@ -449,7 +449,7 @@ crush agent create --name "daily-reporter" --type "ai-agent" \
 
 ```bash
 # Agent monitors competitors and market trends
-crush agent create --name "market-researcher" --type "ai-agent" \
+jazz agent create --name "market-researcher" --type "ai-agent" \
   --tools "web-scraper,llm,notion,slack" \
   --schedule "weekly" \
   --config '{
@@ -469,7 +469,7 @@ crush agent create --name "market-researcher" --type "ai-agent" \
 
 ```bash
 # Agent creates and schedules social media content
-crush agent create --name "social-manager" --type "ai-agent" \
+jazz agent create --name "social-manager" --type "ai-agent" \
   --tools "llm,unsplash,twitter,linkedin" \
   --schedule "daily-at-8am" \
   --config '{
@@ -486,7 +486,7 @@ crush agent create --name "social-manager" --type "ai-agent" \
 
 ```bash
 # Agent researches topics and creates blog posts
-crush agent create --name "blog-writer" --type "ai-agent" \
+jazz agent create --name "blog-writer" --type "ai-agent" \
   --tools "web-scraper,llm,wordpress,seo" \
   --schedule "weekly" \
   --config '{
@@ -505,7 +505,7 @@ crush agent create --name "blog-writer" --type "ai-agent" \
 
 ```bash
 # Agent monitors system health and takes corrective actions
-crush agent create --name "infra-monitor" --type "ai-agent" \
+jazz agent create --name "infra-monitor" --type "ai-agent" \
   --tools "prometheus,kubernetes,slack,pagerduty" \
   --schedule "every-5-minutes" \
   --config '{
@@ -523,7 +523,7 @@ crush agent create --name "infra-monitor" --type "ai-agent" \
 
 ```bash
 # Agent performs security scans and vulnerability assessments
-crush agent create --name "security-scanner" --type "ai-agent" \
+jazz agent create --name "security-scanner" --type "ai-agent" \
   --tools "nmap,owasp-zap,llm,jira" \
   --schedule "daily-at-2am" \
   --config '{
@@ -542,7 +542,7 @@ crush agent create --name "security-scanner" --type "ai-agent" \
 
 ```bash
 # Orchestrate multiple agents working together
-crush automation create --name "product-launch" \
+jazz automation create --name "product-launch" \
   --agents "content-creator,marketing-manager,dev-ops" \
   --triggers "manual" \
   --config '{
@@ -559,7 +559,7 @@ crush automation create --name "product-launch" \
 
 ```bash
 # Agent that learns from user feedback and improves over time
-crush agent create --name "adaptive-assistant" --type "ai-agent" \
+jazz agent create --name "adaptive-assistant" --type "ai-agent" \
   --tools "llm,feedback-collector,model-trainer" \
   --config '{
     "learningEnabled": true,

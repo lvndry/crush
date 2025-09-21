@@ -28,7 +28,7 @@ import { FileStorageService } from "./services/storage/file";
 import { StorageServiceTag } from "./services/storage/service";
 
 /**
- * Main entry point for the Crush CLI
+ * Main entry point for the Jazz CLI
  */
 
 /**
@@ -56,7 +56,7 @@ function createAppLayer() {
     Effect.gen(function* () {
       const config = yield* AgentConfigService;
       const { storage } = yield* config.appConfig;
-      const basePath = storage.type === "file" ? storage.path : "./.crush";
+      const basePath = storage.type === "file" ? storage.path : "./.jazz";
       const fs = yield* FileSystem.FileSystem;
       return new FileStorageService(basePath, fs);
     }),
@@ -122,7 +122,7 @@ function main() {
 
     const program = new Command();
 
-    program.name("crush").description("A powerful agentic automation CLI").version("0.1.0");
+    program.name("jazz").description("A powerful agentic automation CLI").version("0.1.0");
 
     // Global options
     program

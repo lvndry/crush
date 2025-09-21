@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import type { CrushError } from "../types/errors";
+import type { JazzError } from "../types/errors";
 
 /**
  * Enhanced error handling utilities with actionable suggestions
@@ -21,7 +21,7 @@ export interface ErrorDisplay {
  * @returns An ErrorDisplay object containing title, message, suggestion, recovery steps, and related commands
  * @internal
  */
-function generateSuggestions(error: CrushError): ErrorDisplay {
+function generateSuggestions(error: JazzError): ErrorDisplay {
   switch (error._tag) {
     case "AgentNotFoundError": {
       return {
@@ -30,11 +30,11 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
         suggestion:
           error.suggestion || "Check if the agent ID is correct or if the agent was deleted",
         recovery: [
-          "List all agents: `crush agent list`",
+          "List all agents: `jazz agent list`",
           "Check agent ID spelling and case sensitivity",
-          "Create a new agent: `crush agent create`",
+          "Create a new agent: `jazz agent create`",
         ],
-        relatedCommands: ["crush agent list", "crush agent create"],
+        relatedCommands: ["jazz agent list", "jazz agent create"],
       };
     }
 
@@ -45,10 +45,10 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
         suggestion: error.suggestion || "Choose a different name or delete the existing agent",
         recovery: [
           "Use a different agent name",
-          "Delete existing agent: `crush agent delete <agent-id>`",
-          "Update existing agent: `crush agent update <agent-id>`",
+          "Delete existing agent: `jazz agent delete <agent-id>`",
+          "Update existing agent: `jazz agent update <agent-id>`",
         ],
-        relatedCommands: ["crush agent delete", "crush agent list"],
+        relatedCommands: ["jazz agent delete", "jazz agent list"],
       };
     }
 
@@ -59,10 +59,10 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
         suggestion: error.suggestion || `Fix the configuration issue in field: ${error.field}`,
         recovery: [
           `Check the ${error.field} field in your agent configuration`,
-          "Validate your configuration: `crush agent validate <agent-id>`",
-          "Use the interactive agent editor: `crush agent edit <agent-id>`",
+          "Validate your configuration: `jazz agent validate <agent-id>`",
+          "Use the interactive agent editor: `jazz agent edit <agent-id>`",
         ],
-        relatedCommands: ["crush agent get", "crush agent edit"],
+        relatedCommands: ["jazz agent get", "jazz agent edit"],
       };
     }
 
@@ -72,11 +72,11 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
         message: `Agent "${error.agentId}" failed to execute: ${error.reason}`,
         suggestion: error.suggestion || "Check the agent configuration and dependencies",
         recovery: [
-          "Check agent configuration: `crush agent get <agent-id>`",
-          "Run with verbose logging: `crush agent run <agent-id> --verbose`",
-          "Test individual tasks: `crush task test <task-id>`",
+          "Check agent configuration: `jazz agent get <agent-id>`",
+          "Run with verbose logging: `jazz agent run <agent-id> --verbose`",
+          "Test individual tasks: `jazz task test <task-id>`",
         ],
-        relatedCommands: ["crush agent get", "crush agent run --verbose"],
+        relatedCommands: ["jazz agent get", "jazz agent run --verbose"],
       };
     }
 
@@ -86,11 +86,11 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
         message: `Task with ID "${error.taskId}" not found`,
         suggestion: error.suggestion || "Check if the task ID is correct",
         recovery: [
-          "List all tasks: `crush task list`",
+          "List all tasks: `jazz task list`",
           "Check task ID spelling and case sensitivity",
-          "Create a new task: `crush task create`",
+          "Create a new task: `jazz task create`",
         ],
-        relatedCommands: ["crush task list", "crush task create"],
+        relatedCommands: ["jazz task list", "jazz task create"],
       };
     }
 
@@ -100,11 +100,11 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
         message: `Task "${error.taskId}" failed: ${error.reason}`,
         suggestion: error.suggestion || "Check the task configuration and dependencies",
         recovery: [
-          "Check task configuration: `crush task get <task-id>`",
-          "Run with debug mode: `crush task run <task-id> --debug`",
-          "Check task dependencies: `crush task deps <task-id>`",
+          "Check task configuration: `jazz task get <task-id>`",
+          "Run with debug mode: `jazz task run <task-id> --debug`",
+          "Check task dependencies: `jazz task deps <task-id>`",
         ],
-        relatedCommands: ["crush task get", "crush task run --debug"],
+        relatedCommands: ["jazz task get", "jazz task run --debug"],
       };
     }
 
@@ -117,9 +117,9 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
           "Increase task timeout in configuration",
           "Optimize task performance",
           "Check for resource constraints",
-          "Run with longer timeout: `crush task run <task-id> --timeout 60000`",
+          "Run with longer timeout: `jazz task run <task-id> --timeout 60000`",
         ],
-        relatedCommands: ["crush task run --timeout", "crush agent config"],
+        relatedCommands: ["jazz task run --timeout", "jazz agent config"],
       };
     }
 
@@ -129,11 +129,11 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
         message: `Task "${error.taskId}" has dependency issue with "${error.dependencyId}": ${error.reason}`,
         suggestion: error.suggestion || "Resolve the dependency issue",
         recovery: [
-          "Check dependency task status: `crush task get <dependency-id>`",
-          "Run dependency task first: `crush task run <dependency-id>`",
-          "Update task dependencies: `crush task update <task-id>`",
+          "Check dependency task status: `jazz task get <dependency-id>`",
+          "Run dependency task first: `jazz task run <dependency-id>`",
+          "Update task dependencies: `jazz task update <task-id>`",
         ],
-        relatedCommands: ["crush task get", "crush task run"],
+        relatedCommands: ["jazz task get", "jazz task run"],
       };
     }
 
@@ -143,11 +143,11 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
         message: `Configuration error in field "${error.field}": ${error.message}`,
         suggestion: error.suggestion || "Fix the configuration value",
         recovery: [
-          "Check configuration file: `crush config list`",
-          "Validate configuration: `crush config validate`",
-          "Reset to defaults: `crush config reset`",
+          "Check configuration file: `jazz config list`",
+          "Validate configuration: `jazz config validate`",
+          "Reset to defaults: `jazz config reset`",
         ],
-        relatedCommands: ["crush config list", "crush config validate"],
+        relatedCommands: ["jazz config list", "jazz config validate"],
       };
     }
 
@@ -157,11 +157,11 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
         message: `Configuration file not found at: ${error.path}`,
         suggestion: error.suggestion || "Create a configuration file or check the path",
         recovery: [
-          "Create default config: `crush config init`",
+          "Create default config: `jazz config init`",
           "Check file path and permissions",
           "Use environment variables instead",
         ],
-        relatedCommands: ["crush config init", "crush config set"],
+        relatedCommands: ["jazz config init", "jazz config set"],
       };
     }
 
@@ -173,9 +173,9 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
         recovery: [
           "Check configuration documentation",
           "Use correct data type for the field",
-          "Validate configuration: `crush config validate`",
+          "Validate configuration: `jazz config validate`",
         ],
-        relatedCommands: ["crush config validate", "crush config set"],
+        relatedCommands: ["jazz config validate", "jazz config set"],
       };
     }
 
@@ -189,7 +189,7 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
           "Verify storage path exists",
           "Try different storage location",
         ],
-        relatedCommands: ["crush config set storage.path"],
+        relatedCommands: ["jazz config set storage.path"],
       };
     }
 
@@ -200,10 +200,10 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
         suggestion: error.suggestion || "Create the storage directory or check the path",
         recovery: [
           "Create storage directory: `mkdir -p ${error.path}`",
-          "Check storage configuration: `crush config get storage`",
+          "Check storage configuration: `jazz config get storage`",
           "Use different storage path",
         ],
-        relatedCommands: ["crush config set storage.path"],
+        relatedCommands: ["jazz config set storage.path"],
       };
     }
 
@@ -217,7 +217,7 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
           "Fix permissions: `chmod 755 ${error.path}`",
           "Run with appropriate user privileges",
         ],
-        relatedCommands: ["crush config set storage.path"],
+        relatedCommands: ["jazz config set storage.path"],
       };
     }
 
@@ -227,11 +227,11 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
         message: `Command "${error.command}" failed: ${error.message}`,
         suggestion: error.suggestion || "Check command syntax and options",
         recovery: [
-          "Check command help: `crush <command> --help`",
+          "Check command help: `jazz <command> --help`",
           "Verify command syntax",
           "Check required options and arguments",
         ],
-        relatedCommands: ["crush --help", `crush ${error.command} --help`],
+        relatedCommands: ["jazz --help", `jazz ${error.command} --help`],
       };
     }
 
@@ -245,7 +245,7 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
           "Use valid characters and length limits",
           "Refer to documentation for field specifications",
         ],
-        relatedCommands: ["crush --help"],
+        relatedCommands: ["jazz --help"],
       };
     }
 
@@ -260,7 +260,7 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
           "Check firewall and proxy settings",
           "Retry the operation",
         ],
-        relatedCommands: ["crush config get network"],
+        relatedCommands: ["jazz config get network"],
       };
     }
 
@@ -270,12 +270,12 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
         message: `API call to "${error.endpoint}" failed with status ${error.statusCode}: ${error.message}`,
         suggestion: error.suggestion || "Check API credentials and endpoint status",
         recovery: [
-          "Verify API credentials: `crush config get api`",
+          "Verify API credentials: `jazz config get api`",
           "Check API service status",
           "Review API rate limits",
           "Update API configuration",
         ],
-        relatedCommands: ["crush config get api", "crush auth status"],
+        relatedCommands: ["jazz config get api", "jazz auth status"],
       };
     }
 
@@ -289,7 +289,7 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
           "Check file permissions",
           "Ensure sufficient disk space",
         ],
-        relatedCommands: ["crush config get storage"],
+        relatedCommands: ["jazz config get storage"],
       };
     }
 
@@ -303,7 +303,7 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
           "Check file permissions",
           "Create the file if needed",
         ],
-        relatedCommands: ["crush config get storage"],
+        relatedCommands: ["jazz config get storage"],
       };
     }
 
@@ -317,7 +317,7 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
           "Fix permissions: `chmod 644 ${error.path}`",
           "Run with appropriate user privileges",
         ],
-        relatedCommands: ["crush config get storage"],
+        relatedCommands: ["jazz config get storage"],
       };
     }
 
@@ -332,7 +332,7 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
           "Optimize operation performance",
           "Retry the operation",
         ],
-        relatedCommands: ["crush config get performance"],
+        relatedCommands: ["jazz config get performance"],
       };
     }
 
@@ -347,7 +347,7 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
           "Optimize resource usage",
           "Restart the application",
         ],
-        relatedCommands: ["crush config get performance"],
+        relatedCommands: ["jazz config get performance"],
       };
     }
 
@@ -362,7 +362,7 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
           "Report the issue to support",
           "Update to latest version",
         ],
-        relatedCommands: ["crush logs", "crush --version"],
+        relatedCommands: ["jazz logs", "jazz --version"],
       };
     }
 
@@ -372,12 +372,12 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
         message: `LLM provider "${error.provider}" configuration error: ${error.message}`,
         suggestion: error.suggestion || "Check your LLM provider configuration and API keys",
         recovery: [
-          "Check API key configuration: `crush config get llm.${error.provider}`",
-          "Set API key: `crush config set llm.${error.provider}.api_key <your-key>`",
+          "Check API key configuration: `jazz config get llm.${error.provider}`",
+          "Set API key: `jazz config set llm.${error.provider}.api_key <your-key>`",
           "Verify provider is supported",
           "Check provider documentation",
         ],
-        relatedCommands: ["crush config get llm", "crush config set llm"],
+        relatedCommands: ["jazz config get llm", "jazz config set llm"],
       };
     }
 
@@ -392,7 +392,7 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
           "Regenerate API key if needed",
           "Check provider service status",
         ],
-        relatedCommands: ["crush config get llm", "crush auth status"],
+        relatedCommands: ["jazz config get llm", "jazz auth status"],
       };
     }
 
@@ -402,12 +402,12 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
         message: `Gmail authentication failed: ${error.message}`,
         suggestion: error.suggestion || "Re-authenticate with Gmail",
         recovery: [
-          "Re-authenticate: `crush auth gmail login`",
-          "Check authentication status: `crush auth gmail status`",
-          "Clear stored tokens: `crush auth gmail logout`",
+          "Re-authenticate: `jazz auth gmail login`",
+          "Check authentication status: `jazz auth gmail status`",
+          "Clear stored tokens: `jazz auth gmail logout`",
           "Verify Google OAuth configuration",
         ],
-        relatedCommands: ["crush auth gmail login", "crush auth gmail status"],
+        relatedCommands: ["jazz auth gmail login", "jazz auth gmail status"],
       };
     }
 
@@ -422,7 +422,7 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
           "Check Gmail service status",
           "Retry the operation",
         ],
-        relatedCommands: ["crush auth gmail status", "crush agent run --verbose"],
+        relatedCommands: ["jazz auth gmail status", "jazz agent run --verbose"],
       };
     }
 
@@ -432,12 +432,12 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
         message: `Gmail task "${error.taskId}" operation "${error.operation}" failed: ${error.message}`,
         suggestion: error.suggestion || "Check task configuration and Gmail authentication",
         recovery: [
-          "Check task configuration: `crush agent get <agent-id>`",
-          "Verify Gmail authentication: `crush auth gmail status`",
+          "Check task configuration: `jazz agent get <agent-id>`",
+          "Verify Gmail authentication: `jazz auth gmail status`",
           "Check Gmail API permissions",
           "Review task parameters",
         ],
-        relatedCommands: ["crush agent get", "crush auth gmail status"],
+        relatedCommands: ["jazz agent get", "jazz auth gmail status"],
       };
     }
 
@@ -447,7 +447,7 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
         message: "An unexpected error occurred",
         suggestion: "Please report this error to the development team",
         recovery: ["Check application logs", "Restart the application", "Report the issue"],
-        relatedCommands: ["crush logs", "crush --help"],
+        relatedCommands: ["jazz logs", "jazz --help"],
       };
     }
   }
@@ -456,7 +456,7 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
 /**
  * Format error for display with actionable suggestions
  *
- * Takes a CrushError and formats it into a user-friendly string with:
+ * Takes a JazzError and formats it into a user-friendly string with:
  * - Clear error title and message
  * - Actionable suggestions
  * - Step-by-step recovery instructions
@@ -473,7 +473,7 @@ function generateSuggestions(error: CrushError): ErrorDisplay {
  * // Output: "❌ Agent Not Found\n   No agent found with ID: test-agent\n..."
  * ```
  */
-export function formatError(error: CrushError): string {
+export function formatError(error: JazzError): string {
   const display = generateSuggestions(error);
 
   let output = `❌ ${display.title}\n`;
@@ -507,27 +507,27 @@ export function formatError(error: CrushError): string {
 /**
  * Enhanced error handler that provides actionable suggestions
  *
- * Handles both CrushError types (with structured suggestions) and generic Error objects.
- * For CrushError types, it formats them with actionable suggestions, recovery steps, and related commands.
+ * Handles both JazzError types (with structured suggestions) and generic Error objects.
+ * For JazzError types, it formats them with actionable suggestions, recovery steps, and related commands.
  * For generic Error objects, it provides a basic error message with general guidance.
  *
- * @param error - The error to handle (CrushError or generic Error)
+ * @param error - The error to handle (JazzError or generic Error)
  * @returns An Effect that logs the formatted error to the console
  *
  * @example
  * ```typescript
  * // Handle a structured error
- * const crushError = new AgentNotFoundError({ agentId: "test" });
- * yield* handleError(crushError);
+ * const JazzError = new AgentNotFoundError({ agentId: "test" });
+ * yield* handleError(JazzError);
  *
  * // Handle a generic error
  * const genericError = new Error("Something went wrong");
  * yield* handleError(genericError);
  * ```
  */
-export function handleError(error: CrushError | Error): Effect.Effect<void> {
+export function handleError(error: JazzError | Error): Effect.Effect<void> {
   return Effect.sync(() => {
-    // Check if it's a CrushError (has _tag property)
+    // Check if it's a JazzError (has _tag property)
     if ("_tag" in error && typeof error._tag === "string") {
       const formattedError = formatError(error);
       console.error(formattedError);
@@ -535,7 +535,7 @@ export function handleError(error: CrushError | Error): Effect.Effect<void> {
       // Handle generic Error objects
       const genericError = error;
       console.error(
-        `❌ Error\n   ${genericError.message}\n\n💡 Suggestion: Check the error details and try again\n\n📚 Related Commands:\n   • crush --help\n   • crush logs`,
+        `❌ Error\n   ${genericError.message}\n\n💡 Suggestion: Check the error details and try again\n\n📚 Related Commands:\n   • jazz --help\n   • jazz logs`,
       );
     }
   });
@@ -562,7 +562,7 @@ export const CommonSuggestions = {
    * @returns A suggestion string with commands to list or create agents
    */
   checkAgentExists: (_agentId: string) =>
-    `Run 'crush agent list' to see available agents or create a new one with 'crush agent create'`,
+    `Run 'jazz agent list' to see available agents or create a new one with 'jazz agent create'`,
 
   /**
    * Suggestion for configuration-related errors
@@ -570,7 +570,7 @@ export const CommonSuggestions = {
    * @returns A suggestion string with commands to check or update the configuration
    */
   checkConfiguration: (field: string) =>
-    `Run 'crush config get ${field}' to check current value or 'crush config set ${field} <value>' to update`,
+    `Run 'jazz config get ${field}' to check current value or 'jazz config set ${field} <value>' to update`,
 
   /**
    * Suggestion for file permission errors
@@ -593,7 +593,7 @@ export const CommonSuggestions = {
    * @returns A suggestion string with commands to authenticate or check status
    */
   checkCredentials: (service: string) =>
-    `Run 'crush auth ${service} login' to authenticate or check credentials with 'crush auth ${service} status'`,
+    `Run 'jazz auth ${service} login' to authenticate or check credentials with 'jazz auth ${service} status'`,
 
   /**
    * Suggestion for timeout errors
@@ -609,5 +609,5 @@ export const CommonSuggestions = {
    * @returns A suggestion string with commands to check task dependencies
    */
   checkDependencies: (taskId: string) =>
-    `Run 'crush task deps ${taskId}' to check task dependencies and resolve any issues`,
+    `Run 'jazz task deps ${taskId}' to check task dependencies and resolve any issues`,
 } as const;

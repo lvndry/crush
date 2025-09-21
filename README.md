@@ -1,4 +1,4 @@
-# Crush 🚀
+# Jazz 🎷
 
 A powerful agentic automation CLI built with for managing agentic loops in daily life workflows.
 
@@ -7,7 +7,7 @@ A powerful agentic automation CLI built with for managing agentic loops in daily
 
 ## 🎯 Overview
 
-Crush is a command-line tool designed to help you create, manage, and execute autonomous agents that can perform complex automation tasks.
+Jazz is a command-line tool designed to help you create, manage, and execute autonomous agents that can perform complex automation tasks.
 
 ### Key Features
 
@@ -30,8 +30,8 @@ Crush is a command-line tool designed to help you create, manage, and execute au
 
 ```bash
 # Clone the repository
-git clone https://github.com/lvndry/crush.git
-cd crush
+git clone https://github.com/lvndry/jazz.git
+cd jazz
 
 # Install dependencies
 bun install
@@ -49,40 +49,40 @@ bun run src/main.ts
 ### Basic Usage
 
 > [!TIP]
-> If you haven't installed `crush` globally with `npm link`, you can run commands directly using: `bun run src/main.ts` from the root of the repository.
+> If you haven't installed `jazz` globally with `npm link`, you can run commands directly using: `bun run src/main.ts` from the root of the repository.
 
 ```bash
 # Create your first agent
-crush agent create
+jazz agent create
 
 # List all agents
-crush agent list
+jazz agent list
 
 # Get agent details
-crush agent get <agent-id>
+jazz agent get <agent-id>
 
 # Run an agent (dry run)
-crush agent run <agent-id> --dry-run
+jazz agent run <agent-id> --dry-run
 
 # Delete an agent
-crush agent delete <agent-id>
+jazz agent delete <agent-id>
 ```
 
 ## ⚙️ Configuration
 
-Crush uses a JSON configuration file to manage application settings, API keys, and service integrations. The configuration system provides sensible defaults while allowing full customization.
+Jazz uses a JSON configuration file to manage application settings, API keys, and service integrations. The configuration system provides sensible defaults while allowing full customization.
 
 ### Configuration File Location
 
-Crush looks for configuration files in the following order:
+Jazz looks for configuration files in the following order:
 
-1. **Environment Variable**: `CRUSH_CONFIG_PATH` (if set)
-2. **Current Directory**: `./crush.config.json`
-3. **Home Directory**: `~/.crush/config.json`
+1. **Environment Variable**: `JAZZ_CONFIG_PATH` (if set)
+2. **Current Directory**: `./jazz.config.json`
+3. **Home Directory**: `~/.jazz/config.json`
 
 ### Basic Configuration
 
-Create a `crush.config.json` file in your project root or home directory:
+Create a `jazz.config.json` file in your project root or home directory:
 
 ```json
 {
@@ -150,61 +150,26 @@ Configure model providers for AI agents:
 }
 ```
 
-#### 📁 Storage (Optional)
-
-Customize where Crush stores data:
-
-```json
-{
-  "storage": {
-    "type": "file",
-    "path": "./.crush"
-  }
-}
-```
-
-**Default**: `./.crush`
-
-#### 📊 Logging (Optional)
-
-Configure logging behavior:
-
-```json
-{
-  "logging": {
-    "level": "info",
-    "format": "pretty",
-    "output": "console"
-  }
-}
-```
-
-**Options:**
-
-- `level`: `debug`, `info`, `warn`, `error`
-- `format`: `pretty`, `json`
-- `output`: `console`, `file`
-
 ### Authentication Management
 
-Crush provides built-in authentication management for services:
+Jazz provides built-in authentication management for services:
 
 ```bash
 # Authenticate with Gmail
-crush auth gmail login
+jazz auth gmail login
 
 # Check authentication status
-crush auth gmail status
+jazz auth gmail status
 
 # Logout from Gmail
-crush auth gmail logout
+jazz auth gmail logout
 ```
 
-**Token Storage**: Authentication tokens are automatically stored in `.crush/google/gmail-token.json` and managed securely by Crush.
+**Token Storage**: Authentication tokens are automatically stored in `.jazz/google/gmail-token.json` and managed securely by Jazz.
 
 ```bash
 # Run with verbose logging to see configuration details
-crush --verbose agent list
+jazz --verbose agent list
 ```
 
 ## 📖 Documentation
@@ -229,8 +194,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 - 📖 [Documentation](docs/)
-- 🐛 [Issue Tracker](https://github.com/lvndry/crush/issues)
-- 💬 [Discussions](https://github.com/lvndry/crush/discussions)
+- 🐛 [Issue Tracker](https://github.com/lvndry/jazz/issues)
+- 💬 [Discussions](https://github.com/lvndry/jazz/discussions)
 
 ---
 

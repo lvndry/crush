@@ -1,48 +1,48 @@
 # CLI Reference
 
-Complete documentation for all Crush CLI commands and options.
+Complete documentation for all Jazz CLI commands and options.
 
 ## 📋 Global Options
 
 All commands support these global options:
 
 ```bash
-crush [global-options] <command> [command-options]
+jazz [global-options] <command> [command-options]
 ```
 
 ### Global Options
 
-| Option            | Short | Description                | Default               |
-| ----------------- | ----- | -------------------------- | --------------------- |
-| `--verbose`       | `-v`  | Enable verbose logging     | `false`               |
-| `--quiet`         | `-q`  | Suppress output            | `false`               |
-| `--config <path>` |       | Path to configuration file | `./crush.config.json` |
-| `--help`          | `-h`  | Show help information      |                       |
-| `--version`       | `-V`  | Show version information   |                       |
+| Option            | Short | Description                | Default              |
+| ----------------- | ----- | -------------------------- | -------------------- |
+| `--verbose`       | `-v`  | Enable verbose logging     | `false`              |
+| `--quiet`         | `-q`  | Suppress output            | `false`              |
+| `--config <path>` |       | Path to configuration file | `./jazz.config.json` |
+| `--help`          | `-h`  | Show help information      |                      |
+| `--version`       | `-V`  | Show version information   |                      |
 
 ### Examples
 
 ```bash
 # Enable verbose logging
-crush --verbose agent list
+jazz --verbose agent list
 
 # Use custom config file
-crush --config /path/to/config.json agent create my-agent
+jazz --config /path/to/config.json agent create my-agent
 
 # Suppress output
-crush --quiet agent delete <agent-id>
+jazz --quiet agent delete <agent-id>
 ```
 
 ## 🤖 Agent Commands
 
 Manage autonomous agents for automation tasks.
 
-### `crush agent list`
+### `jazz agent list`
 
 List all available agents.
 
 ```bash
-crush agent list
+jazz agent list
 ```
 
 **Output:**
@@ -65,12 +65,12 @@ Found 2 agent(s):
    Updated: 2024-01-15T11:00:00.000Z
 ```
 
-### `crush agent create`
+### `jazz agent create`
 
 Create a new agent with the specified name.
 
 ```bash
-crush agent create [options]
+jazz agent create [options]
 ```
 
 **Arguments:**
@@ -97,13 +97,13 @@ crush agent create [options]
 
 ```bash
 # Create a basic agent
-crush agent create my-agent
+jazz agent create my-agent
 
 # Create agent with custom description
-crush agent create backup-agent --description "Automated backup agent"
+jazz agent create backup-agent --description "Automated backup agent"
 
 # Create agent with custom timeout and retry policy
-crush agent create api-agent \
+jazz agent create api-agent \
   --description "API monitoring agent" \
   --timeout 60000 \
   --max-retries 5 \
@@ -124,12 +124,12 @@ crush agent create api-agent \
    Retry Policy: 3 retries, 1000ms delay, exponential backoff
 ```
 
-### `crush agent get <agent-id>`
+### `jazz agent get <agent-id>`
 
 Get detailed information about a specific agent.
 
 ```bash
-crush agent get <agent-id>
+jazz agent get <agent-id>
 ```
 
 **Arguments:**
@@ -139,7 +139,7 @@ crush agent get <agent-id>
 **Example:**
 
 ```bash
-crush agent get 1724243d-344e-42ec-97e8-e53a2c8fd9d8
+jazz agent get 1724243d-344e-42ec-97e8-e53a2c8fd9d8
 ```
 
 **Output:**
@@ -164,12 +164,12 @@ crush agent get 1724243d-344e-42ec-97e8-e53a2c8fd9d8
 📝 No tasks configured for this agent.
 ```
 
-### `crush agent run <agent-id>`
+### `jazz agent run <agent-id>`
 
 Execute an agent and run its configured tasks.
 
 ```bash
-crush agent run <agent-id> [options]
+jazz agent run <agent-id> [options]
 ```
 
 **Arguments:**
@@ -187,13 +187,13 @@ crush agent run <agent-id> [options]
 
 ```bash
 # Run agent once
-crush agent run 1724243d-344e-42ec-97e8-e53a2c8fd9d8
+jazz agent run 1724243d-344e-42ec-97e8-e53a2c8fd9d8
 
 # Dry run to see what would be executed
-crush agent run 1724243d-344e-42ec-97e8-e53a2c8fd9d8 --dry-run
+jazz agent run 1724243d-344e-42ec-97e8-e53a2c8fd9d8 --dry-run
 
 # Watch mode for continuous execution
-crush agent run 1724243d-344e-42ec-97e8-e53a2c8fd9d8 --watch
+jazz agent run 1724243d-344e-42ec-97e8-e53a2c8fd9d8 --watch
 ```
 
 **Output (Dry Run):**
@@ -226,12 +226,12 @@ Tasks that would be executed:
    The agent has been validated and is ready for execution.
 ```
 
-### `crush agent delete <agent-id>`
+### `jazz agent delete <agent-id>`
 
 Delete an agent and all its associated data.
 
 ```bash
-crush agent delete <agent-id>
+jazz agent delete <agent-id>
 ```
 
 **Arguments:**
@@ -241,7 +241,7 @@ crush agent delete <agent-id>
 **Example:**
 
 ```bash
-crush agent delete 1724243d-344e-42ec-97e8-e53a2c8fd9d8
+jazz agent delete 1724243d-344e-42ec-97e8-e53a2c8fd9d8
 ```
 
 **Output:**
@@ -256,22 +256,22 @@ crush agent delete 1724243d-344e-42ec-97e8-e53a2c8fd9d8
 
 Manage automation workflows and schedules.
 
-### `crush automation list`
+### `jazz automation list`
 
 List all available automations.
 
 ```bash
-crush automation list
+jazz automation list
 ```
 
 **Status:** 🚧 Planned - Not yet implemented
 
-### `crush automation create`
+### `jazz automation create`
 
 Create a new automation workflow.
 
 ```bash
-crush automation create [options]
+jazz automation create [options]
 ```
 
 **Arguments:**
@@ -290,12 +290,12 @@ crush automation create [options]
 
 Manage application configuration.
 
-### `crush config get <key>`
+### `jazz config get <key>`
 
 Get a configuration value.
 
 ```bash
-crush config get <key>
+jazz config get <key>
 ```
 
 **Arguments:**
@@ -304,12 +304,12 @@ crush config get <key>
 
 **Status:** 🚧 Planned - Not yet implemented
 
-### `crush config set <key> <value>`
+### `jazz config set <key> <value>`
 
 Set a configuration value.
 
 ```bash
-crush config set <key> <value>
+jazz config set <key> <value>
 ```
 
 **Arguments:**
@@ -319,12 +319,12 @@ crush config set <key> <value>
 
 **Status:** 🚧 Planned - Not yet implemented
 
-### `crush config list`
+### `jazz config list`
 
 List all configuration values.
 
 ```bash
-crush config list
+jazz config list
 ```
 
 **Status:** 🚧 Planned - Not yet implemented
@@ -333,12 +333,12 @@ crush config list
 
 View and manage application logs.
 
-### `crush logs`
+### `jazz logs`
 
 View application logs.
 
 ```bash
-crush logs [options]
+jazz logs [options]
 ```
 
 **Options:**
@@ -359,16 +359,16 @@ crush logs [options]
 
 ```bash
 # View recent logs
-crush logs
+jazz logs
 
 # Follow logs in real-time
-crush logs --follow
+jazz logs --follow
 
 # View only error logs
-crush logs --level error
+jazz logs --level error
 
 # Follow debug logs
-crush logs --follow --level debug
+jazz logs --follow --level debug
 ```
 
 **Status:** 🚧 Planned - Not yet implemented
@@ -420,13 +420,13 @@ crush logs --follow --level debug
 
 ## 🔧 Configuration File
 
-Crush supports configuration via a JSON file (planned feature):
+Jazz supports configuration via a JSON file (planned feature):
 
 ```json
 {
   "storage": {
     "type": "file",
-    "path": "./.crush"
+    "path": "./.jazz"
   },
   "logging": {
     "level": "info",
@@ -442,40 +442,40 @@ Crush supports configuration via a JSON file (planned feature):
 
 ```bash
 # 1. Create an agent
-crush agent create backup-agent \
+jazz agent create backup-agent \
   --description "Daily backup automation" \
   --timeout 300000 \
   --max-retries 3
 
 # 2. List agents to verify creation
-crush agent list
+jazz agent list
 
 # 3. Get agent details
-crush agent get <agent-id>
+jazz agent get <agent-id>
 
 # 4. Run agent in dry-run mode
-crush agent run <agent-id> --dry-run
+jazz agent run <agent-id> --dry-run
 
 # 5. Run agent normally
-crush agent run <agent-id>
+jazz agent run <agent-id>
 
 # 6. Delete agent when done
-crush agent delete <agent-id>
+jazz agent delete <agent-id>
 ```
 
 ### Batch Operations
 
 ```bash
 # Create multiple agents
-crush agent create web-scraper --description "Web scraping agent"
-crush agent create data-processor --description "Data processing agent"
-crush agent create report-generator --description "Report generation agent"
+jazz agent create web-scraper --description "Web scraping agent"
+jazz agent create data-processor --description "Data processing agent"
+jazz agent create report-generator --description "Report generation agent"
 
 # List all agents
-crush agent list
+jazz agent list
 
 # Run all agents (when batch execution is implemented)
-crush agent run-all
+jazz agent run-all
 ```
 
 ## 🚀 Advanced Usage
@@ -486,30 +486,30 @@ Override configuration using environment variables:
 
 ```bash
 # Set custom storage path
-export CRUSH_STORAGE_PATH="/custom/data/path"
-crush agent list
+export JAZZ_STORAGE_PATH="/custom/data/path"
+jazz agent list
 
 # Set log level
-export CRUSH_LOG_LEVEL="debug"
-crush agent create my-agent
+export JAZZ_LOG_LEVEL="debug"
+jazz agent create my-agent
 
 # Set timeout
-export CRUSH_TIMEOUT="60000"
-crush agent run <agent-id>
+export JAZZ_TIMEOUT="60000"
+jazz agent run <agent-id>
 ```
 
 ### Scripting Integration
 
-Use Crush in shell scripts:
+Use Jazz in shell scripts:
 
 ```bash
 #!/bin/bash
 
 # Create agent
-AGENT_ID=$(crush agent create backup-agent --description "Backup agent" | grep "ID:" | cut -d' ' -f3)
+AGENT_ID=$(jazz agent create backup-agent --description "Backup agent" | grep "ID:" | cut -d' ' -f3)
 
 # Run agent
-crush agent run $AGENT_ID
+jazz agent run $AGENT_ID
 
 # Check exit code
 if [ $? -eq 0 ]; then

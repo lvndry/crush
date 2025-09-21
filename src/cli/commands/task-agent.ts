@@ -134,7 +134,7 @@ export function listAgentsCommand(): Effect.Effect<void, StorageError, AgentServ
     const agents = yield* listAllAgents();
 
     if (agents.length === 0) {
-      console.log("No agents found. Create your first agent with: crush agent create");
+      console.log("No agents found. Create your first agent with: jazz agent create");
       return;
     }
 

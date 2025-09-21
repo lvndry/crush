@@ -1,10 +1,10 @@
 # Configuration Guide
 
-This guide explains how to configure Crush, including application settings, environment variables, and configuration files.
+This guide explains how to configure Jazz, including application settings, environment variables, and configuration files.
 
 ## 📋 Overview
 
-Crush uses a hierarchical configuration system that allows you to customize behavior through:
+Jazz uses a hierarchical configuration system that allows you to customize behavior through:
 
 1. **Configuration Files** - JSON/YAML configuration files
 2. **Environment Variables** - Runtime configuration overrides
@@ -17,7 +17,7 @@ Configuration is applied in the following order (later sources override earlier 
 
 ```
 1. Default Values (built-in)
-2. Configuration File (crush.config.json)
+2. Configuration File (jazz.config.json)
 3. Environment Variables
 4. Command Line Options
 ```
@@ -26,11 +26,11 @@ Configuration is applied in the following order (later sources override earlier 
 
 ### File Location
 
-Crush looks for configuration files in this order:
+Jazz looks for configuration files in this order:
 
-1. `./crush.config.json` (current directory)
-2. `~/.crush/config.json` (user home directory)
-3. `/etc/crush/config.json` (system-wide)
+1. `./jazz.config.json` (current directory)
+2. `~/.jazz/config.json` (user home directory)
+3. `/etc/jazz/config.json` (system-wide)
 
 ### File Format
 
@@ -40,13 +40,13 @@ Configuration files use JSON format:
 {
   "storage": {
     "type": "file",
-    "path": "./.crush"
+    "path": "./.jazz"
   },
   "logging": {
     "level": "info",
     "format": "pretty",
     "output": "console",
-    "filePath": "./logs/crush.log"
+    "filePath": "./logs/jazz.log"
   },
   "security": {
     "encryptionKey": "your-encryption-key",
@@ -73,7 +73,7 @@ Configuration files use JSON format:
 {
   "storage": {
     "type": "file",
-    "path": "./.crush"
+    "path": "./.jazz"
   }
 }
 ```
@@ -92,7 +92,7 @@ Configuration files use JSON format:
     "level": "info",
     "format": "pretty",
     "output": "console",
-    "filePath": "./logs/crush.log"
+    "filePath": "./logs/jazz.log"
   }
 }
 ```
@@ -155,49 +155,49 @@ Environment variables provide runtime configuration overrides.
 
 ```bash
 # Storage configuration
-export CRUSH_STORAGE_TYPE="file"
-export CRUSH_STORAGE_PATH="/custom/data/path"
-export CRUSH_STORAGE_CONNECTION_STRING="postgresql://user:pass@localhost/crush"
+export JAZZ_STORAGE_TYPE="file"
+export JAZZ_STORAGE_PATH="/custom/data/path"
+export JAZZ_STORAGE_CONNECTION_STRING="postgresql://user:pass@localhost/jazz"
 ```
 
 ### Logging Variables
 
 ```bash
 # Logging configuration
-export CRUSH_LOG_LEVEL="debug"
-export CRUSH_LOG_FORMAT="json"
-export CRUSH_LOG_OUTPUT="both"
-export CRUSH_LOG_FILE_PATH="/var/log/crush.log"
+export JAZZ_LOG_LEVEL="debug"
+export JAZZ_LOG_FORMAT="json"
+export JAZZ_LOG_OUTPUT="both"
+export JAZZ_LOG_FILE_PATH="/var/log/jazz.log"
 ```
 
 ### Security Variables
 
 ```bash
 # Security configuration
-export CRUSH_ENCRYPTION_KEY="your-secret-key"
-export CRUSH_ALLOWED_ORIGINS="http://localhost:3000,https://app.example.com"
-export CRUSH_RATE_LIMIT_REQUESTS="200"
-export CRUSH_RATE_LIMIT_WINDOW="60000"
+export JAZZ_ENCRYPTION_KEY="your-secret-key"
+export JAZZ_ALLOWED_ORIGINS="http://localhost:3000,https://app.example.com"
+export JAZZ_RATE_LIMIT_REQUESTS="200"
+export JAZZ_RATE_LIMIT_WINDOW="60000"
 ```
 
 ### Performance Variables
 
 ```bash
 # Performance configuration
-export CRUSH_MAX_CONCURRENT_AGENTS="10"
-export CRUSH_MAX_CONCURRENT_TASKS="20"
-export CRUSH_TIMEOUT="60000"
-export CRUSH_MEMORY_LIMIT="2147483648"
+export JAZZ_MAX_CONCURRENT_AGENTS="10"
+export JAZZ_MAX_CONCURRENT_TASKS="20"
+export JAZZ_TIMEOUT="60000"
+export JAZZ_MEMORY_LIMIT="2147483648"
 ```
 
 ### Agent-Specific Variables
 
 ```bash
 # Agent environment variables
-export CRUSH_AGENT_TIMEOUT="300000"
-export CRUSH_AGENT_MAX_RETRIES="5"
-export CRUSH_AGENT_RETRY_DELAY="2000"
-export CRUSH_AGENT_RETRY_BACKOFF="exponential"
+export JAZZ_AGENT_TIMEOUT="300000"
+export JAZZ_AGENT_MAX_RETRIES="5"
+export JAZZ_AGENT_RETRY_DELAY="2000"
+export JAZZ_AGENT_RETRY_BACKOFF="exponential"
 ```
 
 ## 🎯 Command Line Options
@@ -208,29 +208,29 @@ All commands support these global options:
 
 ```bash
 # Verbose logging
-crush --verbose agent list
+jazz --verbose agent list
 
 # Quiet mode
-crush --quiet agent create my-agent
+jazz --quiet agent create my-agent
 
 # Custom config file
-crush --config /path/to/config.json agent list
+jazz --config /path/to/config.json agent list
 ```
 
 ### Agent Command Options
 
 ```bash
 # Create agent with custom timeout
-crush agent create my-agent --timeout 60000
+jazz agent create my-agent --timeout 60000
 
 # Create agent with retry policy
-crush agent create my-agent \
+jazz agent create my-agent \
   --max-retries 5 \
   --retry-delay 2000 \
   --retry-backoff exponential
 
 # Run agent with options
-crush agent run <agent-id> --dry-run --watch
+jazz agent run <agent-id> --dry-run --watch
 ```
 
 ## 🔧 Configuration Examples
@@ -266,16 +266,16 @@ For production environments:
 {
   "storage": {
     "type": "file",
-    "path": "/var/lib/crush"
+    "path": "/var/lib/jazz"
   },
   "logging": {
     "level": "info",
     "format": "json",
     "output": "both",
-    "filePath": "/var/log/crush/crush.log"
+    "filePath": "/var/log/jazz/jazz.log"
   },
   "security": {
-    "encryptionKey": "${CRUSH_ENCRYPTION_KEY}",
+    "encryptionKey": "${JAZZ_ENCRYPTION_KEY}",
     "rateLimit": {
       "requests": 1000,
       "window": 60000
@@ -304,7 +304,7 @@ For testing environments:
     "level": "error",
     "format": "json",
     "output": "file",
-    "filePath": "./test-logs/crush.log"
+    "filePath": "./test-logs/jazz.log"
   },
   "performance": {
     "maxConcurrentAgents": 1,
@@ -435,7 +435,7 @@ Configure memory limits to prevent resource exhaustion:
 
 ### Schema Validation
 
-Crush validates configuration against a schema:
+Jazz validates configuration against a schema:
 
 ```typescript
 interface AppConfig {
@@ -482,23 +482,6 @@ Error: Required field 'storage.path' is missing
 
 **Solution:** Provide all required configuration fields.
 
-## 🛠️ Configuration Management
-
-### Environment-Specific Configs
-
-Use different configuration files for different environments:
-
-```bash
-# Development
-cp crush.config.dev.json crush.config.json
-
-# Production
-cp crush.config.prod.json crush.config.json
-
-# Testing
-cp crush.config.test.json crush.config.json
-```
-
 ### Configuration Templates
 
 Create configuration templates for different use cases:
@@ -509,7 +492,7 @@ Create configuration templates for different use cases:
 {
   "storage": {
     "type": "file",
-    "path": "./.crush"
+    "path": "./.jazz"
   }
 }
 ```
@@ -520,7 +503,7 @@ Create configuration templates for different use cases:
 {
   "storage": {
     "type": "file",
-    "path": "./.crush"
+    "path": "./.jazz"
   },
   "logging": {
     "level": "info",
@@ -549,10 +532,10 @@ Backup your configuration files:
 
 ```bash
 # Backup current configuration
-cp crush.config.json crush.config.json.backup
+cp jazz.config.json jazz.config.json.backup
 
 # Restore from backup
-cp crush.config.json.backup crush.config.json
+cp jazz.config.json.backup jazz.config.json
 ```
 
 ## 🔧 Troubleshooting
