@@ -25,14 +25,17 @@ Jazz is a command-line tool designed to help you create, manage, and execute aut
 
 ```bash
 npm install -g jazz-ai
-bun add -g jazz-ai
 
-jazz --help
+yarn add -g jazz-ai
+
+bun add -g jazz-ai
 ```
 
 ### Basic Usage
 
 ```bash
+jazz --help
+
 # Create your first agent
 jazz agent create
 
