@@ -49,7 +49,7 @@ The system blocks potentially dangerous commands including:
 
 ### **4. Process Isolation**
 
-- Commands run with the same user privileges as the crush process
+- Commands run with the same user privileges as the jazz process
 - Process is not detached (can be terminated by parent)
 - Timeout protection prevents runaway processes
 
@@ -63,8 +63,8 @@ The system blocks potentially dangerous commands including:
 
 ### **Before Enabling This Feature**
 
-1. **Review Your System**: Ensure you're running crush in a secure environment
-2. **Limit Privileges**: Run crush with minimal necessary privileges
+1. **Review Your System**: Ensure you're running jazz in a secure environment
+2. **Limit Privileges**: Run jazz with minimal necessary privileges
 3. **Monitor Usage**: Regularly review command execution logs
 4. **Backup Data**: Ensure important data is backed up
 5. **Network Security**: Consider network restrictions if needed

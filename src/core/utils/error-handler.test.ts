@@ -21,8 +21,8 @@ describe("Error Handler", () => {
     expect(formatted).toContain("No agent found with ID: non-existent-agent");
     expect(formatted).toContain("💡 Suggestion:");
     expect(formatted).toContain("🔧 Recovery Steps:");
-    expect(formatted).toContain("crush agent list");
-    expect(formatted).toContain("crush agent create");
+    expect(formatted).toContain("jazz agent list");
+    expect(formatted).toContain("jazz agent create");
   });
 
   it("should format AgentAlreadyExistsError with suggestions", () => {
@@ -34,8 +34,8 @@ describe("Error Handler", () => {
 
     expect(formatted).toContain("❌ Agent Already Exists");
     expect(formatted).toContain('An agent with name "duplicate-agent" already exists');
-    expect(formatted).toContain("crush agent delete");
-    expect(formatted).toContain("crush agent list");
+    expect(formatted).toContain("jazz agent delete");
+    expect(formatted).toContain("jazz agent list");
   });
 
   it("should format ValidationError with field-specific suggestions", () => {
@@ -68,8 +68,8 @@ describe("Error Handler", () => {
     expect(formatted).toContain("❌ Configuration Error");
     expect(formatted).toContain('Configuration error in field "llm.openai.api_key"');
     expect(formatted).toContain("🔧 Recovery Steps:");
-    expect(formatted).toContain("crush config list");
-    expect(formatted).toContain("crush config validate");
+    expect(formatted).toContain("jazz config list");
+    expect(formatted).toContain("jazz config validate");
   });
 
   it("should handle error display without crashing", async () => {
@@ -91,7 +91,7 @@ describe("Error Handler", () => {
     errors.forEach((error) => {
       const formatted = formatError(error);
       expect(formatted).toContain("📚 Related Commands:");
-      expect(formatted).toContain("crush");
+      expect(formatted).toContain("jazz");
     });
   });
 });

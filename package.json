@@ -1,11 +1,11 @@
 {
-  "name": "crush",
+  "name": "jazz",
   "version": "0.1.0",
   "description": "A powerful agentic automation CLI for managing agentic loops in daily life workflows",
   "main": "dist/main.js",
   "type": "module",
   "bin": {
-    "crush": "./dist/main.js"
+    "jazz": "./dist/main.js"
   },
   "scripts": {
     "build": "bun run tsc",

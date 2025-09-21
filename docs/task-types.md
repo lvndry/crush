@@ -1,10 +1,10 @@
 # Task Types Reference
 
-This document provides detailed information about all available task types in Crush, their configuration options, and usage examples.
+This document provides detailed information about all available task types in Jazz, their configuration options, and usage examples.
 
 ## 📋 Overview
 
-Tasks are the fundamental building blocks of agents in Crush. Each task represents a single unit of work that can be executed by an agent. Tasks are:
+Tasks are the fundamental building blocks of agents in Jazz. Each task represents a single unit of work that can be executed by an agent. Tasks are:
 
 - **Typed**: Each task has a specific type with its own configuration schema
 - **Configurable**: Support various options for customization
@@ -33,7 +33,7 @@ interface Task {
 
 ### Task Types
 
-Crush supports the following task types:
+Jazz supports the following task types:
 
 - `command` - Execute shell commands
 - `script` - Execute JavaScript/TypeScript code
@@ -274,7 +274,7 @@ interface ApiTaskConfig {
     url: "https://api.example.com/health",
     method: "GET",
     headers: {
-      "User-Agent": "Crush-Agent/1.0"
+      "User-Agent": "Jazz-Agent/1.0"
     },
     timeout: 30000
   }

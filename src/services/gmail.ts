@@ -788,7 +788,7 @@ export function createGmailServiceLayer(): Layer.Layer<
       const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
       const { storage } = yield* agentConfig.appConfig;
-      const dataDir = storage.type === "file" ? storage.path : "./.crush";
+      const dataDir = storage.type === "file" ? storage.path : "./.jazz";
       const tokenFilePath = `${dataDir}/google/gmail-token.json`;
       const service: GmailService = new GmailServiceResource(
         fs,

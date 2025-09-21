@@ -226,7 +226,7 @@ describe("FileSystemContextService", () => {
       const testEffect = Effect.gen(function* () {
         const shell = yield* FileSystemContextServiceTag;
         // Create a controlled test environment
-        const testDir = "/tmp/crush-test-find-controlled";
+        const testDir = "/tmp/jazz-test-find-controlled";
         const fs = yield* Effect.promise(() => import("fs/promises"));
 
         // Create test directory structure
@@ -277,7 +277,7 @@ describe("FileSystemContextService", () => {
       const testEffect = Effect.gen(function* () {
         const shell = yield* FileSystemContextServiceTag;
         // Create a test directory structure
-        const testDir = "/tmp/crush-test-find";
+        const testDir = "/tmp/jazz-test-find";
         yield* Effect.promise(() =>
           import("fs/promises").then((fs) => fs.mkdir(`${testDir}/subdir`, { recursive: true })),
         );

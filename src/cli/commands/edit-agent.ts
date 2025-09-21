@@ -46,7 +46,7 @@ export function editAgentCommand(
   AgentService | LLMService | ToolRegistry
 > {
   return Effect.gen(function* () {
-    console.log("✏️  Welcome to the Crush Agent Edit Wizard!");
+    console.log("✏️  Welcome to the Jazz Agent Edit Wizard!");
     console.log("Let's update your agent step by step.\n");
 
     const agentService = yield* AgentServiceTag;
@@ -126,7 +126,7 @@ export function editAgentCommand(
     console.log(`   Updated: ${updatedAgent.updatedAt.toISOString()}`);
 
     console.log("\nYou can now chat with your updated agent using:");
-    console.log(`crush agent chat ${updatedAgent.id}`);
+    console.log(`jazz agent chat ${updatedAgent.id}`);
   });
 }
 

@@ -1,10 +1,10 @@
 # Agent Development Guide
 
-This guide explains how to create, configure, and manage agents in Crush.
+This guide explains how to create, configure, and manage agents in Jazz.
 
 ## 🤖 What is an Agent?
 
-An agent in Crush is an autonomous entity that can execute a series of tasks to accomplish specific automation goals. Agents are:
+An agent in Jazz is an autonomous entity that can execute a series of tasks to accomplish specific automation goals. Agents are:
 
 - **Autonomous**: Can run independently with minimal human intervention
 - **Configurable**: Support various settings for timeout, retry policies, and environment variables
@@ -57,14 +57,14 @@ Agents can be in one of these states:
 
 ```bash
 # Create a simple agent
-crush agent create
+jazz agent create
 ```
 
 ### Advanced Agent Creation
 
 ```bash
 # Create agent with custom configuration
-crush agent create backup-agent \
+jazz agent create backup-agent \
   --description "Automated backup agent for daily backups" \
   --timeout 300000 \
   --max-retries 5 \
@@ -88,10 +88,10 @@ Set how long an agent can run before timing out:
 
 ```bash
 # 5 minutes timeout
-crush agent create long-running-agent --timeout 300000
+jazz agent create long-running-agent --timeout 300000
 
 # 1 hour timeout
-crush agent create batch-processor --timeout 3600000
+jazz agent create batch-processor --timeout 3600000
 ```
 
 **Timeout Guidelines:**
@@ -142,7 +142,7 @@ interface RetryPolicy {
 **Example Configuration:**
 
 ```bash
-crush agent create resilient-agent \
+jazz agent create resilient-agent \
   --max-retries 3 \
   --retry-delay 1000 \
   --retry-backoff exponential
@@ -161,7 +161,7 @@ Agents can have custom environment variables:
 
 ### Task Types
 
-Crush supports multiple task types:
+Jazz supports multiple task types:
 
 #### 1. Command Tasks
 
@@ -292,13 +292,13 @@ Tasks can depend on other tasks:
 #### Normal Execution
 
 ```bash
-crush agent run <agent-id>
+jazz agent run <agent-id>
 ```
 
 #### Dry Run Mode
 
 ```bash
-crush agent run <agent-id> --dry-run
+jazz agent run <agent-id> --dry-run
 ```
 
 Shows what would be executed without actually running tasks.
@@ -306,7 +306,7 @@ Shows what would be executed without actually running tasks.
 #### Watch Mode
 
 ```bash
-crush agent run <agent-id> --watch
+jazz agent run <agent-id> --watch
 ```
 
 Continuously monitors for changes and re-runs the agent.
@@ -360,10 +360,10 @@ Monitor agent status:
 
 ```bash
 # Get current agent status
-crush agent get <agent-id>
+jazz agent get <agent-id>
 
 # List all agents with status
-crush agent list
+jazz agent list
 ```
 
 ## 🔧 Best Practices
@@ -437,7 +437,7 @@ Agents will support various triggers:
 
 ```bash
 # Create a backup agent
-crush agent create backup-agent \
+jazz agent create backup-agent \
   --description "Daily database backup agent" \
   --timeout 1800000 \
   --max-retries 3 \
@@ -458,7 +458,7 @@ crush agent create backup-agent \
 
 ```bash
 # Create a data processing agent
-crush agent create data-processor \
+jazz agent create data-processor \
   --description "Process incoming data files" \
   --timeout 3600000 \
   --max-retries 2
@@ -477,7 +477,7 @@ crush agent create data-processor \
 
 ```bash
 # Create an API monitoring agent
-crush agent create api-monitor \
+jazz agent create api-monitor \
   --description "Monitor API health and performance" \
   --timeout 300000 \
   --max-retries 5 \

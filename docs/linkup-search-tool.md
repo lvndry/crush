@@ -1,6 +1,6 @@
 # Linkup Search Tool
 
-The Linkup search tool provides web search functionality to your crush CLI agents, enabling them to access current information from the internet to enrich their responses with factual, up-to-date data.
+The Linkup search tool provides web search functionality to your jazz CLI agents, enabling them to access current information from the internet to enrich their responses with factual, up-to-date data.
 
 ## Features
 
@@ -11,7 +11,7 @@ The Linkup search tool provides web search functionality to your crush CLI agent
 
 ## Configuration
 
-Add the following to your `crush.config.json` file:
+Add the following to your `jazz.config.json` file:
 
 ```json
 {
@@ -129,6 +129,6 @@ npm test -- src/core/agent/tools/linkup-tools.test.ts
 ## Getting Started
 
 1. Sign up for a Linkup API key at [https://docs.linkup.so](https://docs.linkup.so)
-2. Add your API key to `crush.config.json`
+2. Add your API key to `jazz.config.json`
 3. The tool will be automatically available to your agents
 4. Start using it in your agent workflows for enhanced search capabilities

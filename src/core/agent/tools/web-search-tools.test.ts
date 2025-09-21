@@ -18,7 +18,7 @@ mockLinkupClient.mockImplementation(() => ({
 
 describe("WebSearchTool", () => {
   const mockAppConfig: AppConfig = {
-    storage: { type: "file", path: "./.crush" },
+    storage: { type: "file", path: "./.jazz" },
     logging: { level: "info", format: "pretty", output: "console" },
     security: {},
     performance: { maxConcurrentAgents: 5, maxConcurrentTasks: 10, timeout: 30000 },

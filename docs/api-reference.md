@@ -1,10 +1,10 @@
 # API Reference
 
-Complete reference for Crush's internal APIs, service interfaces, and type definitions.
+Complete reference for Jazz's internal APIs, service interfaces, and type definitions.
 
 ## 📋 Overview
 
-This document provides detailed information about Crush's internal APIs, including:
+This document provides detailed information about Jazz's internal APIs, including:
 
 - Service interfaces and implementations
 - Type definitions and schemas

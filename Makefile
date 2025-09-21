@@ -1,11 +1,11 @@
-# Crush CLI Makefile
+# Jazz CLI Makefile
 # Provides convenient commands for development, building, and testing
 
 .PHONY: help install build dev test test-watch lint lint-fix format clean start cli install-global uninstall-global
 
 # Default target
 help: ## Show this help message
-	@echo "Crush CLI - Available commands:"
+	@echo "Jazz CLI - Available commands:"
 	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
@@ -14,13 +14,13 @@ install: ## Install dependencies
 	@echo "Installing dependencies..."
 	bun install
 
-install-global: build ## Install Crush globally
-	@echo "Installing Crush globally..."
+install-global: build ## Install Jazz globally
+	@echo "Installing Jazz globally..."
 	npm link
 
-uninstall-global: ## Uninstall Crush globally
-	@echo "Uninstalling Crush globally..."
-	npm unlink -g crush
+uninstall-global: ## Uninstall Jazz globally
+	@echo "Uninstalling Jazz globally..."
+	npm unlink -g jazz
 
 # Development
 dev: ## Start development server with hot reload
@@ -28,7 +28,7 @@ dev: ## Start development server with hot reload
 	bun --watch src/main.ts
 
 start: ## Start the built application
-	@echo "Starting Crush CLI..."
+	@echo "Starting Jazz CLI..."
 	bun dist/main.js
 
 cli: ## Run CLI directly from source
@@ -37,7 +37,7 @@ cli: ## Run CLI directly from source
 
 # Building
 build: clean ## Build the project
-	@echo "Building Crush CLI..."
+	@echo "Building Jazz CLI..."
 	bun run build
 
 clean: ## Clean build artifacts
@@ -118,7 +118,7 @@ release-build: clean build test ## Build release version
 docker-build: ## Build Docker image
 	@echo "Building Docker image..."
 	@if [ -f Dockerfile ]; then \
-		docker build -t crush:latest .; \
+		docker build -t jazz:latest .; \
 	else \
 		echo "Dockerfile not found"; \
 	fi
@@ -126,7 +126,7 @@ docker-build: ## Build Docker image
 docker-run: ## Run Docker container
 	@echo "Running Docker container..."
 	@if [ -f Dockerfile ]; then \
-		docker run -it --rm crush:latest; \
+		docker run -it --rm jazz:latest; \
 	else \
 		echo "Dockerfile not found"; \
 	fi
@@ -157,14 +157,14 @@ ci-build: ## Build for CI
 
 # Utility commands
 version: ## Show version information
-	@echo "Crush CLI Version Information:"
+	@echo "Jazz CLI Version Information:"
 	@echo "Package version: $$(grep '"version"' package.json | cut -d'"' -f4)"
 	@echo "Node version: $$(node --version)"
 	@echo "Bun version: $$(bun --version)"
 	@echo "TypeScript version: $$(bunx tsc --version)"
 
 info: ## Show project information
-	@echo "Crush CLI Project Information:"
+	@echo "Jazz CLI Project Information:"
 	@echo "Name: $$(grep '"name"' package.json | cut -d'"' -f4)"
 	@echo "Description: $$(grep '"description"' package.json | cut -d'"' -f4)"
 	@echo "Author: $$(grep '"author"' package.json | cut -d'"' -f4)"

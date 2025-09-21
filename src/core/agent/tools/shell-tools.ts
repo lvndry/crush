@@ -28,7 +28,7 @@ interface ExecuteCommandApprovedArgs extends Record<string, unknown> {
  * SECURITY WARNING: This tool can execute arbitrary commands on the system.
  * Only enable this feature if you trust the LLM and have proper approval mechanisms in place.
  * Consider the following security implications:
- * - Commands run with the same privileges as the crush process
+ * - Commands run with the same privileges as the jazz process
  * - Environment variables may be exposed to executed commands
  * - Network access is available to executed commands
  * - File system access is available within the working directory context

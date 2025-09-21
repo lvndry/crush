@@ -56,7 +56,7 @@ export function gmailLogoutCommand(): Effect.Effect<
 
     // Get the token file path from config
     const { storage } = yield* config.appConfig;
-    const dataDir = storage.type === "file" ? storage.path : "./.crush";
+    const dataDir = storage.type === "file" ? storage.path : "./.jazz";
     const tokenFilePath = `${dataDir}/google/gmail-token.json`;
 
     // Check if token file exists
@@ -105,7 +105,7 @@ export function gmailStatusCommand(): Effect.Effect<
 
     // Get the token file path from config
     const { storage } = yield* config.appConfig;
-    const dataDir = storage.type === "file" ? storage.path : "./.crush";
+    const dataDir = storage.type === "file" ? storage.path : "./.jazz";
     const tokenFilePath = `${dataDir}/google/gmail-token.json`;
 
     // Check if token file exists
@@ -144,18 +144,18 @@ export function gmailStatusCommand(): Effect.Effect<
         } catch (parseError) {
           yield* logger.error("Failed to parse Gmail token", { error: parseError });
           console.log("⚠️  Gmail token file exists but is corrupted");
-          console.log("   Run 'crush auth gmail logout' to clean up and re-authenticate");
+          console.log("   Run 'jazz auth gmail logout' to clean up and re-authenticate");
         }
       } else {
         yield* logger.info("Gmail token file is empty");
         console.log("⚠️  Gmail token file exists but is empty");
-        console.log("   Run 'crush auth gmail logout' to clean up and re-authenticate");
+        console.log("   Run 'jazz auth gmail logout' to clean up and re-authenticate");
       }
     } else {
       yield* logger.info("No Gmail token found");
       console.log("❌ Gmail authentication status:");
       console.log("   Status: Not authenticated");
-      console.log("   Run 'crush auth gmail login' to authenticate");
+      console.log("   Run 'jazz auth gmail login' to authenticate");
     }
   });
 }
