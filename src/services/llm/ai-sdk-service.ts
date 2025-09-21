@@ -7,10 +7,14 @@ import {
   generateText,
   stepCountIs,
   tool,
+  type AssistantModelMessage,
   type LanguageModel,
   type ModelMessage,
+  type SystemModelMessage,
+  type ToolModelMessage,
   type ToolSet,
   type TypedToolCall,
+  type UserModelMessage,
 } from "ai";
 import { Effect, Layer } from "effect";
 import { z } from "zod";
@@ -45,7 +49,7 @@ function safeParseJson(input: string): Record<string, unknown> {
 
 function toCoreMessages(
   messages: ReadonlyArray<{
-    role: "system" | "user" | "assistant" | "tool" | "function";
+    role: "system" | "user" | "assistant" | "tool";
     content: string;
     name?: string;
     tool_call_id?: string;
@@ -57,34 +61,69 @@ function toCoreMessages(
   }>,
 ): ModelMessage[] {
   return messages.map((m) => {
-    const role = m.role === "function" ? "tool" : m.role;
+    const role = m.role;
 
-    if (role === "tool") {
-      const toolMessage = {
-        role: "tool" as const,
+    if (role === "system") {
+      return {
+        role: "system",
         content: m.content,
-        ...(m.name ? { name: m.name } : {}),
-        ...(m.tool_call_id ? { toolCallId: m.tool_call_id } : {}),
-      } as unknown as ModelMessage;
-
-      return toolMessage;
+      } as SystemModelMessage;
     }
 
+    // User messages - simple string content
+    if (role === "user") {
+      return {
+        role: "user",
+        content: m.content,
+      } as UserModelMessage;
+    }
+
+    // Assistant messages (may include tool calls)
     if (role === "assistant") {
-      const assistantMessage: any = { role: "assistant", content: m.content };
-      if (m.tool_calls) {
-        assistantMessage.tool_calls = m.tool_calls.map((tc) => ({
-          type: "tool-call" as const,
-          toolCallId: tc.id,
-          toolName: tc.function.name,
-          input: safeParseJson(tc.function.arguments),
-        }));
+      const contentParts: Array<
+        | { type: "text"; text: string }
+        | { type: "tool-call"; toolCallId: string; toolName: string; input: unknown }
+      > = [];
+
+      if (m.content && m.content.length > 0) {
+        contentParts.push({ type: "text", text: m.content });
       }
-      return assistantMessage as ModelMessage;
+
+      if (m.tool_calls && m.tool_calls.length > 0) {
+        for (const tc of m.tool_calls) {
+          contentParts.push({
+            type: "tool-call",
+            toolCallId: tc.id,
+            toolName: tc.function.name,
+            input: safeParseJson(tc.function.arguments),
+          });
+        }
+      }
+
+      // If we have content parts, return them as an array, otherwise return as string
+      if (contentParts.length > 0) {
+        return { role: "assistant", content: contentParts } as AssistantModelMessage;
+      } else {
+        return { role: "assistant", content: "" } as AssistantModelMessage;
+      }
     }
 
-    // system | user | assistant (without tool calls)
-    return { role: role, content: m.content } as ModelMessage;
+    // Tool messages (tool results)
+    if (role === "tool") {
+      const contentParts: ToolModelMessage["content"] = [];
+
+      contentParts.push({
+        type: "tool-result",
+        toolCallId: m.tool_call_id ?? "",
+        toolName: m.name ?? "tool",
+        output: { type: "text", value: m.content },
+      });
+
+      return { role: "tool", content: contentParts } as ToolModelMessage;
+    }
+
+    // Fallback - should not reach here
+    throw new Error(`Unsupported message role: ${String(role)}`);
   });
 }
 

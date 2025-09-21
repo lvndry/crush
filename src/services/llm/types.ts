@@ -59,7 +59,7 @@ export type LLMError =
 
 // Message types
 export interface ChatMessage {
-  role: "system" | "user" | "assistant" | "function" | "tool";
+  role: "system" | "user" | "assistant" | "tool";
   content: string;
   name?: string;
   /**

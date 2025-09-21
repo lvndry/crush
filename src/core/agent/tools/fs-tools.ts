@@ -1265,7 +1265,10 @@ export function createStatTool(): Tool<FileSystem.FileSystem | FileSystemContext
           };
         } catch (error) {
           // Check if it's a "not found" error
-          if (error instanceof Error && error.message.includes("ENOENT")) {
+          if (
+            error instanceof Error &&
+            (error as unknown as { cause: { code: string } }).cause.code.includes("ENOENT")
+          ) {
             return {
               success: true,
               result: {
