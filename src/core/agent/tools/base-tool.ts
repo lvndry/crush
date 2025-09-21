@@ -288,7 +288,7 @@ export function makeJsonSchemaValidator<Args extends Record<string, unknown>>(
  * This does not mutate the original schema object.
  */
 export function withApprovalBoolean(
-  schema: z.ZodObject<any>,
+  schema: z.ZodTypeAny,
   options?: { fieldName?: string; description?: string },
 ): z.ZodTypeAny {
   const fieldName = options?.fieldName ?? "confirm";
@@ -301,5 +301,5 @@ export function withApprovalBoolean(
     });
   }
   // If it's some other Zod type, intersect with an object carrying confirm
-  return z.object({ [fieldName]: z.boolean().describe(description) }).and(schema as z.ZodTypeAny);
+  return z.object({ [fieldName]: z.boolean().describe(description) }).and(schema);
 }

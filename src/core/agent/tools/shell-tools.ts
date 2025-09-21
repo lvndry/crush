@@ -1,8 +1,9 @@
 import { Effect } from "effect";
 import { z } from "zod";
+import type { FileSystemContextService } from "../../../services/shell";
 import { FileSystemContextServiceTag } from "../../../services/shell";
 import { defineTool, withApprovalBoolean } from "./base-tool";
-import { type ToolExecutionContext, type ToolExecutionResult } from "./tool-registry";
+import { type Tool, type ToolExecutionContext, type ToolExecutionResult } from "./tool-registry";
 
 /**
  * Shell command execution tools
@@ -32,8 +33,8 @@ interface ExecuteCommandApprovedArgs extends Record<string, unknown> {
  * - Network access is available to executed commands
  * - File system access is available within the working directory context
  */
-export function createExecuteCommandTool(): ReturnType<typeof defineTool> {
-  return defineTool({
+export function createExecuteCommandTool(): Tool<FileSystemContextService> {
+  return defineTool<FileSystemContextService, ExecuteCommandArgs>({
     name: "executeCommand",
     description:
       "Execute a shell command on the system. This tool requires user approval for security reasons.",
@@ -77,21 +78,20 @@ export function createExecuteCommandTool(): ReturnType<typeof defineTool> {
       return { valid: true, value: result.data as ExecuteCommandArgs } as const;
     },
     approval: {
-      message: (args: Record<string, unknown>, context: ToolExecutionContext) =>
+      message: (args: ExecuteCommandArgs, context: ToolExecutionContext) =>
         Effect.gen(function* () {
           const shell = yield* FileSystemContextServiceTag;
-          const typedArgs = args as ExecuteCommandArgs;
           const cwd = yield* shell.getCwd({
             agentId: context.agentId,
             ...(context.conversationId && { conversationId: context.conversationId }),
           });
 
-          const workingDir = typedArgs.workingDirectory || cwd;
-          const timeout = typedArgs.timeout || 30000;
+          const workingDir = args.workingDirectory || cwd;
+          const timeout = args.timeout || 30000;
 
           return `⚠️  COMMAND EXECUTION REQUEST ⚠️
 
-Command: ${typedArgs.command}
+Command: ${args.command}
 Working Directory: ${workingDir}
 Timeout: ${timeout}ms
 Agent: ${context.agentId}
@@ -132,8 +132,8 @@ This command will be executed on your system. Please review it carefully and con
 /**
  * Create a tool for executing approved shell commands
  */
-export function createExecuteCommandApprovedTool(): ReturnType<typeof defineTool> {
-  return defineTool({
+export function createExecuteCommandApprovedTool(): Tool<FileSystemContextService> {
+  return defineTool<FileSystemContextService, ExecuteCommandApprovedArgs>({
     name: "executeCommandApproved",
     description:
       "Execute an approved shell command. This is the internal tool called after user approval.",
@@ -167,21 +167,20 @@ export function createExecuteCommandApprovedTool(): ReturnType<typeof defineTool
       }
       return { valid: true, value: result.data as ExecuteCommandApprovedArgs } as const;
     },
-    handler: (args: Record<string, unknown>, context: ToolExecutionContext) =>
+    handler: (args: ExecuteCommandApprovedArgs, context: ToolExecutionContext) =>
       Effect.gen(function* () {
         const shell = yield* FileSystemContextServiceTag;
-        const typedArgs = args as ExecuteCommandApprovedArgs;
 
         // Get the working directory
         const cwd = yield* shell.getCwd({
           agentId: context.agentId,
           ...(context.conversationId && { conversationId: context.conversationId }),
         });
-        const workingDir = typedArgs.workingDirectory || cwd;
-        const timeout = typedArgs.timeout || 30000;
+        const workingDir = args.workingDirectory || cwd;
+        const timeout = args.timeout || 30000;
 
         // Basic safety checks
-        const command = typedArgs.command.trim();
+        const command = args.command.trim();
         if (!command) {
           return {
             success: false,
@@ -360,7 +359,7 @@ export function createExecuteCommandApprovedTool(): ReturnType<typeof defineTool
 
           // Log command execution for security auditing
           console.warn(`🔒 SECURITY LOG: Command executed by agent ${context.agentId}:`, {
-            command: typedArgs.command,
+            command: args.command,
             workingDirectory: workingDir,
             exitCode: result.exitCode,
             timestamp: new Date().toISOString(),
@@ -371,7 +370,7 @@ export function createExecuteCommandApprovedTool(): ReturnType<typeof defineTool
           return {
             success: true,
             result: {
-              command: typedArgs.command,
+              command: args.command,
               workingDirectory: workingDir,
               exitCode: result.exitCode,
               stdout: result.stdout,

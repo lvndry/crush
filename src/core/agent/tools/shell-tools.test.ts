@@ -19,9 +19,13 @@ describe("Shell Tools", () => {
     expect(tool.description).toContain("Execute a shell command");
     expect(tool.description).toContain("requires user approval");
     expect(tool.hidden).toBe(false);
-    expect(tool.parameters).toHaveProperty("type", "object");
-    expect(tool.parameters).toHaveProperty("properties");
-    expect(tool.parameters).toHaveProperty("required");
+
+    // Check if parameters is a Zod schema (it should be)
+    expect(tool.parameters).toBeDefined();
+    expect(typeof tool.parameters).toBe("object");
+
+    // For Zod schemas, we check for _def property instead of type/properties
+    expect(tool.parameters).toHaveProperty("_def");
   });
 
   it("should create executeCommandApproved tool with proper structure", () => {
@@ -30,9 +34,13 @@ describe("Shell Tools", () => {
     expect(tool.name).toBe("executeCommandApproved");
     expect(tool.description).toContain("Execute an approved shell command");
     expect(tool.hidden).toBe(true);
-    expect(tool.parameters).toHaveProperty("type", "object");
-    expect(tool.parameters).toHaveProperty("properties");
-    expect(tool.parameters).toHaveProperty("required");
+
+    // Check if parameters is a Zod schema (it should be)
+    expect(tool.parameters).toBeDefined();
+    expect(typeof tool.parameters).toBe("object");
+
+    // For Zod schemas, we check for _def property instead of type/properties
+    expect(tool.parameters).toHaveProperty("_def");
   });
 
   it("should require approval for command execution", async () => {
@@ -43,15 +51,16 @@ describe("Shell Tools", () => {
     };
 
     const result = await Effect.runPromise(
-      tool
-        .execute(
+      Effect.provide(
+        tool.execute(
           {
             command: "echo 'hello world'",
             confirm: false,
           },
           context,
-        )
-        .pipe(Effect.provide(createTestLayer())),
+        ),
+        createTestLayer(),
+      ),
     );
 
     expect(result.success).toBe(false);
@@ -69,30 +78,32 @@ describe("Shell Tools", () => {
 
     // Test missing required field
     const result1 = await Effect.runPromise(
-      tool
-        .execute(
+      Effect.provide(
+        tool.execute(
           {
             confirm: false,
           },
           context,
-        )
-        .pipe(Effect.provide(createTestLayer())),
+        ),
+        createTestLayer(),
+      ),
     );
 
     expect(result1.success).toBe(false);
-    expect(result1.error).toContain("Missing required property");
+    expect(result1.error).toContain("expected string, received undefined");
 
     // Test invalid confirm type
     const result2 = await Effect.runPromise(
-      tool
-        .execute(
+      Effect.provide(
+        tool.execute(
           {
             command: "echo test",
             confirm: "not-a-boolean",
           },
           context,
-        )
-        .pipe(Effect.provide(createTestLayer())),
+        ),
+        createTestLayer(),
+      ),
     );
 
     expect(result2.success).toBe(false);
@@ -121,14 +132,15 @@ describe("Shell Tools", () => {
 
     for (const command of dangerousCommands) {
       const result = await Effect.runPromise(
-        tool
-          .execute(
+        Effect.provide(
+          tool.execute(
             {
               command,
             },
             context,
-          )
-          .pipe(Effect.provide(createTestLayer())),
+          ),
+          createTestLayer(),
+        ),
       );
 
       expect(result.success).toBe(false);
@@ -144,14 +156,15 @@ describe("Shell Tools", () => {
     };
 
     const result = await Effect.runPromise(
-      tool
-        .execute(
+      Effect.provide(
+        tool.execute(
           {
             command: "echo 'test output'",
           },
           context,
-        )
-        .pipe(Effect.provide(createTestLayer())),
+        ),
+        createTestLayer(),
+      ),
     );
 
     expect(result.success).toBe(true);
@@ -170,19 +183,22 @@ describe("Shell Tools", () => {
     };
 
     const result = await Effect.runPromise(
-      tool
-        .execute(
+      Effect.provide(
+        tool.execute(
           {
             command: "nonexistentcommand12345",
           },
           context,
-        )
-        .pipe(Effect.provide(createTestLayer())),
+        ),
+        createTestLayer(),
+      ),
     );
 
     expect(result.success).toBe(true); // Command execution succeeds even if command fails
     expect(result.result).toHaveProperty("exitCode");
-    expect((result.result as any).exitCode).not.toBe(0); // Non-zero exit code
+    if (result.result && typeof result.result === "object" && "exitCode" in result.result) {
+      expect(result.result.exitCode).not.toBe(0); // Non-zero exit code
+    }
     expect(result.result).toHaveProperty("stderr");
   });
 });
