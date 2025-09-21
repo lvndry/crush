@@ -24,7 +24,8 @@ Jazz is a command-line tool designed to help you create, manage, and execute aut
 ### Installation
 
 ```bash
-bun add -g jazz-cli
+npm install -g jazz-ai
+bun add -g jazz-ai
 
 jazz --help
 ```
