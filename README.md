@@ -23,13 +23,39 @@ Jazz is a command-line tool designed to help you create, manage, and execute aut
 
 ### Installation
 
+<details open>
+<summary>npm</summary>
+
 ```bash
 npm install -g jazz-ai
+```
 
-yarn add -g jazz-ai
+</details>
 
+<details open>
+<summary>bun</summary>
+
+```bash
 bun add -g jazz-ai
 ```
+
+</details>
+<details open>
+<summary>pnpm</summary>
+
+```bash
+pnpm add -g jazz-ai
+```
+
+</details>
+<details open>
+<summary>yarn</summary>
+
+```bash
+yarn add -g jazz-ai
+```
+
+</details>
 
 ### Basic Usage
 
