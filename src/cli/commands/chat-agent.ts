@@ -93,11 +93,13 @@ export function createAIAgentCommand(): Effect.Effect<
       ? agentAnswers.llmModel
       : chosenProvider.defaultModel;
 
-    // Convert selected categories to actual tool names
-    const selectedTools: string[] = [];
+    // Convert selected categories to categorized tool structure
+    const categorizedTools: Record<string, string[]> = {};
     for (const category of agentAnswers.tools) {
       const toolsInCategory = toolsByCategory[category] || [];
-      selectedTools.push(...toolsInCategory);
+      if (toolsInCategory.length > 0) {
+        categorizedTools[category] = [...toolsInCategory];
+      }
     }
 
     // Build agent configuration
@@ -107,7 +109,7 @@ export function createAIAgentCommand(): Effect.Effect<
       llmProvider: agentAnswers.llmProvider,
       llmModel: selectedModel,
       ...(agentAnswers.reasoningEffort && { reasoningEffort: agentAnswers.reasoningEffort }),
-      tools: selectedTools,
+      ...(Object.keys(categorizedTools).length > 0 && { tools: categorizedTools }),
       environment: {},
     };
 
@@ -127,7 +129,11 @@ export function createAIAgentCommand(): Effect.Effect<
     console.log(`   LLM Provider: ${config.llmProvider}`);
     console.log(`   LLM Model: ${config.llmModel}`);
     console.log(`   Tool Categories: ${agentAnswers.tools.join(", ") || "None"}`);
-    console.log(`   Total Tools: ${selectedTools.length}`);
+    const totalTools = Object.values(categorizedTools).reduce(
+      (sum, tools) => sum + tools.length,
+      0,
+    );
+    console.log(`   Total Tools: ${totalTools}`);
     console.log(`   Status: ${agent.status}`);
     console.log(`   Created: ${agent.createdAt.toISOString()}`);
 
@@ -407,16 +413,23 @@ function handleSpecialCommand(
         console.log();
         return { shouldContinue: true };
 
-      case "status":
+      case "status": {
         console.log("📊 Conversation Status:");
         console.log(`   Agent: ${agent.name} (${agent.id})`);
         console.log(`   Conversation ID: ${conversationId || "Not started"}`);
         console.log(`   Messages in history: ${conversationHistory.length}`);
         console.log(`   Agent type: ${agent.config.agentType}`);
         console.log(`   LLM: ${agent.config.llmProvider}/${agent.config.llmModel}`);
-        console.log(`   Tools: ${agent.config.tools?.length || 0} available`);
+        const totalTools = agent.config.tools
+          ? Object.values(agent.config.tools).reduce(
+              (sum: number, tools: unknown) => sum + (Array.isArray(tools) ? tools.length : 0),
+              0,
+            )
+          : 0;
+        console.log(`   Tools: ${totalTools} available`);
         console.log();
         return { shouldContinue: true };
+      }
 
       case "tools": {
         const toolRegistry = yield* ToolRegistryTag;

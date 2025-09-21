@@ -79,7 +79,11 @@ export class AgentRunner {
 
       // Get available tools for this specific agent
       const allToolNames = yield* toolRegistry.listTools();
-      const agentToolNames = agent.config.tools || [];
+      const agentToolNames = agent.config.tools
+        ? Object.values(agent.config.tools)
+            .flat()
+            .filter((tool): tool is string => typeof tool === "string")
+        : [];
 
       // The approval system in base-tool.ts automatically handles execute-* tool mapping
       // No need for manual mapping here as the tool registry handles this internally

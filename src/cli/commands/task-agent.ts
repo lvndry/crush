@@ -117,19 +117,24 @@ export function createAgentCommand(
  * List all agents via CLI command
  *
  * Retrieves and displays all available agents in a formatted table showing
- * their ID, name, description, status, and creation date.
+ * their ID, name, description, status, and creation date. When verbose mode
+ * is enabled, shows additional details including tools, reasoning effort,
+ * LLM provider, and model information.
  *
+ * @param options - Command options including verbose mode
  * @returns An Effect that resolves when the agents are listed successfully
  *
  * @throws {StorageError} When there's an error accessing storage
  *
  * @example
  * ```typescript
- * yield* listAgentsCommand();
- * // Output: Table showing all agents with their details
+ * yield* listAgentsCommand({ verbose: true });
+ * // Output: Detailed table showing all agents with tools and LLM info
  * ```
  */
-export function listAgentsCommand(): Effect.Effect<void, StorageError, AgentService> {
+export function listAgentsCommand(
+  options: { verbose?: boolean } = {},
+): Effect.Effect<void, StorageError, AgentService> {
   return Effect.gen(function* () {
     const agents = yield* listAllAgents();
 
@@ -144,10 +149,67 @@ export function listAgentsCommand(): Effect.Effect<void, StorageError, AgentServ
     agents.forEach((agent, index) => {
       console.log(`${index + 1}. ${agent.name} (${agent.id})`);
       console.log(`   Description: ${agent.description}`);
-      console.log(`   Status: ${agent.status}`);
-      console.log(`   Tasks: ${agent.config.tasks.length}`);
+
+      // Always show LLM provider and model
+      const llmProvider = agent.config.llmProvider || "openai";
+      const llmModel = agent.config.llmModel || "gpt-4o-mini";
+      console.log(`   LLM: ${llmProvider}/${llmModel}`);
+
       console.log(`   Created: ${agent.createdAt.toISOString()}`);
       console.log(`   Updated: ${agent.updatedAt.toISOString()}`);
+
+      // Show verbose details if requested
+      if (options.verbose) {
+        console.log(`   Agent Type: ${agent.config.agentType || "default"}`);
+        console.log(`   Reasoning Effort: ${agent.config.reasoningEffort || "low"}`);
+        console.log(`   Timeout: ${agent.config.timeout || "default"}ms`);
+
+        if (agent.config.tools) {
+          // Calculate total tool count
+          const totalTools = Object.values(agent.config.tools).reduce(
+            (sum: number, categoryTools: unknown) =>
+              sum + (Array.isArray(categoryTools) ? categoryTools.length : 0),
+            0,
+          );
+
+          if (totalTools > 0) {
+            console.log(`   Tools (${totalTools}):`);
+
+            // Display tools by category
+            Object.entries(agent.config.tools).forEach(([category, tools]) => {
+              if (Array.isArray(tools) && tools.length > 0) {
+                const toolsList = tools.join(", ");
+                console.log(
+                  `     ${category.charAt(0).toUpperCase() + category.slice(1)}: ${toolsList}`,
+                );
+              }
+            });
+          } else {
+            console.log(`   Tools: None configured`);
+          }
+        } else {
+          console.log(`   Tools: None configured`);
+        }
+
+        if (agent.config.retryPolicy) {
+          console.log(
+            `   Retry Policy: ${agent.config.retryPolicy.maxRetries} retries, ${agent.config.retryPolicy.delay}ms delay, ${agent.config.retryPolicy.backoff} backoff`,
+          );
+        }
+
+        if (agent.config.environment && Object.keys(agent.config.environment).length > 0) {
+          console.log(
+            `   Environment Variables: ${Object.keys(agent.config.environment).length} configured`,
+          );
+        }
+
+        if (agent.config.schedule) {
+          console.log(
+            `   Schedule: ${agent.config.schedule.type} - ${agent.config.schedule.value}`,
+          );
+        }
+      }
+
       console.log();
     });
   });
@@ -171,7 +233,6 @@ export function listAgentsCommand(): Effect.Effect<void, StorageError, AgentServ
  * @example
  * ```typescript
  * yield* runAgentCommand("agent-123", { dryRun: true });
- * // Output: Shows what would be executed without actually running
  * ```
  */
 export function runAgentCommand(

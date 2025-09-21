@@ -138,7 +138,7 @@ function main() {
       .description("List all agents")
       .action(() => {
         void Effect.runPromise(
-          listAgentsCommand().pipe(
+          listAgentsCommand({ verbose: Boolean(program.opts()["verbose"]) }).pipe(
             Effect.provide(createAppLayer()),
             Effect.catchAll((error) => handleError(error)),
           ),
