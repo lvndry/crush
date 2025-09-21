@@ -6,8 +6,9 @@ import {
   type SearchResults,
   type SourcedAnswer,
 } from "linkup-sdk";
+import { z } from "zod";
 import { AgentConfigService, type ConfigService } from "../../../services/config";
-import { defineTool, makeJsonSchemaValidator } from "./base-tool";
+import { defineTool } from "./base-tool";
 import { type ToolExecutionContext, type ToolExecutionResult } from "./tool-registry";
 
 /**
@@ -53,45 +54,47 @@ export function createWebSearchTool(): ReturnType<typeof defineTool<ConfigServic
   return defineTool<ConfigService, WebSearchArgs>({
     name: "web_search",
     description:
-      "Search the web for current information. Uses Linkup search engine by default, with automatic fallback to web search options if Linkup is unavailable. Provides high-quality, factual search results to enrich AI responses with current information from the internet.",
-    parameters: {
-      type: "object",
-      properties: {
-        query: {
-          type: "string",
-          description: "The search query to execute. Be specific and detailed for better results.",
-        },
-        depth: {
-          type: "string",
-          enum: ["standard", "deep"],
-          description:
+      "Search the web for current information. Uses Linkup search engine by default. Provides high-quality, factual search results to enrich AI responses with current information from the internet.",
+    parameters: z
+      .object({
+        query: z
+          .string()
+          .min(1, "query cannot be empty")
+          .describe("The search query to execute. Be specific and detailed for better results."),
+        depth: z
+          .enum(["standard", "deep"])
+          .optional()
+          .describe(
             "Search depth - 'standard' for quick results, 'deep' for comprehensive search (default: 'standard')",
-        },
-        outputType: {
-          type: "string",
-          enum: ["sourcedAnswer", "searchResults", "structured"],
-          description:
+          ),
+        outputType: z
+          .enum(["sourcedAnswer", "searchResults", "structured"])
+          .optional()
+          .describe(
             "Output format - 'sourcedAnswer' for AI-friendly format, 'searchResults' for raw results, 'structured' for structured data (default: 'sourcedAnswer')",
-        },
-        includeImages: {
-          type: "boolean",
-          description: "Whether to include images in search results (default: false)",
-        },
-      },
-      required: ["query"],
-      additionalProperties: false,
+          ),
+        includeImages: z
+          .boolean()
+          .optional()
+          .describe("Whether to include images in search results (default: false)"),
+      })
+      .strict(),
+    validate: (args) => {
+      const result = (
+        z
+          .object({
+            query: z.string().min(1),
+            depth: z.enum(["standard", "deep"]).optional(),
+            outputType: z.enum(["sourcedAnswer", "searchResults", "structured"]).optional(),
+            includeImages: z.boolean().optional(),
+          })
+          .strict() as z.ZodType<WebSearchArgs>
+      ).safeParse(args);
+      if (!result.success) {
+        return { valid: false, errors: result.error.issues.map((i) => i.message) } as const;
+      }
+      return { valid: true, value: result.data } as const;
     },
-    validate: makeJsonSchemaValidator<WebSearchArgs>({
-      type: "object",
-      properties: {
-        query: { type: "string" },
-        depth: { type: "string", enum: ["standard", "deep"] },
-        outputType: { type: "string", enum: ["sourcedAnswer", "searchResults", "structured"] },
-        includeImages: { type: "boolean" },
-      },
-      required: ["query"],
-      additionalProperties: false,
-    }),
     handler: function webSearchHandler(
       args: WebSearchArgs,
       context: ToolExecutionContext,

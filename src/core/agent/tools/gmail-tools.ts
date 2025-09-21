@@ -1,11 +1,12 @@
 import { Effect } from "effect";
+import { z } from "zod";
 import {
   GmailServiceTag,
   type GmailEmail,
   type GmailLabel,
   type GmailService,
 } from "../../../services/gmail";
-import { defineTool, makeJsonSchemaValidator } from "./base-tool";
+import { defineTool } from "./base-tool";
 import { type Tool } from "./tool-registry";
 
 // Gmail allowed label colors
@@ -120,33 +121,26 @@ const ALLOWED_LABEL_COLORS = [
 
 // List emails tool
 export function createListEmailsTool(): Tool<GmailService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      maxResults: {
-        type: "number",
-        description: "Maximum emails to return",
-        minimum: 1,
-        maximum: 100,
-        default: 10,
-        examples: [5, 10, 25],
-      },
-      query: {
-        type: "string",
-        description: "Gmail search query, e.g. 'in:inbox newer_than:7d'",
-        default: "",
-        examples: ["in:inbox", "from:boss@example.com", "has:attachment"],
-      },
-    },
-    required: [],
-  } as const;
+  const parameters = z
+    .object({
+      maxResults: z.number().int().min(1).max(100).optional().describe("Maximum emails to return"),
+      query: z.string().optional().describe("Gmail search query, e.g. 'in:inbox newer_than:7d'"),
+    })
+    .strict();
 
   return defineTool<GmailService, { maxResults?: number; query?: string }>({
     name: "listEmails",
     description: "List the user's emails with optional filtering",
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({
+            valid: true,
+            value: result.data as unknown as { maxResults?: number; query?: string },
+          } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (validatedArgs) =>
       Effect.gen(function* () {
         const gmailService = yield* GmailServiceTag;
@@ -171,25 +165,22 @@ export function createListEmailsTool(): Tool<GmailService> {
 
 // Get email tool
 export function createGetEmailTool(): Tool<GmailService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      emailId: {
-        type: "string",
-        description: "ID of the email to retrieve",
-        minLength: 1,
-        examples: ["185d3b2f0f0c1a2b"],
-      },
-    },
-    required: ["emailId"],
-  } as const;
+  const parameters = z
+    .object({
+      emailId: z.string().min(1).describe("ID of the email to retrieve"),
+    })
+    .strict();
 
   return defineTool<GmailService, { emailId: string }>({
     name: "getEmail",
     description: "Get the full content of a specific email by ID",
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({ valid: true, value: result.data as unknown as { emailId: string } } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (validatedArgs) =>
       Effect.gen(function* () {
         const gmailService = yield* GmailServiceTag;
@@ -201,32 +192,26 @@ export function createGetEmailTool(): Tool<GmailService> {
 
 // Search emails tool
 export function createSearchEmailsTool(): Tool<GmailService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      query: {
-        type: "string",
-        description: "Gmail search query to filter emails",
-        minLength: 1,
-        examples: ["subject:invoice newer_than:30d"],
-      },
-      maxResults: {
-        type: "number",
-        description: "Maximum emails to return",
-        minimum: 1,
-        maximum: 100,
-        default: 10,
-      },
-    },
-    required: ["query"],
-  } as const;
+  const parameters = z
+    .object({
+      query: z.string().min(1).describe("Gmail search query to filter emails"),
+      maxResults: z.number().int().min(1).max(100).optional().describe("Maximum emails to return"),
+    })
+    .strict();
 
   return defineTool<GmailService, { query: string; maxResults?: number }>({
     name: "searchEmails",
     description: "Search for emails matching specific criteria",
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({
+            valid: true,
+            value: result.data as unknown as { query: string; maxResults?: number },
+          } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (validatedArgs) =>
       Effect.gen(function* () {
         const gmailService = yield* GmailServiceTag;
@@ -240,40 +225,15 @@ export function createSearchEmailsTool(): Tool<GmailService> {
 
 // Send email tool
 export function createSendEmailTool(): Tool<GmailService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      to: {
-        type: "array",
-        items: { type: "string" },
-        description: "Primary recipients (email addresses)",
-        minItems: 1,
-        examples: [["alice@example.com"]],
-      },
-      subject: {
-        type: "string",
-        description: "Email subject",
-        minLength: 1,
-      },
-      body: {
-        type: "string",
-        description: "Email body (plain text)",
-        minLength: 1,
-      },
-      cc: {
-        type: "array",
-        items: { type: "string" },
-        description: "CC recipients",
-      },
-      bcc: {
-        type: "array",
-        items: { type: "string" },
-        description: "BCC recipients",
-      },
-    },
-    required: ["to", "subject", "body"],
-  } as const;
+  const parameters = z
+    .object({
+      to: z.array(z.string()).min(1).describe("Primary recipients (email addresses)"),
+      subject: z.string().min(1).describe("Email subject"),
+      body: z.string().min(1).describe("Email body (plain text)"),
+      cc: z.array(z.string()).optional().describe("CC recipients"),
+      bcc: z.array(z.string()).optional().describe("BCC recipients"),
+    })
+    .strict();
 
   return defineTool<
     GmailService,
@@ -282,7 +242,21 @@ export function createSendEmailTool(): Tool<GmailService> {
     name: "sendEmail",
     description: "Draft an email on behalf of the user (does not send)",
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({
+            valid: true,
+            value: result.data as unknown as {
+              to: string[];
+              subject: string;
+              body: string;
+              cc?: string[];
+              bcc?: string[];
+            },
+          } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (validatedArgs) =>
       Effect.gen(function* () {
         const gmailService = yield* GmailServiceTag;
@@ -298,18 +272,18 @@ export function createSendEmailTool(): Tool<GmailService> {
 
 // List labels tool
 export function createListLabelsTool(): Tool<GmailService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {},
-    required: [],
-  } as const;
+  const parameters = z.object({}).strict();
 
   return defineTool<GmailService, Record<string, never>>({
     name: "listLabels",
     description: "List all Gmail labels (both system and user-created)",
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({ valid: true, value: result.data as unknown as Record<string, never> } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: () =>
       Effect.gen(function* () {
         const gmailService = yield* GmailServiceTag;
@@ -321,50 +295,36 @@ export function createListLabelsTool(): Tool<GmailService> {
 
 // Create label tool
 export function createCreateLabelTool(): Tool<GmailService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      name: {
-        type: "string",
-        description: "Name of the label to create",
-        minLength: 1,
-        examples: ["Work", "Personal", "Important"],
-      },
-      labelListVisibility: {
-        type: "string",
-        enum: ["labelShow", "labelHide"],
-        description: "Whether to show the label in the label list",
-        default: "labelShow",
-      },
-      messageListVisibility: {
-        type: "string",
-        enum: ["show", "hide"],
-        description: "Whether to show the label in the message list",
-        default: "show",
-      },
-      color: {
-        type: "object",
-        description: "Color settings for the label",
-        properties: {
-          textColor: {
-            type: "string",
-            description: "Text color (must be one of the allowed Gmail label colors)",
-            enum: ALLOWED_LABEL_COLORS,
-            default: "#000000",
-          },
-          backgroundColor: {
-            type: "string",
-            description: "Background color (must be one of the allowed Gmail label colors)",
-            enum: ALLOWED_LABEL_COLORS,
-            default: "#ffffff",
-          },
-        },
-        required: ["textColor", "backgroundColor"],
-      },
-    },
-    required: ["name"],
-  } as const;
+  const parameters = z
+    .object({
+      name: z.string().min(1).describe("Name of the label to create"),
+      labelListVisibility: z
+        .enum(["labelShow", "labelHide"])
+        .optional()
+        .describe("Whether to show the label in the label list"),
+      messageListVisibility: z
+        .enum(["show", "hide"])
+        .optional()
+        .describe("Whether to show the label in the message list"),
+      color: z
+        .object({
+          textColor: z
+            .enum(ALLOWED_LABEL_COLORS)
+            .describe("Text color (must be one of the allowed Gmail label colors)"),
+          backgroundColor: z
+            .enum(ALLOWED_LABEL_COLORS)
+            .describe("Background color (must be one of the allowed Gmail label colors)"),
+        })
+        .partial()
+        .optional()
+        .refine(
+          (val) =>
+            !val || (typeof val.textColor === "string" && typeof val.backgroundColor === "string"),
+          { message: "Both textColor and backgroundColor must be provided when color is set" },
+        )
+        .describe("Color settings for the label"),
+    })
+    .strict();
 
   return defineTool<
     GmailService,
@@ -378,7 +338,20 @@ export function createCreateLabelTool(): Tool<GmailService> {
     name: "createLabel",
     description: "Create a new Gmail label with optional visibility and color settings",
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({
+            valid: true,
+            value: result.data as unknown as {
+              name: string;
+              labelListVisibility?: "labelShow" | "labelHide";
+              messageListVisibility?: "show" | "hide";
+              color?: { textColor: string; backgroundColor: string };
+            },
+          } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (validatedArgs) =>
       Effect.gen(function* () {
         const gmailService = yield* GmailServiceTag;
@@ -416,51 +389,33 @@ export function createCreateLabelTool(): Tool<GmailService> {
 
 // Update label tool
 export function createUpdateLabelTool(): Tool<GmailService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      labelId: {
-        type: "string",
-        description: "ID of the label to update",
-        minLength: 1,
-        examples: ["Label_1", "Label_2"],
-      },
-      name: {
-        type: "string",
-        description: "New name for the label",
-        minLength: 1,
-      },
-      labelListVisibility: {
-        type: "string",
-        enum: ["labelShow", "labelHide"],
-        description: "Whether to show the label in the label list",
-      },
-      messageListVisibility: {
-        type: "string",
-        enum: ["show", "hide"],
-        description: "Whether to show the label in the message list",
-      },
-      color: {
-        type: "object",
-        description: "Color settings for the label",
-        properties: {
-          textColor: {
-            type: "string",
-            description: "Text color (must be one of the allowed Gmail label colors)",
-            enum: ALLOWED_LABEL_COLORS,
-          },
-          backgroundColor: {
-            type: "string",
-            description: "Background color (must be one of the allowed Gmail label colors)",
-            enum: ALLOWED_LABEL_COLORS,
-          },
-        },
-        required: ["textColor", "backgroundColor"],
-      },
-    },
-    required: ["labelId"],
-  } as const;
+  const parameters = z
+    .object({
+      labelId: z.string().min(1).describe("ID of the label to update"),
+      name: z.string().min(1).optional().describe("New name for the label"),
+      labelListVisibility: z
+        .enum(["labelShow", "labelHide"])
+        .optional()
+        .describe("Whether to show the label in the label list"),
+      messageListVisibility: z
+        .enum(["show", "hide"])
+        .optional()
+        .describe("Whether to show the label in the message list"),
+      color: z
+        .object({
+          textColor: z.enum(ALLOWED_LABEL_COLORS),
+          backgroundColor: z.enum(ALLOWED_LABEL_COLORS),
+        })
+        .partial()
+        .optional()
+        .refine(
+          (val) =>
+            !val || (typeof val.textColor === "string" && typeof val.backgroundColor === "string"),
+          { message: "Both textColor and backgroundColor must be provided when color is set" },
+        )
+        .describe("Color settings for the label"),
+    })
+    .strict();
 
   return defineTool<
     GmailService,
@@ -475,7 +430,21 @@ export function createUpdateLabelTool(): Tool<GmailService> {
     name: "updateLabel",
     description: "Update an existing Gmail label's properties",
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({
+            valid: true,
+            value: result.data as unknown as {
+              labelId: string;
+              name?: string;
+              labelListVisibility?: "labelShow" | "labelHide";
+              messageListVisibility?: "show" | "hide";
+              color?: { textColor: string; backgroundColor: string };
+            },
+          } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (validatedArgs) =>
       Effect.gen(function* () {
         const gmailService = yield* GmailServiceTag;
@@ -500,24 +469,21 @@ export function createUpdateLabelTool(): Tool<GmailService> {
 
 // Delete label tool
 export function createDeleteLabelTool(): Tool<GmailService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      labelId: {
-        type: "string",
-        description: "ID of the label to delete",
-        minLength: 1,
-        examples: ["Label_1", "Label_2"],
-      },
-    },
-    required: ["labelId"],
-  } as const;
+  const parameters = z
+    .object({
+      labelId: z.string().min(1).describe("ID of the label to delete"),
+    })
+    .strict();
   return defineTool<GmailService, { labelId: string }>({
     name: "deleteLabel",
     description: "Delete a Gmail label (only user-created labels can be deleted)",
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({ valid: true, value: result.data as unknown as { labelId: string } } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     approval: {
       message: (args, _context) => {
         const a = args as { labelId: string };
@@ -541,25 +507,22 @@ export function createDeleteLabelTool(): Tool<GmailService> {
 
 // Trash email tool (requires approval)
 export function createTrashEmailTool(): Tool<GmailService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      emailId: {
-        type: "string",
-        description: "ID of the email to move to trash",
-        minLength: 1,
-        examples: ["185d3b2f0f0c1a2b"],
-      },
-    },
-    required: ["emailId"],
-  } as const;
+  const parameters = z
+    .object({
+      emailId: z.string().min(1).describe("ID of the email to move to trash"),
+    })
+    .strict();
 
   return defineTool<GmailService, { emailId: string }>({
     name: "trashEmail",
     description: "Move an email to trash (recoverable). Use this for safer email removal.",
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({ valid: true, value: result.data as unknown as { emailId: string } } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     approval: {
       message: (args, _context) =>
         Effect.gen(function* () {
@@ -591,26 +554,23 @@ export function createTrashEmailTool(): Tool<GmailService> {
 
 // Delete email tool (requires approval)
 export function createDeleteEmailTool(): Tool<GmailService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      emailId: {
-        type: "string",
-        description: "ID of the email to delete permanently",
-        minLength: 1,
-        examples: ["185d3b2f0f0c1a2b"],
-      },
-    },
-    required: ["emailId"],
-  } as const;
+  const parameters = z
+    .object({
+      emailId: z.string().min(1).describe("ID of the email to delete permanently"),
+    })
+    .strict();
 
   return defineTool<GmailService, { emailId: string }>({
     name: "deleteEmail",
     description:
       "Permanently delete an email. This action cannot be undone. Consider using trashEmail for safer removal.",
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({ valid: true, value: result.data as unknown as { emailId: string } } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     approval: {
       message: (args, _context) =>
         Effect.gen(function* () {
@@ -642,26 +602,23 @@ export function createDeleteEmailTool(): Tool<GmailService> {
 
 // Execute trash email tool (internal - called after approval)
 export function createExecuteTrashEmailTool(): Tool<GmailService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      emailId: {
-        type: "string",
-        description: "ID of the email to move to trash",
-        minLength: 1,
-        examples: ["185d3b2f0f0c1a2b"],
-      },
-    },
-    required: ["emailId"],
-  } as const;
+  const parameters = z
+    .object({
+      emailId: z.string().min(1).describe("ID of the email to move to trash"),
+    })
+    .strict();
 
   return defineTool<GmailService, { emailId: string }>({
     name: "executeTrashEmail",
     description: "Execute the trash email action after user approval",
     hidden: true,
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({ valid: true, value: result.data as unknown as { emailId: string } } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (validatedArgs) =>
       Effect.gen(function* () {
         const gmailService = yield* GmailServiceTag;
@@ -673,26 +630,26 @@ export function createExecuteTrashEmailTool(): Tool<GmailService> {
 
 // Execute delete email tool (internal - called after approval)
 export function createExecuteDeleteEmailTool(): Tool<GmailService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      emailId: {
-        type: "string",
-        description: "ID of the email to delete permanently",
-        minLength: 1,
-        examples: ["185d3b2f0f0c1a2b"],
-      },
-    },
-    required: ["emailId"],
-  } as const;
+  const parameters = z
+    .object({
+      emailId: z.string().min(1).describe("ID of the email to delete permanently"),
+    })
+    .strict();
 
   return defineTool<GmailService, { emailId: string }>({
     name: "executeDeleteEmail",
     description: "Execute the delete email action after user approval",
     hidden: true,
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({
+            valid: true,
+            value: result.data as unknown as { emailId: string; labelIds: string[] },
+          } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (validatedArgs) =>
       Effect.gen(function* () {
         const gmailService = yield* GmailServiceTag;
@@ -704,26 +661,26 @@ export function createExecuteDeleteEmailTool(): Tool<GmailService> {
 
 // Execute delete label tool (internal - called after approval)
 export function createExecuteDeleteLabelTool(): Tool<GmailService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      labelId: {
-        type: "string",
-        description: "ID of the label to delete",
-        minLength: 1,
-        examples: ["Label_1", "Label_2"],
-      },
-    },
-    required: ["labelId"],
-  } as const;
+  const parameters = z
+    .object({
+      labelId: z.string().min(1).describe("ID of the label to delete"),
+    })
+    .strict();
 
   return defineTool<GmailService, { labelId: string }>({
     name: "executeDeleteLabel",
     description: "Execute the delete label action after user approval",
     hidden: true,
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({
+            valid: true,
+            value: result.data as unknown as { labelId: string },
+          } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (validatedArgs) =>
       Effect.gen(function* () {
         const gmailService = yield* GmailServiceTag;
@@ -735,32 +692,29 @@ export function createExecuteDeleteLabelTool(): Tool<GmailService> {
 
 // Add labels to email tool
 export function createAddLabelsToEmailTool(): Tool<GmailService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      emailId: {
-        type: "string",
-        description: "ID of the email to add labels to",
-        minLength: 1,
-        examples: ["185d3b2f0f0c1a2b"],
-      },
-      labelIds: {
-        type: "array",
-        items: { type: "string" },
-        description: "Array of label IDs to add to the email",
-        minItems: 1,
-        examples: [["Label_1", "Label_2"]],
-      },
-    },
-    required: ["emailId", "labelIds"],
-  } as const;
+  const parameters = z
+    .object({
+      emailId: z.string().min(1).describe("ID of the email to add labels to"),
+      labelIds: z.array(z.string()).min(1).describe("Array of label IDs to add to the email"),
+    })
+    .strict();
 
   return defineTool<GmailService, { emailId: string; labelIds: string[] }>({
     name: "addLabelsToEmail",
     description: "Add one or more labels to a specific email",
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({
+            valid: true,
+            value: result.data as unknown as {
+              emailId: string;
+              labelIds: string[];
+            },
+          } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (validatedArgs) =>
       Effect.gen(function* () {
         const gmailService = yield* GmailServiceTag;
@@ -774,32 +728,23 @@ export function createAddLabelsToEmailTool(): Tool<GmailService> {
 
 // Remove labels from email tool
 export function createRemoveLabelsFromEmailTool(): Tool<GmailService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      emailId: {
-        type: "string",
-        description: "ID of the email to remove labels from",
-        minLength: 1,
-        examples: ["185d3b2f0f0c1a2b"],
-      },
-      labelIds: {
-        type: "array",
-        items: { type: "string" },
-        description: "Array of label IDs to remove from the email",
-        minItems: 1,
-        examples: [["Label_1", "Label_2"]],
-      },
-    },
-    required: ["emailId", "labelIds"],
-  } as const;
+  const parameters = z
+    .object({
+      emailId: z.string().min(1).describe("ID of the email to remove labels from"),
+      labelIds: z.array(z.string()).min(1).describe("Array of label IDs to remove from the email"),
+    })
+    .strict();
 
   return defineTool<GmailService, { emailId: string; labelIds: string[] }>({
     name: "removeLabelsFromEmail",
     description: "Remove one or more labels from a specific email",
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({ valid: true, value: result.data } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (validatedArgs) =>
       Effect.gen(function* () {
         const gmailService = yield* GmailServiceTag;
@@ -813,33 +758,19 @@ export function createRemoveLabelsFromEmailTool(): Tool<GmailService> {
 
 // Batch modify emails tool
 export function createBatchModifyEmailsTool(): Tool<GmailService> {
-  const parameters = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      emailIds: {
-        type: "array",
-        items: { type: "string" },
-        description: "Array of email IDs to modify",
-        minItems: 1,
-        maxItems: 1000,
-        examples: [["185d3b2f0f0c1a2b", "285d3b2f0f0c1a2c"]],
-      },
-      addLabelIds: {
-        type: "array",
-        items: { type: "string" },
-        description: "Array of label IDs to add to all emails",
-        examples: [["Label_1", "Label_2"]],
-      },
-      removeLabelIds: {
-        type: "array",
-        items: { type: "string" },
-        description: "Array of label IDs to remove from all emails",
-        examples: [["Label_3", "Label_4"]],
-      },
-    },
-    required: ["emailIds"],
-  } as const;
+  const parameters = z
+    .object({
+      emailIds: z.array(z.string()).min(1).max(1000).describe("Array of email IDs to modify"),
+      addLabelIds: z
+        .array(z.string())
+        .optional()
+        .describe("Array of label IDs to add to all emails"),
+      removeLabelIds: z
+        .array(z.string())
+        .optional()
+        .describe("Array of label IDs to remove from all emails"),
+    })
+    .strict();
 
   return defineTool<
     GmailService,
@@ -852,7 +783,19 @@ export function createBatchModifyEmailsTool(): Tool<GmailService> {
     name: "batchModifyEmails",
     description: "Modify multiple emails at once by adding or removing labels",
     parameters,
-    validate: makeJsonSchemaValidator(parameters as unknown as Record<string, unknown>),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({
+            valid: true,
+            value: result.data as unknown as {
+              emailIds: string[];
+              addLabelIds?: string[];
+              removeLabelIds?: string[];
+            },
+          } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (validatedArgs) =>
       Effect.gen(function* () {
         const gmailService = yield* GmailServiceTag;

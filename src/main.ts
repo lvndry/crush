@@ -21,7 +21,7 @@ import { handleError } from "./core/utils/error-handler";
 import { MarkdownRenderer } from "./core/utils/markdown-renderer";
 import { AgentConfigService, createConfigLayer } from "./services/config";
 import { createGmailServiceLayer } from "./services/gmail";
-import { createLiteLLMServiceLayer } from "./services/llm/litellm-service";
+import { createAISDKServiceLayer } from "./services/llm/ai-sdk-service";
 import { createLoggerLayer, LoggerServiceTag } from "./services/logger";
 import { createFileSystemContextServiceLayer } from "./services/shell";
 import { FileStorageService } from "./services/storage/file";
@@ -68,7 +68,7 @@ function createAppLayer() {
     Layer.provide(loggerLayer),
   );
 
-  const llmLayer = createLiteLLMServiceLayer().pipe(Layer.provide(configLayer));
+  const llmLayer = createAISDKServiceLayer().pipe(Layer.provide(configLayer));
   const toolRegistryLayer = createToolRegistryLayer();
 
   const shellLayer = createFileSystemContextServiceLayer().pipe(Layer.provide(fileSystemLayer));

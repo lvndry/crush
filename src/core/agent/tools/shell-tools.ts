@@ -1,7 +1,9 @@
 import { Effect } from "effect";
+import { z } from "zod";
+import type { FileSystemContextService } from "../../../services/shell";
 import { FileSystemContextServiceTag } from "../../../services/shell";
-import { defineTool, makeJsonSchemaValidator, withApprovalBoolean } from "./base-tool";
-import { type ToolExecutionContext, type ToolExecutionResult } from "./tool-registry";
+import { defineTool, withApprovalBoolean } from "./base-tool";
+import { type Tool, type ToolExecutionContext, type ToolExecutionResult } from "./tool-registry";
 
 /**
  * Shell command execution tools
@@ -31,59 +33,65 @@ interface ExecuteCommandApprovedArgs extends Record<string, unknown> {
  * - Network access is available to executed commands
  * - File system access is available within the working directory context
  */
-export function createExecuteCommandTool() {
-  return defineTool({
+export function createExecuteCommandTool(): Tool<FileSystemContextService> {
+  return defineTool<FileSystemContextService, ExecuteCommandArgs>({
     name: "executeCommand",
     description:
       "Execute a shell command on the system. This tool requires user approval for security reasons.",
-    parameters: withApprovalBoolean({
-      type: "object",
-      properties: {
-        command: {
-          type: "string",
-          description: "The shell command to execute (e.g., 'npm install', 'ls -la', 'git status')",
-        },
-        workingDirectory: {
-          type: "string",
-          description:
-            "Optional working directory to execute the command in. If not provided, uses the current working directory.",
-        },
-        timeout: {
-          type: "number",
-          description:
-            "Optional timeout in milliseconds (default: 30000). Commands that take longer will be terminated.",
-        },
-      },
-      required: ["command"],
-      additionalProperties: false,
-    }),
-    validate: makeJsonSchemaValidator<ExecuteCommandArgs>({
-      type: "object",
-      properties: {
-        command: { type: "string" },
-        confirm: { type: "boolean" },
-        workingDirectory: { type: "string" },
-        timeout: { type: "number" },
-      },
-      required: ["command", "confirm"],
-      additionalProperties: false,
-    }),
+    parameters: withApprovalBoolean(
+      z
+        .object({
+          command: z
+            .string()
+            .min(1, "command cannot be empty")
+            .describe("The shell command to execute (e.g., 'npm install', 'ls -la', 'git status')"),
+          workingDirectory: z
+            .string()
+            .optional()
+            .describe(
+              "Optional working directory to execute the command in. If not provided, uses the current working directory.",
+            ),
+          timeout: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe(
+              "Optional timeout in milliseconds (default: 30000). Commands that take longer will be terminated.",
+            ),
+        })
+        .strict(),
+    ),
+    validate: (args) => {
+      const schema = z
+        .object({
+          command: z.string().min(1),
+          confirm: z.boolean(),
+          workingDirectory: z.string().optional(),
+          timeout: z.number().int().positive().optional(),
+        })
+        .strict();
+      const result = schema.safeParse(args);
+      if (!result.success) {
+        return { valid: false, errors: result.error.issues.map((i) => i.message) } as const;
+      }
+      return { valid: true, value: result.data as ExecuteCommandArgs } as const;
+    },
     approval: {
-      message: (args: Record<string, unknown>, context: ToolExecutionContext) =>
+      message: (args: ExecuteCommandArgs, context: ToolExecutionContext) =>
         Effect.gen(function* () {
           const shell = yield* FileSystemContextServiceTag;
-          const typedArgs = args as ExecuteCommandArgs;
           const cwd = yield* shell.getCwd({
             agentId: context.agentId,
             ...(context.conversationId && { conversationId: context.conversationId }),
           });
 
-          const workingDir = typedArgs.workingDirectory || cwd;
-          const timeout = typedArgs.timeout || 30000;
+          const workingDir = args.workingDirectory || cwd;
+          const timeout = args.timeout || 30000;
 
           return `⚠️  COMMAND EXECUTION REQUEST ⚠️
 
-Command: ${typedArgs.command}
+Command: ${args.command}
 Working Directory: ${workingDir}
 Timeout: ${timeout}ms
 Agent: ${context.agentId}
@@ -124,56 +132,55 @@ This command will be executed on your system. Please review it carefully and con
 /**
  * Create a tool for executing approved shell commands
  */
-export function createExecuteCommandApprovedTool() {
-  return defineTool({
+export function createExecuteCommandApprovedTool(): Tool<FileSystemContextService> {
+  return defineTool<FileSystemContextService, ExecuteCommandApprovedArgs>({
     name: "executeCommandApproved",
     description:
       "Execute an approved shell command. This is the internal tool called after user approval.",
     hidden: true,
-    parameters: {
-      type: "object",
-      properties: {
-        command: {
-          type: "string",
-          description: "The shell command to execute",
-        },
-        workingDirectory: {
-          type: "string",
-          description: "Working directory to execute the command in",
-        },
-        timeout: {
-          type: "number",
-          description: "Timeout in milliseconds (default: 30000)",
-        },
-      },
-      required: ["command"],
-      additionalProperties: false,
+    parameters: z
+      .object({
+        command: z.string().min(1).describe("The shell command to execute"),
+        workingDirectory: z
+          .string()
+          .optional()
+          .describe("Working directory to execute the command in"),
+        timeout: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe("Timeout in milliseconds (default: 30000)"),
+      })
+      .strict(),
+    validate: (args) => {
+      const schema = z
+        .object({
+          command: z.string().min(1),
+          workingDirectory: z.string().optional(),
+          timeout: z.number().int().positive().optional(),
+        })
+        .strict();
+      const result = schema.safeParse(args);
+      if (!result.success) {
+        return { valid: false, errors: result.error.issues.map((i) => i.message) } as const;
+      }
+      return { valid: true, value: result.data as ExecuteCommandApprovedArgs } as const;
     },
-    validate: makeJsonSchemaValidator<ExecuteCommandApprovedArgs>({
-      type: "object",
-      properties: {
-        command: { type: "string" },
-        workingDirectory: { type: "string" },
-        timeout: { type: "number" },
-      },
-      required: ["command"],
-      additionalProperties: false,
-    }),
-    handler: (args: Record<string, unknown>, context: ToolExecutionContext) =>
+    handler: (args: ExecuteCommandApprovedArgs, context: ToolExecutionContext) =>
       Effect.gen(function* () {
         const shell = yield* FileSystemContextServiceTag;
-        const typedArgs = args as ExecuteCommandApprovedArgs;
 
         // Get the working directory
         const cwd = yield* shell.getCwd({
           agentId: context.agentId,
           ...(context.conversationId && { conversationId: context.conversationId }),
         });
-        const workingDir = typedArgs.workingDirectory || cwd;
-        const timeout = typedArgs.timeout || 30000;
+        const workingDir = args.workingDirectory || cwd;
+        const timeout = args.timeout || 30000;
 
         // Basic safety checks
-        const command = typedArgs.command.trim();
+        const command = args.command.trim();
         if (!command) {
           return {
             success: false,
@@ -352,7 +359,7 @@ export function createExecuteCommandApprovedTool() {
 
           // Log command execution for security auditing
           console.warn(`🔒 SECURITY LOG: Command executed by agent ${context.agentId}:`, {
-            command: typedArgs.command,
+            command: args.command,
             workingDirectory: workingDir,
             exitCode: result.exitCode,
             timestamp: new Date().toISOString(),
@@ -363,7 +370,7 @@ export function createExecuteCommandApprovedTool() {
           return {
             success: true,
             result: {
-              command: typedArgs.command,
+              command: args.command,
               workingDirectory: workingDir,
               exitCode: result.exitCode,
               stdout: result.stdout,

@@ -1,4 +1,5 @@
 import { Context, Effect } from "effect";
+import type z from "zod";
 
 /**
  * LLM service types and interfaces
@@ -58,7 +59,7 @@ export type LLMError =
 
 // Message types
 export interface ChatMessage {
-  role: "system" | "user" | "assistant" | "function" | "tool";
+  role: "system" | "user" | "assistant" | "tool";
   content: string;
   name?: string;
   /**
@@ -82,7 +83,7 @@ export interface ToolDefinition {
   function: {
     name: string;
     description: string;
-    parameters: Record<string, unknown>;
+    parameters: z.ZodTypeAny;
   };
 }
 

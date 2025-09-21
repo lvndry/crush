@@ -1,4 +1,5 @@
 import { Effect } from "effect";
+import { z } from "zod";
 import { type Tool, type ToolExecutionContext, type ToolExecutionResult } from "./tool-registry";
 
 /**
@@ -19,7 +20,7 @@ export type ToolValidator<Args extends Record<string, unknown>> = (
 export interface BaseToolConfig<R, Args extends Record<string, unknown>> {
   readonly name: string;
   readonly description: string;
-  readonly parameters: Record<string, unknown>;
+  readonly parameters: z.ZodTypeAny;
   /** If true, hide this tool from UI listings while keeping it callable. */
   readonly hidden?: boolean;
   /**
@@ -287,20 +288,18 @@ export function makeJsonSchemaValidator<Args extends Record<string, unknown>>(
  * This does not mutate the original schema object.
  */
 export function withApprovalBoolean(
-  schema: Record<string, unknown>,
+  schema: z.ZodTypeAny,
   options?: { fieldName?: string; description?: string },
-): Record<string, unknown> {
+): z.ZodTypeAny {
   const fieldName = options?.fieldName ?? "confirm";
   const description = options?.description ?? "Set to true to confirm this action.";
 
-  const copy = JSON.parse(JSON.stringify(schema)) as {
-    type?: string;
-    properties?: Record<string, unknown>;
-    required?: string[];
-    additionalProperties?: boolean;
-  };
-  if (!copy.properties) copy.properties = {};
-  copy.properties[fieldName] = { type: "boolean", description };
-  // Do not force it required by default; approval logic enforces it at runtime.
-  return copy as unknown as Record<string, unknown>;
+  // If provided a Zod object, extend it in-place with a boolean confirm field
+  if (schema instanceof z.ZodObject) {
+    return schema.extend({
+      [fieldName]: z.boolean().describe(description),
+    });
+  }
+  // If it's some other Zod type, intersect with an object carrying confirm
+  return z.object({ [fieldName]: z.boolean().describe(description) }).and(schema);
 }

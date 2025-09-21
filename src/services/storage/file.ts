@@ -187,7 +187,10 @@ export class FileStorageService implements StorageService {
         const path = this.getAgentPath(id);
         yield* this.fs.remove(path).pipe(
           Effect.mapError((error) => {
-            if (error instanceof Error && error.message.includes("ENOENT")) {
+            if (
+              error instanceof Error &&
+              (error as unknown as { cause: { code: string } }).cause.code.includes("ENOENT")
+            ) {
               return new StorageNotFoundError({ path });
             }
 
@@ -246,7 +249,10 @@ export class FileStorageService implements StorageService {
         const path = this.getAutomationPath(id);
         yield* this.fs.remove(path).pipe(
           Effect.mapError((error) => {
-            if (error instanceof Error && error.message.includes("ENOENT")) {
+            if (
+              error instanceof Error &&
+              (error as unknown as { cause: { code: string } }).cause.code.includes("ENOENT")
+            ) {
               return new StorageNotFoundError({ path });
             }
             return new StorageError({

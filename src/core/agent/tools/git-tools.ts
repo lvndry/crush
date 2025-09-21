@@ -1,10 +1,11 @@
 import { FileSystem } from "@effect/platform";
 import { Effect } from "effect";
+import { z } from "zod";
 import {
   type FileSystemContextService,
   FileSystemContextServiceTag,
 } from "../../../services/shell";
-import { defineTool, makeJsonSchemaValidator } from "./base-tool";
+import { defineTool } from "./base-tool";
 import { type ToolExecutionContext, type ToolExecutionResult } from "./tool-registry";
 
 /**
@@ -73,24 +74,26 @@ export interface GitCheckoutArgs extends Record<string, unknown> {
 
 // Safe Git operations (no approval needed)
 
-export function createGitStatusTool() {
-  const parameters = {
-    type: "object",
-    properties: {
-      path: {
-        type: "string",
-        description: "Path to the Git repository (defaults to current working directory)",
-      },
-    },
-    required: [],
-    additionalProperties: false,
-  } as const;
+export function createGitStatusTool(): ReturnType<typeof defineTool> {
+  const parameters = z
+    .object({
+      path: z
+        .string()
+        .optional()
+        .describe("Path to the Git repository (defaults to current working directory)"),
+    })
+    .strict();
 
   return defineTool<FileSystem.FileSystem | FileSystemContextService, GitStatusArgs>({
     name: "gitStatus",
     description: "Show the working tree status of a Git repository",
     parameters,
-    validate: makeJsonSchemaValidator(parameters),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({ valid: true, value: result.data as GitStatusArgs } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (
       args: Record<string, unknown>,
       context: ToolExecutionContext,
@@ -136,35 +139,34 @@ export function createGitStatusTool() {
   });
 }
 
-export function createGitLogTool() {
-  const parameters = {
-    type: "object",
-    properties: {
-      path: {
-        type: "string",
-        description: "Path to the Git repository (defaults to current working directory)",
-      },
-      limit: {
-        type: "number",
-        description: "Limit the number of commits to show",
-        minimum: 1,
-        maximum: 100,
-      },
-      oneline: {
-        type: "boolean",
-        description: "Show commits in one-line format",
-        default: false,
-      },
-    },
-    required: [],
-    additionalProperties: false,
-  } as const;
+export function createGitLogTool(): ReturnType<typeof defineTool> {
+  const parameters = z
+    .object({
+      path: z
+        .string()
+        .optional()
+        .describe("Path to the Git repository (defaults to current working directory)"),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(100)
+        .optional()
+        .describe("Limit the number of commits to show"),
+      oneline: z.boolean().optional().describe("Show commits in one-line format"),
+    })
+    .strict();
 
   return defineTool<FileSystem.FileSystem | FileSystemContextService, GitLogArgs>({
     name: "gitLog",
     description: "Show commit history of a Git repository",
     parameters,
-    validate: makeJsonSchemaValidator(parameters),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({ valid: true, value: result.data as GitLogArgs } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (args: Record<string, unknown>, context: ToolExecutionContext) =>
       Effect.gen(function* () {
         const shell = yield* FileSystemContextServiceTag;
@@ -203,37 +205,29 @@ export function createGitLogTool() {
   });
 }
 
-export function createGitDiffTool() {
-  const parameters = {
-    type: "object",
-    properties: {
-      path: {
-        type: "string",
-        description: "Path to the Git repository (defaults to current working directory)",
-      },
-      staged: {
-        type: "boolean",
-        description: "Show staged changes (cached)",
-        default: false,
-      },
-      branch: {
-        type: "string",
-        description: "Compare with a specific branch",
-      },
-      commit: {
-        type: "string",
-        description: "Compare with a specific commit",
-      },
-    },
-    required: [],
-    additionalProperties: false,
-  } as const;
+export function createGitDiffTool(): ReturnType<typeof defineTool> {
+  const parameters = z
+    .object({
+      path: z
+        .string()
+        .optional()
+        .describe("Path to the Git repository (defaults to current working directory)"),
+      staged: z.boolean().optional().describe("Show staged changes (cached)"),
+      branch: z.string().optional().describe("Compare with a specific branch"),
+      commit: z.string().optional().describe("Compare with a specific commit"),
+    })
+    .strict();
 
   return defineTool<FileSystem.FileSystem | FileSystemContextService, GitDiffArgs>({
     name: "gitDiff",
     description: "Show changes between commits, commit and working tree, etc.",
     parameters,
-    validate: makeJsonSchemaValidator(parameters),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({ valid: true, value: result.data as GitDiffArgs } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (args: Record<string, unknown>, context: ToolExecutionContext) =>
       Effect.gen(function* () {
         const shell = yield* FileSystemContextServiceTag;
@@ -277,39 +271,29 @@ export function createGitDiffTool() {
   });
 }
 
-export function createGitBranchTool() {
-  const parameters = {
-    type: "object",
-    properties: {
-      path: {
-        type: "string",
-        description: "Path to the Git repository (defaults to current working directory)",
-      },
-      list: {
-        type: "boolean",
-        description: "List branches",
-        default: true,
-      },
-      all: {
-        type: "boolean",
-        description: "List both local and remote branches",
-        default: false,
-      },
-      remote: {
-        type: "boolean",
-        description: "List only remote branches",
-        default: false,
-      },
-    },
-    required: [],
-    additionalProperties: false,
-  } as const;
+export function createGitBranchTool(): ReturnType<typeof defineTool> {
+  const parameters = z
+    .object({
+      path: z
+        .string()
+        .optional()
+        .describe("Path to the Git repository (defaults to current working directory)"),
+      list: z.boolean().optional().describe("List branches"),
+      all: z.boolean().optional().describe("List both local and remote branches"),
+      remote: z.boolean().optional().describe("List only remote branches"),
+    })
+    .strict();
 
   return defineTool<FileSystem.FileSystem | FileSystemContextService, GitBranchArgs>({
     name: "gitBranch",
     description: "List, create, or delete branches",
     parameters,
-    validate: makeJsonSchemaValidator(parameters),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({ valid: true, value: result.data as GitBranchArgs } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     handler: (args: Record<string, unknown>, context: ToolExecutionContext) =>
       Effect.gen(function* () {
         const shell = yield* FileSystemContextServiceTag;
@@ -357,34 +341,28 @@ export function createGitBranchTool() {
 
 // Potentially destructive operations (approval required)
 
-export function createGitAddTool() {
-  const parameters = {
-    type: "object",
-    properties: {
-      path: {
-        type: "string",
-        description: "Path to the Git repository (defaults to current working directory)",
-      },
-      files: {
-        type: "array",
-        items: { type: "string" },
-        description: "Files to add to the staging area",
-      },
-      all: {
-        type: "boolean",
-        description: "Add all changes in the working directory",
-        default: false,
-      },
-    },
-    required: ["files"],
-    additionalProperties: false,
-  } as const;
+export function createGitAddTool(): ReturnType<typeof defineTool> {
+  const parameters = z
+    .object({
+      path: z
+        .string()
+        .optional()
+        .describe("Path to the Git repository (defaults to current working directory)"),
+      files: z.array(z.string()).min(1).describe("Files to add to the staging area"),
+      all: z.boolean().optional().describe("Add all changes in the working directory"),
+    })
+    .strict();
 
   return defineTool<FileSystem.FileSystem | FileSystemContextService, GitAddArgs>({
     name: "gitAdd",
     description: "Add file contents to the staging area (requires user approval)",
     parameters,
-    validate: makeJsonSchemaValidator(parameters),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({ valid: true, value: result.data as GitAddArgs } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     approval: {
       message: (args: Record<string, unknown>, context: ToolExecutionContext) =>
         Effect.gen(function* () {
@@ -445,34 +423,28 @@ export function createGitAddTool() {
   });
 }
 
-export function createGitCommitTool() {
-  const parameters = {
-    type: "object",
-    properties: {
-      path: {
-        type: "string",
-        description: "Path to the Git repository (defaults to current working directory)",
-      },
-      message: {
-        type: "string",
-        description: "Commit message",
-        minLength: 1,
-      },
-      all: {
-        type: "boolean",
-        description: "Commit all changes in the working directory",
-        default: false,
-      },
-    },
-    required: ["message"],
-    additionalProperties: false,
-  } as const;
+export function createGitCommitTool(): ReturnType<typeof defineTool> {
+  const parameters = z
+    .object({
+      path: z
+        .string()
+        .optional()
+        .describe("Path to the Git repository (defaults to current working directory)"),
+      message: z.string().min(1).describe("Commit message"),
+      all: z.boolean().optional().describe("Commit all changes in the working directory"),
+    })
+    .strict();
 
   return defineTool<FileSystem.FileSystem | FileSystemContextService, GitCommitArgs>({
     name: "gitCommit",
     description: "Record changes to the repository (requires user approval)",
     parameters,
-    validate: makeJsonSchemaValidator(parameters),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({ valid: true, value: result.data as GitCommitArgs } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     approval: {
       message: (args: Record<string, unknown>, context: ToolExecutionContext) =>
         Effect.gen(function* () {
@@ -532,38 +504,29 @@ export function createGitCommitTool() {
   });
 }
 
-export function createGitPushTool() {
-  const parameters = {
-    type: "object",
-    properties: {
-      path: {
-        type: "string",
-        description: "Path to the Git repository (defaults to current working directory)",
-      },
-      remote: {
-        type: "string",
-        description: "Remote repository name (defaults to 'origin')",
-        default: "origin",
-      },
-      branch: {
-        type: "string",
-        description: "Branch to push (defaults to current branch)",
-      },
-      force: {
-        type: "boolean",
-        description: "Force push (overwrites remote history)",
-        default: false,
-      },
-    },
-    required: [],
-    additionalProperties: false,
-  } as const;
+export function createGitPushTool(): ReturnType<typeof defineTool> {
+  const parameters = z
+    .object({
+      path: z
+        .string()
+        .optional()
+        .describe("Path to the Git repository (defaults to current working directory)"),
+      remote: z.string().optional().describe("Remote repository name (defaults to 'origin')"),
+      branch: z.string().optional().describe("Branch to push (defaults to current branch)"),
+      force: z.boolean().optional().describe("Force push (overwrites remote history)"),
+    })
+    .strict();
 
   return defineTool<FileSystem.FileSystem | FileSystemContextService, GitPushArgs>({
     name: "gitPush",
     description: "Update remote refs along with associated objects (requires user approval)",
     parameters,
-    validate: makeJsonSchemaValidator(parameters),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({ valid: true, value: result.data as GitPushArgs } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     approval: {
       message: (args: Record<string, unknown>, context: ToolExecutionContext) =>
         Effect.gen(function* () {
@@ -628,39 +591,30 @@ export function createGitPushTool() {
   });
 }
 
-export function createGitPullTool() {
-  const parameters = {
-    type: "object",
-    properties: {
-      path: {
-        type: "string",
-        description: "Path to the Git repository (defaults to current working directory)",
-      },
-      remote: {
-        type: "string",
-        description: "Remote repository name (defaults to 'origin')",
-        default: "origin",
-      },
-      branch: {
-        type: "string",
-        description: "Branch to pull (defaults to current branch)",
-      },
-      rebase: {
-        type: "boolean",
-        description: "Use rebase instead of merge",
-        default: false,
-      },
-    },
-    required: [],
-    additionalProperties: false,
-  } as const;
+export function createGitPullTool(): ReturnType<typeof defineTool> {
+  const parameters = z
+    .object({
+      path: z
+        .string()
+        .optional()
+        .describe("Path to the Git repository (defaults to current working directory)"),
+      remote: z.string().optional().describe("Remote repository name (defaults to 'origin')"),
+      branch: z.string().optional().describe("Branch to pull (defaults to current branch)"),
+      rebase: z.boolean().optional().describe("Use rebase instead of merge"),
+    })
+    .strict();
 
   return defineTool<FileSystem.FileSystem | FileSystemContextService, GitPullArgs>({
     name: "gitPull",
     description:
       "Fetch from and integrate with another repository or a local branch (requires user approval)",
     parameters,
-    validate: makeJsonSchemaValidator(parameters),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({ valid: true, value: result.data as GitPullArgs } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     approval: {
       message: (args: Record<string, unknown>, context: ToolExecutionContext) =>
         Effect.gen(function* () {
@@ -725,38 +679,29 @@ export function createGitPullTool() {
   });
 }
 
-export function createGitCheckoutTool() {
-  const parameters = {
-    type: "object",
-    properties: {
-      path: {
-        type: "string",
-        description: "Path to the Git repository (defaults to current working directory)",
-      },
-      branch: {
-        type: "string",
-        description: "Branch name to checkout",
-      },
-      create: {
-        type: "boolean",
-        description: "Create the branch if it doesn't exist",
-        default: false,
-      },
-      force: {
-        type: "boolean",
-        description: "Force checkout (discards local changes)",
-        default: false,
-      },
-    },
-    required: ["branch"],
-    additionalProperties: false,
-  } as const;
+export function createGitCheckoutTool(): ReturnType<typeof defineTool> {
+  const parameters = z
+    .object({
+      path: z
+        .string()
+        .optional()
+        .describe("Path to the Git repository (defaults to current working directory)"),
+      branch: z.string().min(1).describe("Branch name to checkout"),
+      create: z.boolean().optional().describe("Create the branch if it doesn't exist"),
+      force: z.boolean().optional().describe("Force checkout (discards local changes)"),
+    })
+    .strict();
 
   return defineTool<FileSystem.FileSystem | FileSystemContextService, GitCheckoutArgs>({
     name: "gitCheckout",
     description: "Switch branches or restore working tree files (requires user approval)",
     parameters,
-    validate: makeJsonSchemaValidator(parameters),
+    validate: (args) => {
+      const result = parameters.safeParse(args);
+      return result.success
+        ? ({ valid: true, value: result.data as GitCheckoutArgs } as const)
+        : ({ valid: false, errors: result.error.issues.map((i) => i.message) } as const);
+    },
     approval: {
       message: (args: Record<string, unknown>, context: ToolExecutionContext) =>
         Effect.gen(function* () {
